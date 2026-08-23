@@ -69,10 +69,4 @@ Load A + Load B -> H3 Compatibility -> future seam/stitch adapter
 
 The packet preserves exact joint AV latent state. `naive_latent_concat_safe` remains false by design.
 
-## Tests
-
-```bash
-PYTHONPATH=. pytest -q
-```
-
 0.2 currently has 44 passing core tests, including schema-v1 rejection, explicit latent layout, notes, Export, Compare, preview checksum exclusion/cache freshness, lazy round-trip, H3 provenance/compatibility, exact tensor/mask/audio serialization, path safety and atomic save.
