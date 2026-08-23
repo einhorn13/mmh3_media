@@ -1,15 +1,6 @@
 # ComfyUI-MMH3-Media
 
 **Release:** 0.2.0  
-**Packet schema:** 2
-
-`MMH3_MEDIA` is an H3-aware media/checkpoint packet for ComfyUI. One `.mmh3` can carry the original MiniMax H3 joint AV latent together with final video/audio, keyframes, refs, masks, metadata, creator notes and a disposable preview cache.
-
-## 0.2 contract
-
-0.2 intentionally drops schema-v1 compatibility. A v1 archive is rejected instead of being guessed/migrated. Latents require explicit `latent_layout`; unknown resource kinds are rejected by the current schema. This keeps the format small and deterministic while it is still early.
-
-`packet.json` now always contains a top-level `notes` string. It is free-form human/creator text and defaults to `""`. Machine-specific data belongs in `extensions` or resource metadata.
 
 ## Nodes
 
@@ -54,19 +45,3 @@ Creator text is deliberately separate from generation metadata:
 ```
 
 Use `MMH3 Metadata` to set/clear it. `MMH3 Inspect` and `MMH3 Metadata` expose the current value as an output. `MMH3 Inspect` also exposes stored generation `prompt`, `task`, `seed`, and packet `name` directly, so downstream conditioning does not need to parse `info_json`.
-
-## Validation architecture
-
-There is no `MMH3 Validate` node. Validation is an internal service layer (`validation.py`) used by core/archive operations. This keeps validation reusable for Save/Load/Export/future batch tooling without adding another user-facing node. Current validation covers schema-v1 structure, supported kinds, selectors/slots, role-kind compatibility, safe paths, and archive/resource integrity boundaries. H3 payload validation remains H3-specific and runs when an H3 latent is inserted/accessed.
-
-## H3 downstream use
-
-```text
-MMH3 Load -> Get Latent -> H3 AV Separate -> upscale video -> H3 AV Combine -> H3 refine
-MMH3 Load -> Get Latent -> H3 continuation adapter
-Load A + Load B -> H3 Compatibility -> future seam/stitch adapter
-```
-
-The packet preserves exact joint AV latent state. `naive_latent_concat_safe` remains false by design.
-
-0.2 currently has 44 passing core tests, including schema-v1 rejection, explicit latent layout, notes, Export, Compare, preview checksum exclusion/cache freshness, lazy round-trip, H3 provenance/compatibility, exact tensor/mask/audio serialization, path safety and atomic save.
