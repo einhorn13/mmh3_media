@@ -1,0 +1,2 @@
+# No extra runtime packages beyond a current ComfyUI installation.
+# torch, numpy, Pillow and safetensors are already ComfyUI dependencies.
