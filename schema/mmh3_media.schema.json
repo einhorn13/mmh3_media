@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.invalid/mmh3_media.schema.json",
-  "title": "MMH3_MEDIA packet.json schema v1",
+  "title": "MMH3_MEDIA packet.json schema v2",
   "type": "object",
   "required": [
     "format",
@@ -10,7 +10,9 @@
     "name",
     "generation",
     "notes",
+    "primary",
     "resources",
+    "representations",
     "history",
     "extensions"
   ],
@@ -19,7 +21,7 @@
       "const": "MMH3_MEDIA"
     },
     "schema_version": {
-      "const": 1
+      "const": 2
     },
     "id": {
       "type": "string",
@@ -29,195 +31,185 @@
       "type": "string"
     },
     "created_at": {
-      "type": "string"
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "updated_at": {
-      "type": "string"
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "generation": {
       "type": "object"
     },
+    "notes": {
+      "type": "string"
+    },
+    "primary": {
+      "type": "object",
+      "propertyNames": {
+        "enum": [
+          "video",
+          "audio",
+          "image",
+          "latent",
+          "mask"
+        ]
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
     "resources": {
       "type": "array",
       "items": {
-        "type": "object",
-        "required": [
-          "id",
-          "kind",
-          "role",
-          "slot",
-          "path",
-          "metadata"
-        ],
-        "properties": {
-          "id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "kind": {
-            "enum": [
-              "latent",
-              "image",
-              "video",
-              "audio",
-              "mask",
-              "json"
-            ]
-          },
-          "role": {
-            "type": "string",
-            "minLength": 1
-          },
-          "slot": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "path": {
-            "type": "string",
-            "minLength": 1
-          },
-          "metadata": {
-            "type": "object",
-            "properties": {
-              "h3": {
-                "type": "object",
-                "properties": {
-                  "latent_context": {
-                    "type": "object",
-                    "properties": {
-                      "version": {
-                        "type": "integer",
-                        "minimum": 1
-                      },
-                      "model_family": {
-                        "type": "string"
-                      },
-                      "layout": {
-                        "type": "string"
-                      },
-                      "origin": {
-                        "enum": [
-                          "unknown",
-                          "sampler_output",
-                          "vae_encoded",
-                          "derived"
-                        ]
-                      },
-                      "temporal_grid": {
-                        "type": "string"
-                      },
-                      "canvas": {
-                        "type": "object",
-                        "properties": {
-                          "width": {
-                            "type": "integer",
-                            "minimum": 1
-                          },
-                          "height": {
-                            "type": "integer",
-                            "minimum": 1
-                          }
-                        },
-                        "additionalProperties": true
-                      },
-                      "frames": {
-                        "type": [
-                          "integer",
-                          "null"
-                        ],
-                        "minimum": 1
-                      },
-                      "fps": {
-                        "type": "number",
-                        "exclusiveMinimum": 0
-                      },
-                      "video_latent_t": {
-                        "type": "integer",
-                        "minimum": 1
-                      },
-                      "audio_latent_t": {
-                        "type": "integer",
-                        "minimum": 1
-                      },
-                      "audio_sample_rate": {
-                        "type": "integer",
-                        "minimum": 1
-                      },
-                      "audio_latent_rate": {
-                        "type": "integer",
-                        "minimum": 1
-                      },
-                      "batch": {
-                        "type": "integer",
-                        "minimum": 1
-                      },
-                      "continuation": {
-                        "type": "object"
-                      },
-                      "seam_source": {
-                        "type": "object"
-                      },
-                      "naive_latent_concat_safe": {
-                        "const": false
-                      }
-                    },
-                    "additionalProperties": true
-                  }
-                },
-                "additionalProperties": true
-              }
-            },
-            "additionalProperties": true
-          },
-          "serializer": {
-            "type": "string"
-          },
-          "media_type": {
-            "type": "string"
-          },
-          "sha256": {
-            "type": "string",
-            "pattern": "^[0-9a-f]{64}$"
-          },
-          "size": {
-            "type": "integer",
-            "minimum": 0
-          }
-        },
-        "additionalProperties": true,
-        "allOf": [
-          {
-            "if": {
-              "properties": {
-                "role": {
-                  "const": "preview"
-                }
-              },
-              "required": [
-                "role"
-              ]
-            },
-            "then": {
-              "not": {
-                "required": [
-                  "sha256"
-                ]
-              }
-            }
-          }
-        ]
+        "$ref": "#/$defs/resource"
+      }
+    },
+    "representations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
       }
     },
     "history": {
-      "type": "array"
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
     },
     "extensions": {
       "type": "object"
-    },
-    "notes": {
-      "type": "string",
-      "description": "Free-form creator/user notes. Empty string by default."
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "$defs": {
+    "resource": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "name",
+        "role",
+        "order",
+        "tags",
+        "path",
+        "media_type",
+        "serializer",
+        "descriptor",
+        "provenance",
+        "content",
+        "extensions"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "latent",
+            "image",
+            "video",
+            "audio",
+            "mask",
+            "json"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "reference",
+            "control",
+            "context",
+            "intermediate",
+            "auxiliary"
+          ]
+        },
+        "order": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "media_type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "serializer": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "descriptor": {
+          "type": "object"
+        },
+        "provenance": {
+          "type": "object"
+        },
+        "content": {
+          "type": "object",
+          "required": [
+            "revision",
+            "digest",
+            "size"
+          ],
+          "properties": {
+            "revision": {
+              "type": "string",
+              "minLength": 1
+            },
+            "digest": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "size": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            }
+          },
+          "additionalProperties": true
+        },
+        "extensions": {
+          "type": "object"
+        }
+      },
+      "not": {
+        "required": [
+          "slot"
+        ]
+      },
+      "additionalProperties": true
+    }
+  }
 }

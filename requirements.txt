@@ -1,2 +1,8 @@
-# No extra runtime packages beyond a current ComfyUI installation.
-# torch, numpy, Pillow and safetensors are already ComfyUI dependencies.
+# Install this custom-node package into a working MiniMax H3-capable ComfyUI.
+# No additional pip dependencies are required by the base package.
+# Runtime imports use torch, torchaudio, numpy, Pillow, safetensors, aiohttp,
+# av (PyAV) and typing_extensions, supplied by ComfyUI and its dependencies.
+# ComfyUI modules (comfy, comfy_api, comfy_execution, etc.) come from the host.
+# Keep the host's compatible torch/torchaudio/CUDA stack; do not reinstall it here.
+# Optional workflow backends and model weights must be installed separately:
+# see README.md and docs/WORKFLOWS.md.
