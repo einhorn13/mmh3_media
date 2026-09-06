@@ -78,7 +78,7 @@ The F07 examples also use the external `MinimaxH3LatentUpscaler3D` node and its 
 
 **Video Stitch** is intended for independent clips. **Latent Stitch** requires a continuous chain of saved H3 continuations in their original order: arbitrary videos, missing segments, or independently generated segments will not work. For this type of assembly, use matching video/audio overlap values and disable audio feather; see the [workflow guide](docs/WORKFLOWS.md#f02-продолжение) for details.
 
-### Additional workflows
+### Additional workflows (IN WORK!)
 
 | Workflow | Purpose |
 | --- | --- |
