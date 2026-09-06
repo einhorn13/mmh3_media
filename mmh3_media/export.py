@@ -27,10 +27,16 @@ def export_packet(packet: MMH3Media, directory: str | os.PathLike, *, include_pr
         saved, _ = save_archive(packet, temp_archive)
         manifest = json.loads(json.dumps(saved.manifest))
         if not include_preview:
-            manifest["resources"] = [r for r in manifest["resources"] if r.get("role") != "preview"]
+            manifest.pop("representations", None)
         with zipfile.ZipFile(temp_archive, "r", allowZip64=True) as zf:
-            for res in manifest["resources"]:
-                member = safe_member_path(res["path"])
+            members = [res["path"] for res in manifest["resources"]]
+            if include_preview:
+                for records in manifest.get("representations", {}).values():
+                    for record in records:
+                        if isinstance(record, dict) and record.get("path"):
+                            members.append(record["path"])
+            for raw_member in members:
+                member = safe_member_path(raw_member)
                 target = (dest / member).resolve()
                 try:
                     target.relative_to(dest)

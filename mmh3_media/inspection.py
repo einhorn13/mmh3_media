@@ -1,149 +1,189 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+import math
+from typing import Any, Mapping
 
 from .core import MMH3Media
-from .h3 import h3_context_from_metadata, h3_frame_count_from_video_t, h3_expected_audio_t, h3_metadata_with_context, validate_h3_av_latent
+from .h3 import validate_h3_av_latent
+from .h3_contract import h3_latent_contract_from_resource
+from .h3_resource_semantics import find_context_resource
+from .lora_provenance import get_generation_loras
+from .resource_model import resource_facts
 
 
 def _int_or_none(value: Any) -> int | None:
     try:
-        if value is None:
-            return None
-        return int(value)
+        return None if value is None else int(value)
     except (TypeError, ValueError):
         return None
 
 
 def _float_or_none(value: Any) -> float | None:
     try:
-        if value is None:
-            return None
-        return float(value)
+        return None if value is None else float(value)
     except (TypeError, ValueError):
         return None
 
 
-def _latent_manifest_info(packet: MMH3Media, warnings: list[str]) -> dict[str, Any]:
-    res = packet.get_by_role_slot("h3_av_latent", 0)
-    if res is None:
-        return {}
-    if res["id"] in packet.payloads:
-        try:
-            info = validate_h3_av_latent(packet.payloads[res["id"]], strict_audio_length=False)
-            warnings.extend(info.warnings)
-            existing_h3 = None
-            md = res.get("metadata", {})
-            if isinstance(md, dict) and isinstance(md.get("h3"), dict):
-                existing_h3 = md["h3"]
-            return h3_metadata_with_context(info, existing_h3=existing_h3)
-        except Exception as e:
-            warnings.append(f"H3 AV latent validation: {e}")
-            return {}
+def _context_dimensions(packet: MMH3Media, usage: str) -> tuple[int | None, int | None]:
+    resource = find_context_resource(packet, usage)
+    if resource is None:
+        return None, None
+    facts = resource_facts(resource)
+    width = _int_or_none(facts.get("width"))
+    height = _int_or_none(facts.get("height"))
+    if width is not None and height is not None:
+        return width, height
+    shape = facts.get("shape")
+    if isinstance(shape, list) and len(shape) >= 3:
+        return _int_or_none(shape[-2]), _int_or_none(shape[-3])
+    return None, None
 
-    # Loaded packets stay lazy: inspect the serializer metadata instead of touching safetensors.
-    md = res.get("metadata", {})
-    h3 = md.get("h3")
-    if not isinstance(h3, dict):
-        return {}
-    out = dict(h3)
-    video_shape = out.get("video_shape")
-    audio_shape = out.get("audio_shape")
-    if isinstance(video_shape, list) and len(video_shape) == 5:
-        vt = _int_or_none(video_shape[2])
-        if vt is not None:
-            derived_frames = h3_frame_count_from_video_t(vt)
-            declared_frames = _int_or_none(out.get("frames"))
-            if derived_frames is None:
-                warnings.append(f"Saved H3 video latent T={vt} is off the stock temporal grid")
-            elif declared_frames is not None and derived_frames != declared_frames:
-                warnings.append(
-                    f"Saved H3 metadata says {declared_frames} frames, but video latent T={vt} derives {derived_frames}"
-                )
-            if isinstance(audio_shape, list) and len(audio_shape) == 4 and derived_frames is not None:
-                at = _int_or_none(audio_shape[-1])
-                expected = h3_expected_audio_t(derived_frames)
-                if at is not None and at != expected:
-                    warnings.append(
-                        f"Saved H3 AV duration mismatch: video implies audio T40={expected}, stored audio T40={at}"
-                    )
-    return out
+
+def _h3_contract(packet: MMH3Media, warnings: list[str]) -> dict[str, Any] | None:
+    ref = packet.primary("latent")
+    if ref is None:
+        return None
+    try:
+        contract = h3_latent_contract_from_resource(ref.descriptor)
+    except Exception as exc:
+        warnings.append(f"H3 latent contract: {exc}")
+        return None
+    if ref.resource_id in packet.payloads:
+        try:
+            info = validate_h3_av_latent(packet.payloads[ref.resource_id], strict_audio_length=False)
+            warnings.extend(info.warnings)
+            canvas = contract["canvas"]
+            timeline = contract["timeline"]
+            if (info.width, info.height) != (canvas["width"], canvas["height"]):
+                warnings.append("H3 latent payload geometry differs from its canonical contract")
+            if info.frames is not None and info.frames != timeline.get("frames"):
+                warnings.append("H3 latent payload frame count differs from its canonical contract")
+        except Exception as exc:
+            warnings.append(f"H3 AV latent validation: {exc}")
+    return contract
+
+
+def _contract_value(contract: Mapping[str, Any] | None, key: str) -> Any:
+    if not contract:
+        return None
+    if key in ("width", "height"):
+        return contract.get("canvas", {}).get(key)
+    if key in ("frames", "fps"):
+        return contract.get("timeline", {}).get(key)
+    return None
 
 
 def inspect_packet(packet: MMH3Media) -> dict[str, Any]:
     generation = packet.manifest.get("generation", {})
     notes = packet.manifest.get("notes", "")
     warnings: list[str] = []
-    h3 = _latent_manifest_info(packet, warnings)
-    h3_context = h3_context_from_metadata(h3)
+    h3_contract = _h3_contract(packet, warnings)
+    loras = get_generation_loras(packet)
 
-    def choose_int(key: str) -> int | None:
-        g = _int_or_none(generation.get(key))
-        h = _int_or_none(h3.get(key))
-        if g is not None and h is not None and g != h:
-            warnings.append(f"generation.{key}={g} differs from H3 latent {key}={h}")
-        return g if g is not None else h
+    video = packet.get_primary("video")
+    video_facts = resource_facts(video) if video else {}
 
-    width = choose_int("width")
-    height = choose_int("height")
-    frames = choose_int("frames")
-    fps = _float_or_none(generation.get("fps"))
+    # Ref2VA workflows (notably F18 long-video lipsync/audio-driven) keep the
+    # source clip as a reference resource rather than a primary decoded video.
+    # When there is exactly one reference video, it is an unambiguous source
+    # for auto geometry/timeline resolution. Multi-reference packets remain
+    # fail-closed instead of silently picking an arbitrary reference.
+    if not video_facts:
+        reference_videos = [
+            resource for resource in packet.resources()
+            if resource.get("role") == "reference" and resource.get("kind") == "video"
+        ]
+        if len(reference_videos) == 1:
+            video_facts = resource_facts(reference_videos[0])
+
+    first_width, first_height = _context_dimensions(packet, "first_frame")
+    last_width, last_height = _context_dimensions(packet, "last_frame")
+    if None not in (first_width, first_height, last_width, last_height) and (first_width, first_height) != (last_width, last_height):
+        warnings.append(
+            f"first_frame geometry {first_width}x{first_height} differs from last_frame "
+            f"{last_width}x{last_height}; first_frame defines auto geometry"
+        )
+    image_width = first_width if first_width is not None else last_width
+    image_height = first_height if first_height is not None else last_height
+
+    def choose_int(key: str, video_value: Any = None, image_value: Any = None) -> int | None:
+        generated = _int_or_none(generation.get(key))
+        latent = _int_or_none(_contract_value(h3_contract, key))
+        observed = _int_or_none(video_value)
+        if generated is not None and latent is not None and generated != latent:
+            warnings.append(f"generation.{key}={generated} differs from H3 latent {key}={latent}")
+        authoritative = latent if latent is not None else generated
+        if authoritative is not None and observed is not None and authoritative != observed:
+            warnings.append(f"packet {key}={authoritative} differs from primary video descriptor {key}={observed}")
+        return authoritative if authoritative is not None else observed if observed is not None else _int_or_none(image_value)
+
+    width = choose_int("width", video_facts.get("width"), image_width)
+    height = choose_int("height", video_facts.get("height"), image_height)
+    frames = choose_int("frames", video_facts.get("frames"))
+    generation_fps = _float_or_none(generation.get("fps"))
+    h3_fps = _float_or_none(_contract_value(h3_contract, "fps"))
+    if generation_fps is not None and h3_fps is not None and generation_fps != h3_fps:
+        warnings.append(f"generation.fps={generation_fps:g} differs from H3 latent fps={h3_fps:g}")
+    fps = h3_fps if h3_fps is not None else generation_fps
     if fps is None:
-        fps = _float_or_none(h3.get("fps")) or 24.0
-    duration = (frames / fps) if frames is not None and fps > 0 else None
+        fps = _float_or_none(video_facts.get("fps"))
+    duration = (frames / fps) if frames is not None and fps not in (None, 0) else _float_or_none(video_facts.get("duration"))
+    aspect_ratio_value = (width / height) if width is not None and height not in (None, 0) else None
+    aspect_ratio = None
+    if width is not None and height not in (None, 0):
+        divisor = math.gcd(width, height)
+        aspect_ratio = f"{width // divisor}:{height // divisor}"
 
     resources = packet.resources()
     role_counts: dict[str, int] = {}
     kind_counts: dict[str, int] = {}
-    for res in resources:
-        role_counts[res["role"]] = role_counts.get(res["role"], 0) + 1
-        kind_counts[res["kind"]] = kind_counts.get(res["kind"], 0) + 1
-
+    for resource in resources:
+        role_counts[resource["role"]] = role_counts.get(resource["role"], 0) + 1
+        kind_counts[resource["kind"]] = kind_counts.get(resource["kind"], 0) + 1
     refs = {
-        "picture": role_counts.get("picture_ref", 0),
-        "video": role_counts.get("video_ref", 0),
-        "audio": role_counts.get("audio_ref", 0),
+        kind: sum(1 for resource in resources if resource.get("role") == "reference" and resource.get("kind") == kind)
+        for kind in ("image", "video", "audio")
     }
+    first = find_context_resource(packet, "first_frame")
+    last = find_context_resource(packet, "last_frame")
     has = {
-        "latent": packet.get_by_role_slot("h3_av_latent", 0) is not None,
-        "video": packet.get_by_role_slot("video", 0) is not None,
-        "audio": packet.get_by_role_slot("audio", 0) is not None,
-        "first_frame": packet.get_by_role_slot("first_frame", 0) is not None,
-        "last_frame": packet.get_by_role_slot("last_frame", 0) is not None,
+        "latent": packet.get_primary("latent") is not None,
+        "video": packet.get_primary("video") is not None,
+        "audio": packet.get_primary("audio") is not None,
+        "first_frame": first is not None,
+        "last_frame": last is not None,
     }
     history = packet.manifest.get("history", [])
-    history_ops = [str(x.get("op", "?")) for x in history[-8:] if isinstance(x, dict)]
+    history_ops = [str(item.get("op", "?")) for item in history[-8:] if isinstance(item, dict)]
 
     name = packet.manifest.get("name") or "untitled"
     task = generation.get("task") or "—"
     geometry = "?×?"
     if width is not None and height is not None:
-        geometry = f"{width}×{height}"
+        geometry = f"{width}×{height}" + (f" ({aspect_ratio})" if aspect_ratio else "")
     temporal = ""
     if frames is not None:
         temporal = f" · {frames}f"
+        if fps is not None:
+            temporal += f" @ {fps:g} FPS"
         if duration is not None:
             temporal += f" / {duration:.2f}s"
-    av_flags = " ".join(
-        [
-            "L✓" if has["latent"] else "L–",
-            "V✓" if has["video"] else "V–",
-            "A✓" if has["audio"] else "A–",
-        ]
-    )
+    av_flags = " ".join(("L✓" if has["latent"] else "L–", "V✓" if has["video"] else "V–", "A✓" if has["audio"] else "A–"))
     lines = [
         str(name),
         f"{task} · {geometry}{temporal}",
-        f"{av_flags} · Refs {refs['picture']}/{refs['video']}/{refs['audio']}",
+        f"{av_flags} · Refs {refs['image']}/{refs['video']}/{refs['audio']}",
+        "LoRAs: unknown" if loras is None else f"LoRAs: {len(loras)} recorded",
     ]
     if notes:
         lines.append("Notes: " + str(notes).replace("\n", " ")[:240])
-    if h3_context:
-        continuation = h3_context.get("continuation", {})
-        seam = h3_context.get("seam_source", {})
+    if h3_contract:
         lines.append(
-            f"H3 context: origin={h3_context.get('origin', 'unknown')} · continuation={continuation.get('status', 'unknown')} · seam={seam.get('status', 'unknown')}"
+            f"H3 contract v{h3_contract['contract_version']} · origin={h3_contract.get('origin', 'unknown')} · "
+            f"geometry={h3_contract.get('binding', {}).get('geometry', 'unknown')} · "
+            f"time={h3_contract.get('binding', {}).get('time', 'unknown')}"
         )
     if history_ops:
         lines.append("History: " + " → ".join(history_ops))
@@ -159,14 +199,23 @@ def inspect_packet(packet: MMH3Media) -> dict[str, Any]:
         "dirty": packet.dirty,
         "verify_mode": packet.verify_mode,
         "generation": generation,
+        "generation_loras": None if loras is None else list(loras),
+        "generation_loras_known": loras is not None,
         "notes": notes,
-        "geometry": {"width": width, "height": height, "frames": frames, "fps": fps, "duration": duration},
+        "geometry": {
+            "width": width,
+            "height": height,
+            "aspect_ratio": aspect_ratio,
+            "aspect_ratio_value": aspect_ratio_value,
+            "frames": frames,
+            "fps": fps,
+            "duration": duration,
+        },
         "has": has,
         "refs": refs,
         "role_counts": role_counts,
         "kind_counts": kind_counts,
-        "h3_latent": h3 or None,
-        "h3_latent_context": h3_context,
+        "h3_latent_contract": h3_contract,
         "history_ops": history_ops,
         "warnings": warnings,
         "summary": "\n".join(lines),

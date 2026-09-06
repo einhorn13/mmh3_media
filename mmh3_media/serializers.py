@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import io
 import json
 import os
-import shutil
 import struct
 from pathlib import Path
 from typing import Any
@@ -16,8 +14,6 @@ from safetensors.torch import save_file as safe_save_file
 
 from .errors import MMH3ResourceError
 from .h3 import (
-    h3_info_metadata,
-    h3_metadata_with_context,
     is_nested_tensor,
     make_nested_tensor,
     nested_parts,
@@ -48,12 +44,13 @@ def infer_kind(payload: Any) -> str:
 
 
 
-def validate_payload_contract(payload: Any, kind: str, role: str = "custom") -> None:
+def validate_payload_contract(payload: Any, kind: str, *, descriptor: dict[str, Any] | None = None, extensions: dict[str, Any] | None = None) -> None:
     """Fail fast on payload shapes/types without performing serialization or decoding."""
     if kind == "latent":
         if not isinstance(payload, dict) or "samples" not in payload:
             raise MMH3ResourceError("LATENT resource must be a dict containing 'samples'")
-        if role == "h3_av_latent":
+        h3_ext = (extensions or {}).get("minimax_h3", {}) if isinstance(extensions, dict) else {}
+        if isinstance(h3_ext, dict) and isinstance(h3_ext.get("latent"), dict):
             validate_h3_av_latent(payload)
             return
         samples = payload["samples"]
@@ -72,7 +69,7 @@ def validate_payload_contract(payload: Any, kind: str, role: str = "custom") -> 
             raise MMH3ResourceError(f"IMAGE must be [B,H,W,C], got {getattr(payload, 'shape', None)}")
         if payload.shape[0] != 1:
             raise MMH3ResourceError(
-                f"One MMH3 image resource represents one image; got batch={payload.shape[0]}. Split the batch into slots first."
+                f"One MMH3 image resource represents one image; got batch={payload.shape[0]}. Split the batch into separate resources first."
             )
         if payload.shape[-1] not in (1, 3, 4):
             raise MMH3ResourceError(f"IMAGE channels must be 1, 3, or 4; got {payload.shape[-1]}")
@@ -108,32 +105,10 @@ def validate_payload_contract(payload: Any, kind: str, role: str = "custom") -> 
         return
     raise MMH3ResourceError(f"No serializer for resource kind {kind!r}")
 
-def canonical_archive_path(res: dict[str, Any], *, video_suffix: str | None = None) -> str:
-    kind, role, slot, rid = res["kind"], res["role"], int(res["slot"]), res["id"]
-    n = slot + 1
-    if role == "h3_av_latent" and kind == "latent":
-        return "latents/h3_av.safetensors"
-    if role == "video" and kind == "video":
-        return f"media/output{video_suffix or '.mp4'}"
-    if role == "audio" and kind == "audio":
-        return "media/audio.wav"
-    if role == "first_frame" and kind == "image":
-        return "keyframes/first.png"
-    if role == "last_frame" and kind == "image":
-        return "keyframes/last.png"
-    if role == "picture_ref" and kind == "image":
-        return f"refs/picture_{n:03d}.png"
-    if role == "video_ref" and kind == "video":
-        return f"refs/video_{n:03d}{video_suffix or '.mp4'}"
-    if role == "audio_ref" and kind == "audio":
-        return f"refs/audio_{n:03d}.wav"
-    if role == "preview" and kind == "image":
-        return "preview/preview.png"
-    if kind == "mask":
-        return f"masks/{safe_filename_component(role)}_{n:03d}.safetensors"
-    if role == "continuation_context":
-        ext = {"latent": ".safetensors", "mask": ".safetensors", "json": ".json"}.get(kind, ".bin")
-        return f"context/context_{n:03d}{ext}"
+def canonical_v03_archive_path(res: dict[str, Any], *, video_suffix: str | None = None) -> str:
+    """Stable schema-2 member path based on resource identity, not semantic ordering."""
+    kind = str(res["kind"])
+    rid = safe_filename_component(str(res["id"]))
     ext = {
         "latent": ".safetensors",
         "image": ".png",
@@ -142,7 +117,7 @@ def canonical_archive_path(res: dict[str, Any], *, video_suffix: str | None = No
         "mask": ".safetensors",
         "json": ".json",
     }.get(kind, ".bin")
-    return f"custom/{safe_filename_component(role)}_{safe_filename_component(rid)}{ext}"
+    return f"resources/{safe_filename_component(kind)}/{rid}{ext}"
 
 
 def _tensor_field_to_safetensors(
@@ -175,25 +150,33 @@ def _tensor_field_to_safetensors(
     raise MMH3ResourceError(f"LATENT field {key!r} is not a tensor/NestedTensor")
 
 
-def serialize_latent(payload: dict, path: Path, *, role: str, existing_metadata: dict[str, Any] | None = None) -> dict[str, Any]:
+def _serialization_descriptor(res: dict[str, Any]) -> dict[str, Any]:
+    descriptor = res.get("descriptor")
+    if not isinstance(descriptor, dict):
+        return {}
+    storage = descriptor.get("serialization")
+    return storage if isinstance(storage, dict) else {}
+
+
+def _has_h3_latent_contract(res: dict[str, Any]) -> bool:
+    extensions = res.get("extensions")
+    if not isinstance(extensions, dict):
+        return False
+    h3 = extensions.get("minimax_h3")
+    return isinstance(h3, dict) and isinstance(h3.get("latent"), dict)
+
+
+def serialize_latent(payload: dict, path: Path, *, h3: bool = False) -> dict[str, Any]:
     if not isinstance(payload, dict) or "samples" not in payload:
         raise MMH3ResourceError("LATENT resource must be a dict containing 'samples'")
-    h3_info = None
-    if role == "h3_av_latent":
-        h3_info = validate_h3_av_latent(payload)
-
+    if h3:
+        validate_h3_av_latent(payload)
     tensors: dict[str, torch.Tensor] = {}
     field_layout: dict[str, Any] = {}
     extras: dict[str, Any] = {}
     for key, value in payload.items():
         if isinstance(value, torch.Tensor) or is_nested_tensor(value):
-            _tensor_field_to_safetensors(
-                key,
-                value,
-                tensors,
-                field_layout,
-                h3_samples=(role == "h3_av_latent" and key == "samples"),
-            )
+            _tensor_field_to_safetensors(key, value, tensors, field_layout, h3_samples=(h3 and key == "samples"))
         else:
             if not is_jsonable(value):
                 raise MMH3ResourceError(
@@ -202,34 +185,24 @@ def serialize_latent(payload: dict, path: Path, *, role: str, existing_metadata:
             extras[key] = value
     if not tensors:
         raise MMH3ResourceError("LATENT contains no tensor fields")
-
     path.parent.mkdir(parents=True, exist_ok=True)
     safe_save_file(tensors, str(path))
-    meta = {
-        "latent_layout": field_layout,
-        **({"latent_extras": extras} if extras else {}),
-    }
-    if h3_info is not None:
-        existing_h3 = None
-        if isinstance(existing_metadata, dict) and isinstance(existing_metadata.get("h3"), dict):
-            existing_h3 = existing_metadata["h3"]
-        meta["h3"] = h3_metadata_with_context(h3_info, existing_h3=existing_h3)
     return {
         "serializer": "mmh3.safetensors.latent.v1",
         "media_type": "application/x-safetensors",
-        "metadata_patch": meta,
+        "descriptor_patch": {
+            "latent_layout": field_layout,
+            **({"latent_extras": extras} if extras else {}),
+        },
     }
 
 
 def deserialize_latent(path: Path, res: dict[str, Any]) -> dict:
     tensors = safe_load_file(str(path), device="cpu")
-    md = res.get("metadata", {})
-    layout = md.get("latent_layout")
+    storage = _serialization_descriptor(res)
+    layout = storage.get("latent_layout")
     if not isinstance(layout, dict):
-        raise MMH3ResourceError(
-            f"Latent resource {res['id']} is missing required latent_layout metadata"
-        )
-
+        raise MMH3ResourceError(f"Latent resource {res['id']} is missing required latent_layout descriptor")
     out: dict[str, Any] = {}
     for field, spec in layout.items():
         if not isinstance(spec, dict) or not isinstance(spec.get("keys"), list):
@@ -237,18 +210,18 @@ def deserialize_latent(path: Path, res: dict[str, Any]) -> dict:
         keys = spec["keys"]
         try:
             parts = [tensors[k] for k in keys]
-        except KeyError as e:
-            raise MMH3ResourceError(f"Latent safetensors is missing field tensor {e.args[0]!r}") from e
+        except KeyError as exc:
+            raise MMH3ResourceError(f"Latent safetensors is missing field tensor {exc.args[0]!r}") from exc
         if spec.get("type") == "nested":
             out[field] = make_nested_tensor(parts)
         elif spec.get("type") == "tensor" and len(parts) == 1:
             out[field] = parts[0]
         else:
             raise MMH3ResourceError(f"Invalid latent field layout for {field!r}")
-    extras = md.get("latent_extras")
+    extras = storage.get("latent_extras")
     if isinstance(extras, dict):
         out.update(extras)
-    if res.get("role") == "h3_av_latent":
+    if _has_h3_latent_contract(res):
         validate_h3_av_latent(out)
     return out
 
@@ -258,7 +231,7 @@ def serialize_image(payload: torch.Tensor, path: Path) -> dict[str, Any]:
         raise MMH3ResourceError(f"IMAGE must be [B,H,W,C], got {getattr(payload, 'shape', None)}")
     if payload.shape[0] != 1:
         raise MMH3ResourceError(
-            f"One MMH3 image resource represents one image; got batch={payload.shape[0]}. Split the batch into slots first."
+            f"One MMH3 image resource represents one image; got batch={payload.shape[0]}. Split the batch into separate resources first."
         )
     if payload.shape[-1] not in (1, 3, 4):
         raise MMH3ResourceError(f"IMAGE channels must be 1, 3, or 4; got {payload.shape[-1]}")
@@ -274,7 +247,7 @@ def serialize_image(payload: torch.Tensor, path: Path) -> dict[str, Any]:
     return {
         "serializer": "mmh3.png8.image.v1",
         "media_type": "image/png",
-        "metadata_patch": {
+        "descriptor_patch": {
             "shape": list(payload.shape),
             "encoding": "png8",
             "note": "Comfy IMAGE tensors are archived as standard 8-bit PNG; latent/mask tensors remain exact safetensors.",
@@ -300,7 +273,7 @@ def serialize_mask(payload: torch.Tensor, path: Path) -> dict[str, Any]:
     return {
         "serializer": "mmh3.safetensors.mask.v1",
         "media_type": "application/x-safetensors",
-        "metadata_patch": {"shape": list(payload.shape), "dtype": str(payload.dtype)},
+        "descriptor_patch": {"shape": list(payload.shape), "dtype": str(payload.dtype)},
     }
 
 
@@ -398,7 +371,7 @@ def serialize_audio(payload: dict, path: Path) -> dict[str, Any]:
     return {
         "serializer": "mmh3.wav.float32.v1",
         "media_type": "audio/wav",
-        "metadata_patch": {
+        "descriptor_patch": {
             "sample_rate": sample_rate,
             "channels": int(waveform.shape[1]) if waveform.ndim >= 2 else None,
             "samples": int(waveform.shape[-1]),
@@ -442,6 +415,13 @@ def serialize_video(payload: Any, path: Path) -> dict[str, Any]:
     path.parent.mkdir(parents=True, exist_ok=True)
     payload.save_to(str(path))
     metadata: dict[str, Any] = {"container": path.suffix.lower().lstrip(".")}
+    save_stats = getattr(payload, "last_save_stats", None)
+    if isinstance(save_stats, dict):
+        metadata["streaming_stats"] = {
+            str(key): int(value)
+            for key, value in save_stats.items()
+            if isinstance(value, (int, np.integer))
+        }
     for key, method in (
         ("dimensions", "get_dimensions"),
         ("duration", "get_duration"),
@@ -457,7 +437,7 @@ def serialize_video(payload: Any, path: Path) -> dict[str, Any]:
     return {
         "serializer": "comfy.video.v1",
         "media_type": "video/mp4",
-        "metadata_patch": metadata,
+        "descriptor_patch": metadata,
     }
 
 
@@ -477,7 +457,7 @@ def serialize_json(payload: Any, path: Path) -> dict[str, Any]:
     return {
         "serializer": "mmh3.json.v1",
         "media_type": "application/json",
-        "metadata_patch": {},
+        "descriptor_patch": {},
     }
 
 
@@ -488,7 +468,7 @@ def deserialize_json(path: Path) -> Any:
 def serialize_payload(payload: Any, res: dict[str, Any], path: Path) -> dict[str, Any]:
     kind = res["kind"]
     if kind == "latent":
-        return serialize_latent(payload, path, role=res["role"], existing_metadata=res.get("metadata"))
+        return serialize_latent(payload, path, h3=_has_h3_latent_contract(res))
     if kind == "image":
         return serialize_image(payload, path)
     if kind == "mask":

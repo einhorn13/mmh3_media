@@ -1,28 +1,97 @@
+from __future__ import annotations
+
+from typing import Any, Mapping
+
+from .archive import get_resource_payload
 from .core import MMH3Media
 from .resource_ref import MMH3ResourceRef
-from .h3_contract import H3_LATENT_CONTRACT_VERSION, build_h3_latent_contract, h3_latent_contract_from_resource, stale_h3_geometry_contract, validate_h3_continuation_compatibility, validate_h3_geometry_state, validate_h3_latent_contract, validate_h3_refine_compatibility
-from .resource_model import CORE_RESOURCE_KINDS, CORE_RESOURCE_ROLES, make_resource_descriptor, normalize_tags, validate_resource_descriptor
-from .representations import PACKET_TARGET, REPRESENTATION_KINDS, MAX_REPRESENTATION_BYTES, make_representation_record, representation_is_fresh
-from .archive import load_archive, save_archive, get_resource_payload
+from .errors import MMH3Error, MMH3FormatError, MMH3IntegrityError, MMH3ResourceError
 from .resolution import ResolvedMMH3Inputs, ResolvedReferenceSet, resolve_packet, resolve_reference_set
 from .reference_management import ReferenceConfigurationResult, configure_reference
+from .process_result import PackedH3Result, PrimaryPacketView, pack_h3_result, unpack_primary
+from .lora_provenance import (
+    clear_generation_loras,
+    get_generation_loras,
+    lora_provenance_summary,
+    normalize_generation_loras,
+    set_generation_loras,
+)
+from .util import deep_copy_json
+from .media_metadata import describe_media_payload
+from .resource_model import descriptor_from_media_metadata
 from .reference_cost import ReferenceCostReport, estimate_reference_cost
-from .reference_cache import ReferenceCacheLookup, ReferenceCacheSpec, build_reference_cache_spec, compare_reference_cache_latents, lookup_reference_cache
+from .reference_cache import (
+    ReferenceCacheLookup,
+    ReferenceCacheSpec,
+    build_reference_cache_spec,
+    compare_reference_cache_latents,
+    lookup_reference_cache,
+    materialize_reference_cache,
+    put_reference_cache,
+)
 from .preflight import PREFLIGHT_OPERATIONS, PreflightDiagnostic, PreflightReport, preflight_packet
-from .generation_contract import H3_CONTINUATION_FAMILIES, GenerationModelContract, infer_h3_model_family, resolve_h3_continuation_family, validate_generation_model_family
-from .continuation import H3ContinuationPlan, H3ContinuationResult, build_h3_continuation_handover, build_h3_target_from_prefix, exact_h3_av_handover_boundaries
-from .decoded_continuation import DecodedContinuationPlan, DecodedContinuationResult, PreparedDecodedPrefix, encode_decoded_prefix, prepare_decoded_prefix
+from .generation_contract import (
+    H3_GENERATION_MODES,
+    H3_MODEL_FAMILIES,
+    GenerationModelContract,
+    ModelFamilyDiagnostic,
+    infer_h3_model_family,
+    validate_generation_model_family,
+)
+from .continuation import (
+    H3ContinuationPlan,
+    H3ContinuationResult,
+    build_h3_continuation_handover,
+    build_h3_target_from_prefix,
+    exact_h3_av_handover_boundaries,
+    h3_video_t_from_frames,
+    is_exact_h3_av_handover_boundary,
+)
+from .decoded_continuation import (
+    DecodedContinuationPlan,
+    DecodedContinuationResult,
+    PreparedDecodedPrefix,
+    encode_decoded_prefix,
+    prepare_decoded_prefix,
+)
 from .chain import ChainCommitResult, ChainValidation, RerollSourceValidation, commit_chain_segment, start_chain, validate_chain, validate_reroll_source
-from .stitch import DecodedSegment, StitchCompatibility, StitchPlan, StitchResult, inspect_stitch_packet, inspect_stitch_packets, materialize_decoded_segment, pcm_boundary, stitch_decoded_segments
-from .latent_stitch import H3LatentStitchCompatibility, H3LatentStitchPlan, H3LatentStitchResult, inspect_h3_latent_stitch_packets, stitch_h3_continuation_latents
+from .stitch import DecodedSegment, StitchCompatibility, StitchPlan, StitchResult, inspect_stitch_packets, materialize_decoded_segment, pcm_boundary, stitch_decoded_segments
 from .streaming_stitch import StreamingSegment, StreamingStitchResult, StreamingStitchedVideo, build_streaming_stitch, iter_stitched_rgb_frames, materialize_streaming_segment
 from .lora_reapply import LoRAReapplyDiagnostic, LoRAReapplyExpansion, LoRAReapplyPlan, build_high_sigma_lora_plan, build_lora_reapply_expansion
-from .latent_upscale import UPSCALE_GEOMETRY_MODES, LatentStitchUpscaleTarget, LatentUpscalePlan, LatentUpscaleProcessReport, LatentUpscaleRefineSampling, PreparedLatentUpscale, build_latent_stitch_upscale_target, build_latent_upscale_process_report, build_latent_upscale_refine_sampling, build_latent_upscale_refine_target, plan_latent_upscale_geometry, prepare_decoded_packet_latent_upscale, prepare_packet_latent_upscale
+from .latent_upscale import UPSCALE_GEOMETRY_MODES, LatentUpscalePlan, LatentUpscaleProcessReport, PreparedLatentUpscale, build_latent_upscale_process_report, build_latent_upscale_refine_target, plan_latent_upscale_geometry, prepare_decoded_packet_latent_upscale, prepare_packet_latent_upscale
 from .spatial_tiles import TILE_BLEND_MODES, TILE_CONTEXT_SOURCES, TILE_MASK_RESIZE_MODES, TILE_OVERLAP_MODES, TILE_TRAVERSALS, SpatialTile, SpatialTilePlan, SpatialTileRunResult, TileRect, plan_spatial_tiles, prepare_spatial_region_mask, run_masked_spatial_video_tiles, run_spatial_video_tiles, validate_masked_spatial_tile_run_report, validate_spatial_tile_plan_report, validate_spatial_tile_run_report
 from .h3_tile_refine import NATIVE_H3_TILE_CONTRACT, NativeH3TileRefineResult, run_native_h3_tile_refine, validate_native_h3_tile_refine_report
 from .tile_backend import TILE_BACKEND_OVERLAP_MODES, TileBackendFinalizeResult, finalize_external_tile_latents, finalize_external_tile_video, tile_backend_fingerprint_from_preflight, validate_external_tile_finalize_report
-from .control_contract import H3_CONTROL_ALGORITHMS, H3_CONTROL_ALGORITHM_CONTEXTS, H3_CONTROL_AUTO_PREFERENCES, H3_CONTROL_CONTEXT_ALGORITHMS, H3_CONTROLNET_ALGORITHMS, H3_CONTROL_KINDS, H3_CONTROL_KIND_OPTIONS, H3_CONTROL_RESOURCE_ROLES, H3_CONTROL_TEMPORAL_POLICIES, ControlAlgorithmResolution, ControlDiagnostic, ControlPreprocessor, ControlProviderProvenance, H3ControlConfiguration, build_control_configuration, control_configuration_from_dict, get_control_configuration, resolve_control_algorithm, set_control_configuration
-from .control_preflight import CONTROLNET_LOADER_NODE_ID, H3_CONTROL_APPLY_NODE_ID, H3ControlCapabilityReport, RuntimeNodeContract, parse_controlnet_loader_contract, parse_h3_control_apply_contract, preflight_h3_control
+from .control_contract import (
+    H3_CONTROL_ALGORITHMS,
+    H3_CONTROL_ALGORITHM_CONTEXTS,
+    H3_CONTROL_AUTO_PREFERENCES,
+    H3_CONTROL_CONTEXT_ALGORITHMS,
+    H3_CONTROLNET_ALGORITHMS,
+    H3_CONTROL_KINDS,
+    H3_CONTROL_KIND_OPTIONS,
+    H3_CONTROL_RESOURCE_ROLES,
+    H3_CONTROL_TEMPORAL_POLICIES,
+    ControlDiagnostic,
+    ControlAlgorithmResolution,
+    ControlPreprocessor,
+    ControlProviderProvenance,
+    H3ControlConfiguration,
+    build_control_configuration,
+    control_configuration_from_dict,
+    get_control_configuration,
+    set_control_configuration,
+    resolve_control_algorithm,
+)
+from .control_preflight import (
+    CONTROLNET_LOADER_NODE_ID,
+    H3_CONTROL_APPLY_NODE_ID,
+    H3ControlCapabilityReport,
+    RuntimeNodeContract,
+    parse_controlnet_loader_contract,
+    parse_h3_control_apply_contract,
+    preflight_h3_control,
+)
 from .control_provider import (
     H3ControlApplyPlan,
     H3ControlExpansion,
@@ -34,9 +103,9 @@ from .control_provider import (
     build_control_pass_through_info,
     build_h3_control_expansion,
     control_provider_for_algorithm,
-    materialize_control_video,
-    normalize_control_apply_process_info,
     prepare_control_inputs,
+    normalize_control_apply_process_info,
+    materialize_control_video,
     validate_masked_edit_inputs,
 )
 from .control_tiles import (
@@ -70,7 +139,6 @@ from .model_optimizations import (
 )
 from .generation_settings import GenerationSettings, adapt_h3_canvas, build_generation_settings
 from .automation import ChunkExecutionSelection, ChunkPlan, VIDEO_SUFFIXES, plan_batch_inputs, plan_long_video_chunks, resolve_chunk_execution
-from .automation_batch_stitch import BATCH_STITCH_CONTRACT, BatchStitchPreparation, inspect_batch_stitch_plan, prepare_batch_stitch
 from .raw_video_import import ConformSettings, RawImportResult, RawVideoProbe, import_raw_video, normalize_batch_plan, probe_raw_video
 from .automation_adapters import VideoChunkExpansion, build_video_chunk_expansion, trim_audio_samples
 from .automation_estimate import PREQUEUE_ESTIMATE_CONTRACT, build_prequeue_estimate, prequeue_summary
@@ -85,27 +153,165 @@ from .automation_lipsync import (
 )
 from .automation_execution import EXECUTION_CONTRACT, JOB_STATES, acquire_next_execution_job, build_chunk_assembly_map, commit_execution_artifact, create_execution_ledger, deterministic_artifact_prefix, load_execution_ledger, save_execution_ledger, select_resume_jobs, transition_execution_job
 
+
+MMH3_ADAPTER_API_VERSION = 1
+
+
+def list_resource_refs(
+    packet: MMH3Media,
+    *,
+    kind: str | None = None,
+    role: str | None = None,
+    tags: tuple[str, ...] | list[str] | None = None,
+) -> tuple[MMH3ResourceRef, ...]:
+    """Return lazy handles filtered by canonical v0.3 resource fields."""
+    if not isinstance(packet, MMH3Media):
+        raise MMH3ResourceError("Expected an MMH3_MEDIA packet")
+    return packet.filter_resource_refs(kind=kind, role=role, tags=tags)
+
+
+def select_resource_ref(packet: MMH3Media, *, resource_id: str) -> MMH3ResourceRef:
+    """Select one resource by stable ID."""
+    if not isinstance(packet, MMH3Media):
+        raise MMH3ResourceError("Expected an MMH3_MEDIA packet")
+    return packet.ref(resource_id)
+
+
+def primary_resource_ref(packet: MMH3Media, *, kind: str) -> MMH3ResourceRef | None:
+    """Return the explicitly bound primary resource for a native media kind."""
+    if not isinstance(packet, MMH3Media):
+        raise MMH3ResourceError("Expected an MMH3_MEDIA packet")
+    return packet.primary(kind)
+
+
+def set_primary_resource(packet: MMH3Media, *, kind: str, resource_id: str | None) -> MMH3Media:
+    """Return a new packet snapshot with the primary binding updated or cleared."""
+    if not isinstance(packet, MMH3Media):
+        raise MMH3ResourceError("Expected an MMH3_MEDIA packet")
+    return packet.set_primary(kind, resource_id)
+
+
+
+
+def list_representation_records(
+    packet: MMH3Media,
+    *,
+    target: str,
+    kind: str | None = None,
+    fresh_only: bool = False,
+) -> tuple[dict[str, Any], ...]:
+    """Return detached derived representation records without source materialization."""
+    if not isinstance(packet, MMH3Media):
+        raise MMH3ResourceError("Expected an MMH3_MEDIA packet")
+    return packet.representations_for(target, kind=kind, fresh_only=fresh_only)
+
+
+def resource_preview_info(packet: MMH3Media, *, resource_id: str) -> dict[str, Any]:
+    """Return descriptor-first preview metadata for one resource without payload I/O."""
+    if not isinstance(packet, MMH3Media):
+        raise MMH3ResourceError("Expected an MMH3_MEDIA packet")
+    return packet.ref(resource_id).preview_info()
+
+
+def packet_preview_info(packet: MMH3Media) -> dict[str, Any]:
+    """Return descriptor-first packet preview metadata without payload I/O."""
+    if not isinstance(packet, MMH3Media):
+        raise MMH3ResourceError("Expected an MMH3_MEDIA packet")
+    from .preview import preview_info
+    from .representations import PACKET_TARGET
+
+    return preview_info(packet, target=PACKET_TARGET)
+
+def list_resources(
+    packet: MMH3Media,
+    *,
+    kind: str | None = None,
+    role: str | None = None,
+    tags: tuple[str, ...] | list[str] | None = None,
+) -> tuple[dict[str, Any], ...]:
+    """Return detached canonical v0.3 descriptors without materializing payloads.
+
+    Descriptor listing intentionally walks the manifest directly instead of building
+    resource refs and resolving each ID again.  This keeps the common metadata-only
+    path linear for large packets while preserving ref validation for handle APIs.
+    """
+    if not isinstance(packet, MMH3Media):
+        raise MMH3ResourceError("Expected an MMH3_MEDIA packet")
+    wanted_tags = {
+        str(tag).strip().lower().replace("_", "-")
+        for tag in (tags or ())
+        if str(tag).strip()
+    }
+    selected = [
+        resource
+        for resource in packet.manifest["resources"]
+        if (kind is None or resource["kind"] == kind)
+        and (role is None or resource["role"] == role)
+        and (not wanted_tags or wanted_tags.issubset(set(resource["tags"])))
+    ]
+    selected.sort(
+        key=lambda resource: (
+            resource.get("order") is None,
+            resource.get("order") if resource.get("order") is not None else 0,
+            resource["id"],
+        )
+    )
+    return tuple(deep_copy_json(resource) for resource in selected)
+
+
+def select_resource(packet: MMH3Media, *, resource_id: str) -> dict[str, Any]:
+    """Return one detached canonical v0.3 descriptor by stable resource ID."""
+    return select_resource_ref(packet, resource_id=resource_id).descriptor
+
+
+def materialize_resource(packet: MMH3Media, resource_id: str) -> Any:
+    if not isinstance(packet, MMH3Media):
+        raise MMH3ResourceError("Expected an MMH3_MEDIA packet")
+    selected = packet.get_by_id(resource_id)
+    if selected is None:
+        raise MMH3ResourceError(f"Resource {resource_id!r} does not exist")
+    return get_resource_payload(packet, selected)
+
+
+def put_resource(
+    packet: MMH3Media,
+    payload: Any,
+    *,
+    kind: str,
+    role: str = "auxiliary",
+    order: int | None = None,
+    mode: str = "add",
+    resource_id: str = "",
+    name: str = "",
+    tags: tuple[str, ...] | list[str] | None = None,
+    descriptor: Mapping[str, Any] | None = None,
+    provenance: Mapping[str, Any] | None = None,
+    extensions: Mapping[str, Any] | None = None,
+) -> MMH3Media:
+    """Put one canonical v0.3 resource."""
+    if not isinstance(packet, MMH3Media):
+        raise MMH3ResourceError("Expected an MMH3_MEDIA packet")
+    observed = descriptor_from_media_metadata(kind, describe_media_payload(payload, kind))
+    observed.update(deep_copy_json(dict(descriptor or {})))
+    return packet.put(
+        payload, kind=kind, role=role, order=order, mode=mode, resource_id=resource_id,
+        name=name, tags=tags, descriptor=observed, provenance=deep_copy_json(dict(provenance or {})),
+        extensions=deep_copy_json(dict(extensions or {})),
+    )
+
+
+
 __all__ = [
-    "MMH3Media",
-    "MMH3ResourceRef",
-    "H3_LATENT_CONTRACT_VERSION",
-    "build_h3_latent_contract",
-    "h3_latent_contract_from_resource",
-    "stale_h3_geometry_contract",
-    "validate_h3_continuation_compatibility",
-    "validate_h3_geometry_state",
-    "validate_h3_latent_contract",
-    "validate_h3_refine_compatibility",
-    "CORE_RESOURCE_KINDS",
-    "CORE_RESOURCE_ROLES",
-    "make_resource_descriptor",
-    "normalize_tags",
-    "validate_resource_descriptor",
-    "PACKET_TARGET",
-    "REPRESENTATION_KINDS",
-    "MAX_REPRESENTATION_BYTES",
-    "make_representation_record",
-    "representation_is_fresh",
+    "MMH3_ADAPTER_API_VERSION",
+    "list_resource_refs",
+    "select_resource_ref",
+    "list_representation_records",
+    "resource_preview_info",
+    "packet_preview_info",
+    "MMH3Error",
+    "MMH3FormatError",
+    "MMH3IntegrityError",
+    "MMH3ResourceError",
     "H3_CONTROL_ALGORITHMS",
     "H3_CONTROL_ALGORITHM_CONTEXTS",
     "H3_CONTROL_AUTO_PREFERENCES",
@@ -130,8 +336,9 @@ __all__ = [
     "MaterializedControlVideo",
     "H3TileControlInputs",
     "H3_CONTROL_TILE_CONTRACT",
+    "H3_GENERATION_MODES",
+    "H3_MODEL_FAMILIES",
     "GenerationModelContract",
-    "H3_CONTINUATION_FAMILIES",
     "H3ContinuationPlan",
     "H3ContinuationResult",
     "DecodedContinuationPlan",
@@ -144,19 +351,14 @@ __all__ = [
     "StitchCompatibility",
     "StitchPlan",
     "StitchResult",
-    "H3LatentStitchCompatibility",
-    "H3LatentStitchPlan",
-    "H3LatentStitchResult",
     "StreamingSegment",
     "StreamingStitchResult",
     "StreamingStitchedVideo",
     "LoRAReapplyDiagnostic",
     "LoRAReapplyExpansion",
     "LoRAReapplyPlan",
-    "LatentStitchUpscaleTarget",
     "LatentUpscalePlan",
     "LatentUpscaleProcessReport",
-    "LatentUpscaleRefineSampling",
     "PreparedLatentUpscale",
     "UPSCALE_GEOMETRY_MODES",
     "TILE_BLEND_MODES",
@@ -169,18 +371,22 @@ __all__ = [
     "SpatialTile",
     "SpatialTilePlan",
     "SpatialTileRunResult",
-    "TileBackendFinalizeResult",
     "NativeH3TileRefineResult",
     "NATIVE_H3_TILE_CONTRACT",
+    "TileBackendFinalizeResult",
+    "ModelFamilyDiagnostic",
+    "PackedH3Result",
+    "PrimaryPacketView",
     "ReferenceConfigurationResult",
+    "ResolvedMMH3Inputs",
+    "ResolvedReferenceSet",
     "ReferenceCostReport",
     "ReferenceCacheLookup",
     "ReferenceCacheSpec",
     "PREFLIGHT_OPERATIONS",
     "PreflightDiagnostic",
     "PreflightReport",
-    "ResolvedMMH3Inputs",
-    "ResolvedReferenceSet",
+    "clear_generation_loras",
     "configure_reference",
     "build_reference_cache_spec",
     "build_h3_continuation_handover",
@@ -204,37 +410,41 @@ __all__ = [
     "validate_spatial_tile_run_report",
     "prepare_packet_latent_upscale",
     "prepare_decoded_packet_latent_upscale",
-    "build_latent_stitch_upscale_target",
     "build_latent_upscale_process_report",
-    "build_latent_upscale_refine_sampling",
     "build_latent_upscale_refine_target",
+    "compare_reference_cache_latents",
+    "describe_media_payload",
+    "estimate_reference_cost",
     "encode_decoded_prefix",
     "commit_chain_segment",
-    "compare_reference_cache_latents",
-    "estimate_reference_cost",
     "exact_h3_av_handover_boundaries",
     "lookup_reference_cache",
+    "materialize_reference_cache",
+    "get_generation_loras",
+    "infer_h3_model_family",
     "inspect_stitch_packets",
-    "inspect_h3_latent_stitch_packets",
-    "stitch_h3_continuation_latents",
-    "inspect_stitch_packet",
+    "h3_video_t_from_frames",
+    "is_exact_h3_av_handover_boundary",
+    "list_resources",
+    "lora_provenance_summary",
+    "materialize_resource",
     "materialize_decoded_segment",
     "materialize_streaming_segment",
     "pcm_boundary",
-    "infer_h3_model_family",
-    "resolve_h3_continuation_family",
+    "pack_h3_result",
+    "put_resource",
+    "put_reference_cache",
     "preflight_packet",
     "prepare_decoded_prefix",
-    "get_resource_payload",
-    "load_archive",
     "resolve_packet",
     "resolve_reference_set",
-    "save_archive",
+    "select_resource",
+    "set_generation_loras",
     "start_chain",
     "stitch_decoded_segments",
     "iter_stitched_rgb_frames",
-    "validate_chain",
-    "validate_reroll_source",
+    "normalize_generation_loras",
+    "unpack_primary",
     "validate_generation_model_family",
     "build_control_configuration",
     "control_configuration_from_dict",
@@ -258,6 +468,8 @@ __all__ = [
     "apply_control_to_conditioning",
     "clone_guider_with_conditioning",
     "build_tiled_control_process_info",
+    "validate_chain",
+    "validate_reroll_source",
     "ATTENTION_MODES",
     "CUSTOM_PROFILE",
     "FP16_ACCUMULATION_MODES",
@@ -289,15 +501,11 @@ __all__ = [
     "probe_raw_video",
     "import_raw_video",
     "normalize_batch_plan",
-    "BATCH_STITCH_CONTRACT",
-    "BatchStitchPreparation",
-    "prepare_batch_stitch",
     "plan_batch_inputs",
     "plan_long_video_chunks",
     "PREQUEUE_ESTIMATE_CONTRACT",
     "build_prequeue_estimate",
     "prequeue_summary",
-    "inspect_batch_stitch_plan",
     "resolve_chunk_execution",
     "build_video_chunk_expansion",
     "trim_audio_samples",

@@ -9,16 +9,13 @@ from .core import MMH3Media
 def _clean_manifest(packet: MMH3Media, *, include_preview: bool) -> dict[str, Any]:
     m = json.loads(json.dumps(packet.manifest))
     if not include_preview:
-        m["resources"] = [r for r in m.get("resources", []) if r.get("role") != "preview"]
+        m.pop("representations", None)
     # Volatile serialization/runtime fields do not define semantic equality.
     m.pop("updated_at", None)
     for r in m.get("resources", []):
         r.pop("path", None)
-        r.pop("size", None)
         r.pop("serializer", None)
         r.pop("media_type", None)
-        if r.get("role") == "preview":
-            r.pop("sha256", None)
     return m
 
 
@@ -35,18 +32,18 @@ def compare_packets(a: MMH3Media, b: MMH3Media, *, include_preview: bool = False
             packet_fields[key] = {"a": av, "b": bv}
 
     def index(m):
-        return {(r.get("role"), int(r.get("slot", 0))): r for r in m.get("resources", [])}
+        return {str(r.get("id")): r for r in m.get("resources", [])}
 
     ai, bi = index(am), index(bm)
     resources = []
-    for sel in sorted(set(ai) | set(bi), key=lambda x: (x[0], x[1])):
-        ar, br = ai.get(sel), bi.get(sel)
+    for resource_id in sorted(set(ai) | set(bi)):
+        ar, br = ai.get(resource_id), bi.get(resource_id)
         if ar is None:
-            resources.append({"selector": [sel[0], sel[1]], "status": "only_b", "b": br})
+            resources.append({"resource_id": resource_id, "status": "only_b", "b": br})
         elif br is None:
-            resources.append({"selector": [sel[0], sel[1]], "status": "only_a", "a": ar})
+            resources.append({"resource_id": resource_id, "status": "only_a", "a": ar})
         elif ar != br:
-            resources.append({"selector": [sel[0], sel[1]], "status": "changed", "a": ar, "b": br})
+            resources.append({"resource_id": resource_id, "status": "changed", "a": ar, "b": br})
 
     history_equal = am.get("history", []) == bm.get("history", [])
     equal = not packet_fields and not resources and history_equal
@@ -59,6 +56,6 @@ def compare_packets(a: MMH3Media, b: MMH3Media, *, include_preview: bool = False
         "summary": (
             "Packets are semantically equal."
             if equal
-            else f"Differences: {len(packet_fields)} packet field(s), {len(resources)} resource selector(s), history_equal={history_equal}."
+            else f"Differences: {len(packet_fields)} packet field(s), {len(resources)} resource(s), history_equal={history_equal}."
         ),
     }

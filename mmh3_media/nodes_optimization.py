@@ -1,0 +1,354 @@
+from __future__ import annotations
+
+import json
+
+
+from .node_support import CATEGORY, MMH3ResourceError, io
+from .model_optimizations import (
+    build_model_optimization_expansion,
+    build_model_optimization_plan,
+)
+from .sampling_presets import build_sampling_preset
+from .sla_optimization import (
+    H3_SLA_BLOCK_SIZES,
+    H3_SLA_DENSE_BACKENDS,
+    H3_SLA_NODE_ID,
+    apply_external_h3_sla,
+)
+
+
+
+class MMH3H3SLAApply(io.ComfyNode):
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="MMH3H3SLAApply",
+            display_name="MMH3 H3 SLA Apply (PlagueKind v1.3.6)",
+            category=CATEGORY,
+            description=(
+                "Fail-closed F07 adapter for PlagueKind H3SLAAttention v1.3.6. "
+                "Verifies the external schema and the materialized ModelPatcher hooks before sampling."
+            ),
+            inputs=[
+                io.Model.Input("model"),
+                io.Float.Input("sparsity_ratio", default=0.90, min=0.0, max=0.95, step=0.05),
+                io.Combo.Input("block_size", options=list(H3_SLA_BLOCK_SIZES), default="64"),
+                io.Int.Input("min_seq_len", default=4096, min=0, max=1_000_000, step=1024),
+                io.Int.Input("dense_last_steps", default=1, min=0, max=8),
+                io.Boolean.Input("protect_audio", default=True),
+                io.Boolean.Input("enabled", default=True),
+                io.String.Input("dense_steps", default="0"),
+                io.Combo.Input("dense_backend", options=list(H3_SLA_DENSE_BACKENDS), default="comfy_kitchen"),
+                io.Boolean.Input("disable_fp16_accum", default=True),
+                io.Boolean.Input("stabilize_motion", default=True),
+            ],
+            outputs=[
+                io.Model.Output("model"),
+                io.String.Output("execution_profile_json"),
+                io.String.Output("status"),
+            ],
+        )
+
+    @classmethod
+    def execute(
+        cls,
+        model,
+        sparsity_ratio: float,
+        block_size: str,
+        min_seq_len: int,
+        dense_last_steps: int,
+        protect_audio: bool,
+        enabled: bool,
+        dense_steps: str,
+        dense_backend: str,
+        disable_fp16_accum: bool,
+        stabilize_motion: bool,
+    ) -> io.NodeOutput:
+        if not enabled:
+            patched, profile, status = apply_external_h3_sla(
+                model,
+                None,
+                sparsity_ratio=sparsity_ratio,
+                block_size=block_size,
+                min_seq_len=min_seq_len,
+                dense_last_steps=dense_last_steps,
+                protect_audio=protect_audio,
+                enabled=False,
+                dense_steps=dense_steps,
+                dense_backend=dense_backend,
+                disable_fp16_accum=disable_fp16_accum,
+                stabilize_motion=stabilize_motion,
+            )
+            return io.NodeOutput(patched, json.dumps(profile, ensure_ascii=False, indent=2), status)
+        try:
+            import nodes as comfy_nodes  # type: ignore
+        except ImportError as exc:
+            raise MMH3ResourceError("ComfyUI runtime nodes registry is unavailable") from exc
+        node_class = getattr(comfy_nodes, "NODE_CLASS_MAPPINGS", {}).get(H3_SLA_NODE_ID)
+        if node_class is None:
+            raise MMH3ResourceError(
+                "H3SLAAttention is missing; install/update PlagueKind Nodes to v1.3.6"
+            )
+        patched, profile, status = apply_external_h3_sla(
+            model,
+            node_class,
+            sparsity_ratio=sparsity_ratio,
+            block_size=block_size,
+            min_seq_len=min_seq_len,
+            dense_last_steps=dense_last_steps,
+            protect_audio=protect_audio,
+            enabled=enabled,
+            dense_steps=dense_steps,
+            dense_backend=dense_backend,
+            disable_fp16_accum=disable_fp16_accum,
+            stabilize_motion=stabilize_motion,
+        )
+        return io.NodeOutput(patched, json.dumps(profile, ensure_ascii=False, indent=2), status)
+
+
+class MMH3H3FP16AccumulationPatch(io.ComfyNode):
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="MMH3H3FP16AccumulationPatch",
+            display_name="MMH3 H3 FP16 Accumulation Patch",
+            category=f"{CATEGORY}/Internal",
+            description="Scope FP16 accumulation to one MODEL sampling lifecycle.",
+            inputs=[
+                io.Model.Input("model"),
+                io.Boolean.Input("enabled", default=True),
+            ],
+            outputs=[io.Model.Output("model")],
+        )
+
+    @classmethod
+    def execute(cls, model, enabled: bool) -> io.NodeOutput:
+        import torch
+        from comfy.patcher_extension import CallbacksMP  # type: ignore
+
+        backend = torch.backends.cuda.matmul
+        if not hasattr(backend, "allow_fp16_accumulation"):
+            raise MMH3ResourceError("FP16 accumulation requires a PyTorch build that exposes allow_fp16_accumulation")
+        patched = model.clone()
+        saved: list[bool] = []
+
+        def before_run(*_args, **_kwargs):
+            saved.append(bool(backend.allow_fp16_accumulation))
+            backend.allow_fp16_accumulation = bool(enabled)
+
+        def after_run(*_args, **_kwargs):
+            if saved:
+                backend.allow_fp16_accumulation = saved.pop()
+
+        patched.add_callback(CallbacksMP.ON_PRE_RUN, before_run)
+        patched.add_callback(CallbacksMP.ON_CLEANUP, after_run)
+        return io.NodeOutput(patched)
+
+
+class MMH3H3SamplingPreset(io.ComfyNode):
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        import folder_paths
+        return io.Schema(
+            node_id="MMH3H3SamplingPreset",
+            display_name="H3 Sampling",
+            category=CATEGORY,
+            description="Select a sampling recipe; matching Turbo/FastH3 loading and actual adapter provenance follow automatically. Connect the unpatched H3 base model.",
+            inputs=[
+                io.DynamicCombo.Input(
+                    "profile",
+                    display_name="Preset",
+                    options=[
+                        io.DynamicCombo.Option("Turbo - 4 steps", []),
+                        io.DynamicCombo.Option("Standard - 20 steps", []),
+                        io.DynamicCombo.Option("Turbo - 8 steps", []),
+                        io.DynamicCombo.Option("FastH3 dense - 6 steps (experimental)", [
+                            io.Combo.Input("lora_name", options=["(select converted dense LoRA)"] + folder_paths.get_filename_list("loras"),
+                                           tooltip="Select lora_convert_h3 output from dense-datafree, adaln=drop. Never select a converted VSA student. The converter does not certify training provenance."),
+                        ]),
+                        io.DynamicCombo.Option(
+                            "Custom",
+                            [
+                                io.Int.Input("steps", display_name="Steps", default=20, min=1, max=100),
+                                io.Float.Input("video_shift", display_name="Video shift", default=12.0, min=0.0, max=30.0, step=0.1, advanced=True),
+                                io.Float.Input("audio_shift", display_name="Audio shift", default=3.0, min=0.0, max=30.0, step=0.1, advanced=True),
+                                io.Combo.Input("sampler", display_name="Sampler", options=["res_multistep", "euler"], default="res_multistep", advanced=True),
+                                io.Combo.Input("scheduler", display_name="Scheduler", options=["simple", "normal"], default="simple", advanced=True),
+                            ],
+                        ),
+                    ],
+                ),
+                io.Combo.Input("task_family", display_name="Task family", options=["fl2va", "ref2va"], default="fl2va"),
+                io.Model.Input("model", tooltip="Unpatched H3 base. Standard/Custom pass it through; Turbo/FastH3 load their adapter. Connect MODEL to Optimizations and applied_loras_json to Pack."),
+            ],
+            outputs=[
+                io.String.Output("sampling_profile_json"),
+                io.Int.Output("steps"),
+                io.Float.Output("video_shift"),
+                io.Float.Output("audio_shift"),
+                io.Combo.Output("sampler_name"),
+                io.Combo.Output("scheduler"),
+                io.Model.Output("model"),
+                io.String.Output("applied_loras_json"),
+            ],
+        )
+
+    @classmethod
+    def execute(
+        cls,
+        profile: dict | str,
+        task_family: str,
+        model,
+    ) -> io.NodeOutput:
+        if model is None:
+            raise MMH3ResourceError("H3 Sampling requires the unpatched base MODEL input")
+        if getattr(model, "patches", None) or getattr(model, "object_patches", None):
+            raise MMH3ResourceError("H3 Sampling requires an unpatched base; apply creative LoRAs after Sampling")
+        selected = profile if isinstance(profile, dict) else {"profile": profile}
+        label = str(selected.get("profile") or "Turbo - 4 steps")
+        profile_names = {
+            "Standard - 20 steps": "standard (20 steps)",
+            "Turbo - 4 steps": "turbo (4 steps)",
+            "Turbo - 8 steps": "turbo (8 steps)",
+            "FastH3 dense - 6 steps (experimental)": "fasth3 dense experimental (6 steps)",
+            "Custom": "custom",
+        }
+        preset = build_sampling_preset(
+            profile=profile_names.get(label, label),
+            task_family=task_family,
+            custom_steps=int(selected.get("steps", 20)),
+            custom_video_shift=float(selected.get("video_shift", 12.0)),
+            custom_audio_shift=float(selected.get("audio_shift", 3.0)),
+            custom_sampler=str(selected.get("sampler", "res_multistep")),
+            custom_scheduler=str(selected.get("scheduler", "simple")),
+        )
+        from .fasth3 import FASTH3_PROFILE, apply_fasth3
+        applied_loras = []
+        info = preset.to_dict()
+        if preset.profile == FASTH3_PROFILE:
+            import folder_paths
+            name = str(selected.get("lora_name") or "")
+            if name not in folder_paths.get_filename_list("loras"):
+                raise MMH3ResourceError("Select an installed converted FastH3 dense LoRA")
+            path = folder_paths.get_full_path("loras", name)
+            if not path or not path.lower().endswith(".safetensors"):
+                raise MMH3ResourceError("FastH3 requires a safetensors adapter")
+            model, entry = apply_fasth3(model, path, name)
+            applied_loras = [entry]
+            info["adapter"] = entry
+        elif preset.recommended_lora:
+            from .fasth3 import apply_packaged_turbo
+            model, entry = apply_packaged_turbo(model, preset.recommended_lora)
+            applied_loras = [entry]
+            info["adapter"] = entry
+        return io.NodeOutput(
+            json.dumps(info, ensure_ascii=False, indent=2),
+            preset.steps,
+            preset.video_shift,
+            preset.audio_shift,
+            preset.sampler,
+            preset.scheduler,
+            model,
+            json.dumps(applied_loras, ensure_ascii=False),
+        )
+
+
+def _sol_attention_inputs():
+    return [
+        io.Float.Input("sol_tau", display_name="Tau", default=1.0, min=0.0, max=4.0, step=0.05, advanced=True),
+        io.Float.Input("sol_start_percent", display_name="Start fraction", default=0.2, min=0.0, max=1.0, step=0.01, advanced=True),
+        io.Float.Input("sol_end_percent", display_name="End fraction", default=0.9, min=0.0, max=1.0, step=0.01, advanced=True),
+        io.Int.Input("sol_min_tokens", display_name="Minimum tokens", default=4096, min=0, max=1048576, step=512, advanced=True),
+        io.Boolean.Input("sol_int8_qk", display_name="INT8 QK", default=True, advanced=True),
+        io.Combo.Input("sol_sink_conditioning", display_name="Conditioning protection", options=["exact_kv", "exact_kv_and_rows", "off"], default="exact_kv_and_rows", advanced=True),
+        io.String.Input("sol_dense_blocks", display_name="Dense blocks", default="", tooltip="Blocks excluded from Sol, e.g. 0-2,-1. In SLA → Sol these may use SLA instead of dense attention. Blank applies Sol to all blocks.", advanced=True),
+    ]
+
+
+def _sla_attention_inputs():
+    return [
+        io.Float.Input("sla_sparsity_ratio", display_name="Sparsity", default=0.85, min=0.0, max=0.95, step=0.05, advanced=True),
+        io.Combo.Input("sla_block_size", display_name="Block size", options=list(H3_SLA_BLOCK_SIZES), default="64", advanced=True),
+        io.Int.Input("sla_min_seq_len", display_name="Minimum sequence length", default=8192, min=0, max=1_000_000, step=1024, advanced=True),
+        io.Int.Input("sla_dense_last_steps", display_name="Dense final steps", default=0, min=0, max=8, advanced=True),
+        io.Boolean.Input("sla_protect_audio", display_name="Protect audio", default=True, advanced=True),
+        io.Combo.Input("sla_dense_backend", display_name="Dense backend", options=list(H3_SLA_DENSE_BACKENDS), default="comfy_kitchen", advanced=True),
+    ]
+
+
+class MMH3H3ModelOptimizations(io.ComfyNode):
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="MMH3H3ModelOptimizations",
+            display_name="H3 Optimizations",
+            category=CATEGORY,
+            description="Apply an Attention strategy and optional scoped FP16 accumulation patch. SLA → Sol chains both patches; Sol fallbacks may use sparse SLA, not dense attention.",
+            inputs=[
+                io.Model.Input("model"),
+                io.DynamicCombo.Input(
+                    "attention",
+                    display_name="Attention",
+                    options=[
+                        io.DynamicCombo.Option("Default", []),
+                        io.DynamicCombo.Option("PyTorch", []),
+                        io.DynamicCombo.Option("Comfy Kitchen", []),
+                        io.DynamicCombo.Option("SageAttention (KJ)", [
+                            io.Combo.Input("sage_mode", display_name="Implementation", options=["auto", "sageattn_qk_int8_pv_fp16_cuda", "sageattn_qk_int8_pv_fp16_triton", "sageattn_qk_int8_pv_fp8_cuda", "sageattn_qk_int8_pv_fp8_cuda++", "sageattn3", "sageattn3_per_block_mean"], default="auto", advanced=True),
+                            io.Boolean.Input("sage_allow_compile", display_name="Allow compile", default=False, advanced=True),
+                        ]),
+                        io.DynamicCombo.Option("Sol Attention", _sol_attention_inputs()),
+                        io.DynamicCombo.Option("H3 SLA", _sla_attention_inputs()),
+                        io.DynamicCombo.Option("SLA → Sol (experimental)", _sla_attention_inputs() + _sol_attention_inputs()),
+                    ],
+                ),
+                io.Combo.Input("fp16_accumulation", display_name="FP16 accumulation", options=["Default", "Enabled", "Disabled"], default="Default"),
+            ],
+            outputs=[
+                io.Model.Output("model"),
+                io.String.Output("optimization_profile_json"),
+            ],
+            enable_expand=True,
+        )
+
+    @classmethod
+    def execute(cls, model, attention: dict | str, fp16_accumulation: str, **_unused) -> io.NodeOutput:
+        selected = attention if isinstance(attention, dict) else {"attention": attention}
+        attention_label = str(selected.get("attention") or "Default")
+        attention_modes = {
+            "Default": "inherit",
+            "PyTorch": "pytorch",
+            "Comfy Kitchen": "comfy_kitchen",
+            "SageAttention (KJ)": "sage_attention_kj",
+            "Sol Attention": "sol_attn",
+            "H3 SLA": "h3_sla",
+            "SLA → Sol (experimental)": "h3_sla_sol_attn",
+        }
+        fp16_modes = {"Default": "inherit", "Enabled": "enabled", "Disabled": "disabled"}
+        attention_mode = attention_modes.get(attention_label, attention_label)
+        from .fasth3 import FASTH3_PROFILE
+        adapter = getattr(model, "get_attachment", lambda _key: None)("mmh3_sampling_adapter")
+        if adapter == FASTH3_PROFILE and attention_mode in {"h3_sla", "h3_sla_sol_attn"}:
+            raise MMH3ResourceError("FastH3 dense cannot be combined with SLA in this experimental profile")
+        fp16_mode = fp16_modes.get(fp16_accumulation, fp16_accumulation)
+        plan = build_model_optimization_plan(
+            enabled=attention_mode != "inherit" or fp16_mode != "inherit",
+            attention_mode=attention_mode,
+            fp16_accumulation=fp16_mode,
+            **{key: value for key, value in selected.items() if key != "attention"},
+        )
+        runtime_nodes = None
+        if plan.enabled:
+            import nodes as comfy_nodes  # type: ignore
+
+            runtime_nodes = tuple(getattr(comfy_nodes, "NODE_CLASS_MAPPINGS", {}).keys())
+        expansion = build_model_optimization_expansion(
+            plan,
+            model=model,
+            runtime_node_ids=runtime_nodes,
+        )
+        return io.NodeOutput(
+            expansion.model,
+            json.dumps(expansion.profile, ensure_ascii=False, indent=2),
+            expand=expansion.graph,
+        )

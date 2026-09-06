@@ -19,15 +19,10 @@ class ValidationReport:
 
 
 def validate_packet_manifest(manifest: Any) -> ValidationReport:
-    """Single internal validation entrypoint used by core/archive/nodes.
-
-    This validates the only published MMH3_MEDIA schema: schema v1. The function is
-    intentionally side-effect free so later validators can add resource/H3 checks without changing nodes.
-    """
     try:
         validate_manifest(manifest, allow_unknown_kinds=False)
-    except Exception as e:
-        return ValidationReport(False, (str(e),), ())
+    except Exception as exc:
+        return ValidationReport(False, (str(exc),), ())
     warnings: list[str] = []
     if manifest.get("format") != FORMAT_NAME:
         return ValidationReport(False, (f"format must be {FORMAT_NAME}",), ())
