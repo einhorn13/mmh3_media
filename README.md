@@ -11,7 +11,7 @@ Results are saved as `.mmh3` files. Along with the media, the file stores settin
 1. Set up ComfyUI with MiniMax H3 support and the models used by the examples. This package does not include model weights.
 2. Download the repository via **Code → Download ZIP** and extract it to `ComfyUI/custom_nodes/ComfyUI_mmh3_media`. The `__init__.py` file must be located directly inside this folder, without an extra nested repository directory.
 3. Place the models in the folders listed below and select them in the workflow loaders. The table lists the files used by the bundled examples; other variants require a compatible ComfyUI setup.
-4. Restart ComfyUI, refresh the browser, and open a JSON file from [example_workflows](example_workflows).
+4. Restart ComfyUI, refresh the browser, and open a JSON file from [workflows](example_workflows).
 
 The basic nodes require no additional Python packages beyond ComfyUI's own dependencies. Specialized workflows may require external nodes and models.
 
@@ -31,7 +31,7 @@ To get started, choose one generation path; you do not need both diffusion model
 
 ## Your first video
 
-1. Drag [mmh3_f01_fl2va.json](example_workflows/mmh3_f01_fl2va.json) onto the ComfyUI canvas.
+1. Drag [mmh3_f01_fl2va.json](workflows/mmh3_f01_fl2va.json) onto the ComfyUI canvas.
 2. Select the models you installed in the loaders.
 3. In **MMH3 Create**, select **Video (optional frames)** and write a prompt describing what happens in the scene, how the camera moves, and what audio you want.
 4. Connect the frames you need, or leave both frame inputs disconnected for text-only generation.
@@ -45,7 +45,7 @@ To get started, choose one generation path; you do not need both diffusion model
 | Last only | Video with a specified final frame — L2VA |
 | First and last | Transition between two frames — FL2VA |
 
-For reference-based generation, open [mmh3_f01_ref2va.json](example_workflows/mmh3_f01_ref2va.json), select the Ref2VA model, and add images, video, or audio to the **References to video** inputs. New inputs appear as you connect them. **Reference Image Size** controls the size of image references.
+For reference-based generation, open [mmh3_f01_ref2va.json](workflows/mmh3_f01_ref2va.json), select the Ref2VA model, and add images, video, or audio to the **References to video** inputs. New inputs appear as you connect them. **Reference Image Size** controls the size of image references.
 
 ## Choosing a workflow
 
@@ -55,24 +55,24 @@ For normal use, open JSON files without the `_api` suffix. Files ending in `_api
 
 | Workflow | Purpose |
 | --- | --- |
-| [F01 · Text and Frames](example_workflows/mmh3_f01_fl2va.json) | Create the first video from a prompt and an optional first and/or last frame. |
-| [F01 · References](example_workflows/mmh3_f01_ref2va.json) | Generate using images, video, and audio as references. |
-| [F02 · Continuation](example_workflows/mmh3_f02_continuation.json) | Continue a saved H3 segment from an `.mmh3` file; an end frame can also be specified. |
-| [F02 · Continuation with References](example_workflows/mmh3_f02_ref2va_continuation.json) | Generate a continuation with Ref2VA and active references. |
-| [F03 · Decoded Video Continuation](example_workflows/mmh3_f03_decoded_continuation.json) | Continue a video without a saved H3 state. For a source without audio, use the [silence variant](example_workflows/mmh3_f03_decoded_continuation_silence.json). |
-| [F04 · Segment Workflow](example_workflows/mmh3_f04_chain_append.json) | Create drafts, accept successful results, continue the chain, or start a new scene. |
-| [F04 · Reroll](example_workflows/mmh3_f04_chain_reroll.json) / [Reanchor](example_workflows/mmh3_f04_chain_reanchor.json) | Specialized examples for regenerating a segment and changing its anchor frame. |
+| [F01 · Text and Frames](workflows/mmh3_f01_fl2va.json) | Create the first video from a prompt and an optional first and/or last frame. |
+| [F01 · References](workflows/mmh3_f01_ref2va.json) | Generate using images, video, and audio as references. |
+| [F02 · Continuation](workflows/mmh3_f02_continuation.json) | Continue a saved H3 segment from an `.mmh3` file; an end frame can also be specified. |
+| [F02 · Continuation with References](workflows/mmh3_f02_ref2va_continuation.json) | Generate a continuation with Ref2VA and active references. |
+| [F03 · Decoded Video Continuation](workflows/mmh3_f03_decoded_continuation.json) | Continue a video without a saved H3 state. For a source without audio, use the [silence variant](workflows/mmh3_f03_decoded_continuation_silence.json). |
+| [F04 · Segment Workflow](workflows/mmh3_f04_chain_append.json) | Create drafts, accept successful results, continue the chain, or start a new scene. |
+| [F04 · Reroll](workflows/mmh3_f04_chain_reroll.json) / [Reanchor](workflows/mmh3_f04_chain_reanchor.json) | Specialized examples for regenerating a segment and changing its anchor frame. |
 
 ### Stitching and upscaling
 
 | Workflow | Purpose |
 | --- | --- |
-| [F05 · Video Stitch](example_workflows/mmh3_f05_stitch.json) | Combine finished clips with audio. Supports Auto Seamless, Cut, and Crossfade, plus color matching at the transition. |
-| [F05 · Latent Stitch](example_workflows/mmh3_f05_latent_stitch.json) | Assemble sequential H3 continuations, remove the repeated opening context, and decode the final video with audio only once. |
-| [F05 · Upscale + Stitch](example_workflows/mmh3_f05_latent_stitch_upscale.json) | Upscale a linked continuation chain and assemble it into a single video. Requires the external `MinimaxH3LatentUpscaler3D` node and its weights. |
-| [F07 · Latent Upscale](example_workflows/mmh3_f07_latent_upscale.json) | Upscale an H3 latent and refine the result. |
-| [F07 · Native Tile Upscale](example_workflows/mmh3_f07_native_tile_upscale.json) | Refine the image in tiles — separate regions of the frame. |
-| [F07 · SLA Latent Upscale](example_workflows/mmh3_f07_sla_latent_upscale.json) | Specialized variant using the external `H3SLAAttention` node; requires a compatible version of ComfyUI-PlagueKind-Nodes. |
+| [F05 · Video Stitch](workflows/mmh3_f05_stitch.json) | Combine finished clips with audio. Supports Auto Seamless, Cut, and Crossfade, plus color matching at the transition. |
+| [F05 · Latent Stitch](workflows/mmh3_f05_latent_stitch.json) | Assemble sequential H3 continuations, remove the repeated opening context, and decode the final video with audio only once. |
+| [F05 · Upscale + Stitch](workflows/mmh3_f05_latent_stitch_upscale.json) | Upscale a linked continuation chain and assemble it into a single video. Requires the external `MinimaxH3LatentUpscaler3D` node and its weights. |
+| [F07 · Latent Upscale](workflows/mmh3_f07_latent_upscale.json) | Upscale an H3 latent and refine the result. |
+| [F07 · Native Tile Upscale](workflows/mmh3_f07_native_tile_upscale.json) | Refine the image in tiles — separate regions of the frame. |
+| [F07 · SLA Latent Upscale](workflows/mmh3_f07_sla_latent_upscale.json) | Specialized variant using the external `H3SLAAttention` node; requires a compatible version of ComfyUI-PlagueKind-Nodes. |
 
 The F07 examples also use the external `MinimaxH3LatentUpscaler3D` node and its weights. Install them before running an upscale workflow.
 
