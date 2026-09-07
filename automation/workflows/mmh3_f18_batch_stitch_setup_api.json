@@ -1,0 +1,23 @@
+{
+  "1": {
+    "class_type": "MMH3BatchInputPlan",
+    "inputs": {
+      "paths_json": "[\n  \"C:/replace/segment_001.mmh3\",\n  \"C:/replace/segment_002.mmh3\"\n]",
+      "order": "natural"
+    }
+  },
+  "2": {
+    "class_type": "MMH3BatchPreQueueEstimate",
+    "inputs": {
+      "plan_json": [
+        "1",
+        0
+      ],
+      "video_mode": "cut",
+      "audio_mode": "cut",
+      "overlap_frames": 0,
+      "error_policy": "stop_on_error",
+      "output_prefix": "mmh3_automation/batch_stitch/final"
+    }
+  }
+}

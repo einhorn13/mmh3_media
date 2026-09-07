@@ -1,0 +1,318 @@
+{
+  "id": "e39e3ba1-c381-5a37-9960-99fe7f39aeb7",
+  "revision": 0,
+  "last_node_id": 4,
+  "last_link_id": 3,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "MMH3AutomationAssemblyGate",
+      "pos": [
+        90,
+        110
+      ],
+      "size": [
+        360,
+        148
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "ledger_json",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "ledger_json"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "assembly_map_json",
+          "type": "STRING",
+          "links": [
+            1
+          ]
+        },
+        {
+          "name": "segments",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "name": "status",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MMH3AutomationAssemblyGate"
+      },
+      "widgets_values": [
+        "__MMH3_LEDGER_JSON__"
+      ],
+      "title": "Completed Long-Video Ledger"
+    },
+    {
+      "id": 2,
+      "type": "MMH3AutomationAssembleChunks",
+      "pos": [
+        1090,
+        110
+      ],
+      "size": [
+        360,
+        184
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "assembly_map_json",
+          "type": "STRING",
+          "link": 1,
+          "widget": {
+            "name": "assembly_map_json"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "links": [
+            3
+          ]
+        },
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": [
+            2
+          ]
+        },
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": null
+        },
+        {
+          "name": "report_json",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "status",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MMH3AutomationAssembleChunks"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 3,
+      "type": "SaveVideo",
+      "title": "Save Preview Video",
+      "pos": [
+        3090,
+        110
+      ],
+      "size": [
+        360,
+        420
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 2
+        },
+        {
+          "name": "filename_prefix",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "filename_prefix"
+          }
+        },
+        {
+          "name": "format",
+          "type": "COMFY_DYNAMICCOMBO_V3",
+          "link": null,
+          "widget": {
+            "name": "format"
+          }
+        },
+        {
+          "name": "format.codec",
+          "type": "COMFY_DYNAMICCOMBO_V3",
+          "link": null,
+          "widget": {
+            "name": "format.codec"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SaveVideo"
+      },
+      "widgets_values": [
+        "mmh3_automation/long_video/final_preview",
+        "auto",
+        "auto"
+      ]
+    },
+    {
+      "id": 4,
+      "type": "MMH3Save",
+      "title": "Save MMH3",
+      "pos": [
+        3090,
+        600.0
+      ],
+      "size": [
+        380,
+        470
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "link": 3
+        },
+        {
+          "name": "filename_prefix",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "filename_prefix"
+          }
+        },
+        {
+          "name": "target",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "target"
+          }
+        },
+        {
+          "name": "overwrite",
+          "type": "BOOLEAN",
+          "link": null,
+          "widget": {
+            "name": "overwrite"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "links": null
+        },
+        {
+          "name": "path",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MMH3Save"
+      },
+      "widgets_values": [
+        "mmh3_automation/long_video/final",
+        "output",
+        true
+      ]
+    }
+  ],
+  "links": [
+    [
+      1,
+      1,
+      0,
+      2,
+      0,
+      "STRING"
+    ],
+    [
+      2,
+      2,
+      1,
+      3,
+      0,
+      "VIDEO"
+    ],
+    [
+      3,
+      2,
+      0,
+      4,
+      0,
+      "MMH3_MEDIA"
+    ]
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "title": "01 · LEDGER / ASSEMBLY INPUT",
+      "bounding": [
+        55,
+        55,
+        430,
+        238
+      ],
+      "color": "#355070",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 3,
+      "title": "02 · AV ASSEMBLY",
+      "bounding": [
+        1055,
+        55,
+        430,
+        274
+      ],
+      "color": "#6d597a",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 7,
+      "title": "03 · PREVIEW / SAVE",
+      "bounding": [
+        3055,
+        55,
+        430,
+        1050.0
+      ],
+      "color": "#2a9d8f",
+      "font_size": 24,
+      "flags": {}
+    }
+  ],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}

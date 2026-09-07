@@ -1,0 +1,488 @@
+{
+  "id": "a3895cb2-5d55-50d1-ae7b-48d7eafebb6c",
+  "revision": 0,
+  "last_node_id": 5,
+  "last_link_id": 4,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "MMH3BatchInputPlan",
+      "pos": [
+        90,
+        110
+      ],
+      "size": [
+        360,
+        172
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "paths_json",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "paths_json"
+          }
+        },
+        {
+          "name": "order",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "order"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "plan_json",
+          "type": "STRING",
+          "links": [
+            1
+          ]
+        },
+        {
+          "name": "jobs",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "name": "status",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MMH3BatchInputPlan"
+      },
+      "widgets_values": [
+        "[\n  \"C:/replace/raw_001.mp4\",\n  \"C:/replace/raw_002.mov\"\n]",
+        "natural"
+      ]
+    },
+    {
+      "id": 2,
+      "type": "MMH3BatchNormalizeImport",
+      "pos": [
+        90,
+        352
+      ],
+      "size": [
+        360,
+        334
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "plan_json",
+          "type": "STRING",
+          "link": 1,
+          "widget": {
+            "name": "plan_json"
+          }
+        },
+        {
+          "name": "target_width",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "target_width"
+          }
+        },
+        {
+          "name": "target_height",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "target_height"
+          }
+        },
+        {
+          "name": "target_fps",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "target_fps"
+          }
+        },
+        {
+          "name": "target_audio_sample_rate",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "target_audio_sample_rate"
+          }
+        },
+        {
+          "name": "target_audio_channels",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "target_audio_channels"
+          }
+        },
+        {
+          "name": "max_audio_pcm_mb",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "max_audio_pcm_mb"
+          }
+        },
+        {
+          "name": "error_policy",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "error_policy"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "normalized_plan_json",
+          "type": "STRING",
+          "links": [
+            2
+          ]
+        },
+        {
+          "name": "report_json",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "accepted",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "name": "status",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MMH3BatchNormalizeImport"
+      },
+      "widgets_values": [
+        0,
+        0,
+        24,
+        32000,
+        2,
+        512,
+        "stop_on_error"
+      ]
+    },
+    {
+      "id": 3,
+      "type": "MMH3BatchStitch",
+      "pos": [
+        2590,
+        110
+      ],
+      "size": [
+        360,
+        280
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "plan_json",
+          "type": "STRING",
+          "link": 2,
+          "widget": {
+            "name": "plan_json"
+          }
+        },
+        {
+          "name": "video_mode",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "video_mode"
+          }
+        },
+        {
+          "name": "audio_mode",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "audio_mode"
+          }
+        },
+        {
+          "name": "overlap_frames",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "overlap_frames"
+          }
+        },
+        {
+          "name": "error_policy",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "error_policy"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "links": [
+            4
+          ]
+        },
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": [
+            3
+          ]
+        },
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": null
+        },
+        {
+          "name": "assembly_map_json",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "status",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MMH3BatchStitch"
+      },
+      "widgets_values": [
+        "cut",
+        "cut",
+        0,
+        "stop_on_error"
+      ]
+    },
+    {
+      "id": 4,
+      "type": "SaveVideo",
+      "title": "Save Preview Video",
+      "pos": [
+        3090,
+        110
+      ],
+      "size": [
+        360,
+        420
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 3
+        },
+        {
+          "name": "filename_prefix",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "filename_prefix"
+          }
+        },
+        {
+          "name": "format",
+          "type": "COMFY_DYNAMICCOMBO_V3",
+          "link": null,
+          "widget": {
+            "name": "format"
+          }
+        },
+        {
+          "name": "format.codec",
+          "type": "COMFY_DYNAMICCOMBO_V3",
+          "link": null,
+          "widget": {
+            "name": "format.codec"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SaveVideo"
+      },
+      "widgets_values": [
+        "mmh3_automation/batch_stitch/preview",
+        "auto",
+        "auto"
+      ]
+    },
+    {
+      "id": 5,
+      "type": "MMH3Save",
+      "title": "Save MMH3",
+      "pos": [
+        3090,
+        600.0
+      ],
+      "size": [
+        380,
+        470
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "link": 4
+        },
+        {
+          "name": "filename_prefix",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "filename_prefix"
+          }
+        },
+        {
+          "name": "target",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "target"
+          }
+        },
+        {
+          "name": "overwrite",
+          "type": "BOOLEAN",
+          "link": null,
+          "widget": {
+            "name": "overwrite"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "links": null
+        },
+        {
+          "name": "path",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MMH3Save"
+      },
+      "widgets_values": [
+        "mmh3_automation/batch_stitch/final",
+        "output",
+        false
+      ]
+    }
+  ],
+  "links": [
+    [
+      1,
+      1,
+      0,
+      2,
+      0,
+      "STRING"
+    ],
+    [
+      2,
+      2,
+      0,
+      3,
+      0,
+      "STRING"
+    ],
+    [
+      3,
+      3,
+      1,
+      4,
+      0,
+      "VIDEO"
+    ],
+    [
+      4,
+      3,
+      0,
+      5,
+      0,
+      "MMH3_MEDIA"
+    ]
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "title": "01 · INPUTS / ASSETS",
+      "bounding": [
+        55,
+        55,
+        430,
+        666
+      ],
+      "color": "#355070",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 6,
+      "title": "02 · AV STITCH / ASSEMBLY",
+      "bounding": [
+        2555,
+        55,
+        430,
+        370
+      ],
+      "color": "#52796f",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 7,
+      "title": "03 · PREVIEW / SAVE",
+      "bounding": [
+        3055,
+        55,
+        430,
+        1050.0
+      ],
+      "color": "#2a9d8f",
+      "font_size": 24,
+      "flags": {}
+    }
+  ],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}

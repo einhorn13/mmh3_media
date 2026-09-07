@@ -1,0 +1,288 @@
+{
+  "1": {
+    "class_type": "MMH3Load",
+    "inputs": {
+      "file": "(none)",
+      "verify": "on_access",
+      "path_override": "C:/replace/source_long_video.mmh3"
+    }
+  },
+  "2": {
+    "class_type": "MMH3AutomationVideoChunk",
+    "inputs": {
+      "packet": [
+        "1",
+        0
+      ],
+      "plan_json": "__MMH3_PLAN_JSON__",
+      "chunk_index": 0,
+      "job_id": "__MMH3_JOB_ID__"
+    }
+  },
+  "3": {
+    "class_type": "MMH3Put",
+    "inputs": {
+      "packet": [
+        "2",
+        0
+      ],
+      "resource": [
+        "2",
+        1
+      ],
+      "role": "reference",
+      "mode": "upsert",
+      "order": 0,
+      "primary": false,
+      "resource_id": "",
+      "name": "",
+      "tags": "",
+      "descriptor_json": "{}",
+      "extensions_json": "{\"minimax_h3\":{\"reference\":{\"contract_version\":1,\"enabled\":true,\"purposes\":[\"unknown\"]}}}"
+    }
+  },
+  "4": {
+    "class_type": "MMH3Put",
+    "inputs": {
+      "packet": [
+        "3",
+        0
+      ],
+      "resource": [
+        "2",
+        2
+      ],
+      "role": "reference",
+      "mode": "upsert",
+      "order": 1,
+      "primary": false,
+      "resource_id": "",
+      "name": "",
+      "tags": "",
+      "descriptor_json": "{}",
+      "extensions_json": "{\"minimax_h3\":{\"reference\":{\"contract_version\":1,\"enabled\":true,\"purposes\":[\"unknown\"]}}}"
+    }
+  },
+  "6": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "type": "minimax",
+      "device": "default"
+    }
+  },
+  "7": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "minimax_h3_video_vae_int8_convrot.safetensors"
+    }
+  },
+  "8": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+    }
+  },
+  "9": {
+    "class_type": "MMH3H3AutoCondition",
+    "inputs": {
+      "packet": [
+        "4",
+        0
+      ],
+      "clip": [
+        "6",
+        0
+      ],
+      "video_vae": [
+        "7",
+        0
+      ],
+      "audio_vae": [
+        "8",
+        0
+      ],
+      "prompt_override": "Use <Video 1> for visual continuity. Use <Audio 1> only as a musical timing reference: follow beat, tempo, accents, phrase boundaries and energy with body motion, cuts and camera rhythm. Do not invent dialogue or force mouth articulation from vocals.",
+      "seed_override": 1247,
+      "width_override": 0,
+      "height_override": 0,
+      "frames_override": 0
+    }
+  },
+  "10": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "11": {
+    "class_type": "MiniMaxH3SigmaShift",
+    "inputs": {
+      "model": [
+        "10",
+        0
+      ],
+      "shift_video": 12.0,
+      "shift_audio": 3.0
+    }
+  },
+  "13": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": [
+        "9",
+        2
+      ]
+    }
+  },
+  "14": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "res_multistep"
+    }
+  },
+  "15": {
+    "class_type": "BasicScheduler",
+    "inputs": {
+      "model": [
+        "11",
+        0
+      ],
+      "scheduler": "simple",
+      "steps": 20,
+      "denoise": 1.0
+    }
+  },
+  "16": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "13",
+        0
+      ],
+      "guider": [
+        "12",
+        0
+      ],
+      "sampler": [
+        "14",
+        0
+      ],
+      "sigmas": [
+        "15",
+        0
+      ],
+      "latent_image": [
+        "9",
+        1
+      ]
+    }
+  },
+  "17": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "16",
+        0
+      ],
+      "vae": [
+        "7",
+        0
+      ]
+    }
+  },
+  "17v": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "images": [
+        "17",
+        0
+      ],
+      "audio": [
+        "2",
+        2
+      ],
+      "fps": 24.0,
+      "bit_depth": 8
+    }
+  },
+  "18": {
+    "class_type": "MMH3H3AudioSyncProof",
+    "inputs": {
+      "settings_json": "__MMH3_EFFECTIVE_SETTINGS_JSON__",
+      "job_json": [
+        "2",
+        3
+      ]
+    }
+  },
+  "19": {
+    "class_type": "MMH3PackH3Result",
+    "inputs": {
+      "packet": [
+        "2",
+        0
+      ],
+      "latent": [
+        "16",
+        0
+      ],
+      "video": [
+        "17v",
+        0
+      ],
+      "audio": [
+        "2",
+        2
+      ],
+      "operation": "long_video_audio_driven",
+      "mode": "audio_driven",
+      "status": [
+        "18",
+        1
+      ],
+      "process_info_json": [
+        "18",
+        0
+      ],
+      "latent_origin": "sampler_output"
+    }
+  },
+  "20": {
+    "class_type": "MMH3Save",
+    "inputs": {
+      "packet": [
+        "19",
+        0
+      ],
+      "filename_prefix": "__MMH3_FILENAME_PREFIX__",
+      "target": "output",
+      "overwrite": true
+    }
+  },
+  "21": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "video": [
+        "17v",
+        0
+      ],
+      "filename_prefix": "__MMH3_FILENAME_PREFIX__",
+      "format": "mp4"
+    }
+  },
+  "12": {
+    "class_type": "BasicGuider",
+    "inputs": {
+      "model": [
+        "11",
+        0
+      ],
+      "conditioning": [
+        "9",
+        0
+      ]
+    }
+  }
+}

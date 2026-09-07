@@ -1,0 +1,34 @@
+{
+  "1": {
+    "class_type": "MMH3Load",
+    "inputs": {
+      "file": "(none)",
+      "verify": "on_access",
+      "path_override": "C:/replace/source_long_video.mmh3"
+    }
+  },
+  "2": {
+    "class_type": "MMH3AutomationVideoChunk",
+    "inputs": {
+      "packet": [
+        "1",
+        0
+      ],
+      "plan_json": "__MMH3_PLAN_JSON__",
+      "chunk_index": 0,
+      "job_id": "__MMH3_JOB_ID__"
+    }
+  },
+  "3": {
+    "class_type": "MMH3Save",
+    "inputs": {
+      "packet": [
+        "2",
+        0
+      ],
+      "filename_prefix": "__MMH3_FILENAME_PREFIX__",
+      "target": "output",
+      "overwrite": true
+    }
+  }
+}

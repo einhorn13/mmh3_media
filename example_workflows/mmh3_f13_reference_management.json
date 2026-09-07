@@ -1,0 +1,536 @@
+{
+  "id": "f13a0c0d-5cb0-4775-93e5-315406ae5c1b",
+  "revision": 0,
+  "last_node_id": 6,
+  "last_link_id": 6,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "MMH3Create",
+      "pos": [
+        60,
+        100
+      ],
+      "size": [
+        360,
+        430
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "prompt"
+          }
+        },
+        {
+          "name": "task",
+          "type": "COMFY_DYNAMICCOMBO_V3",
+          "link": null,
+          "widget": {
+            "name": "task"
+          },
+          "label": "Generation type"
+        },
+        {
+          "name": "seed",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "seed"
+          },
+          "label": "Seed"
+        },
+        {
+          "name": "name",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "name"
+          }
+        },
+        {
+          "name": "notes",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "notes"
+          }
+        },
+        {
+          "name": "first_frame",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "last_frame",
+          "type": "IMAGE",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "links": [
+            1
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MMH3Create"
+      },
+      "widgets_values": [
+        "Keep the identity and clothing from <Picture 1> in a cinematic tracking shot.",
+        "References to video",
+        42,
+        "fixed",
+        "F13 reference management",
+        "Manifest-only reference controls and native-order preflight"
+      ]
+    },
+    {
+      "id": 2,
+      "type": "LoadImage",
+      "pos": [
+        70,
+        660.0
+      ],
+      "size": [
+        350,
+        360
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "COMBO",
+          "widget": {
+            "name": "image"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            2
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "reference.png"
+      ]
+    },
+    {
+      "id": 3,
+      "type": "MMH3Put",
+      "pos": [
+        500,
+        190
+      ],
+      "size": [
+        390,
+        430
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "link": 1
+        },
+        {
+          "name": "resource",
+          "type": "IMAGE",
+          "link": 2
+        },
+        {
+          "name": "role",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "role"
+          }
+        },
+        {
+          "name": "order",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "order"
+          }
+        },
+        {
+          "name": "mode",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "mode"
+          }
+        },
+        {
+          "name": "primary",
+          "type": "BOOLEAN",
+          "link": null,
+          "widget": {
+            "name": "primary"
+          }
+        },
+        {
+          "name": "resource_id",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "resource_id"
+          }
+        },
+        {
+          "name": "name",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "name"
+          }
+        },
+        {
+          "name": "tags",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "tags"
+          }
+        },
+        {
+          "name": "descriptor_json",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "descriptor_json"
+          }
+        },
+        {
+          "name": "extensions_json",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "extensions_json"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "links": [
+            3
+          ]
+        },
+        {
+          "name": "resource_id",
+          "type": "STRING",
+          "links": [
+            4
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MMH3Put"
+      },
+      "widgets_values": [
+        "reference",
+        0,
+        "upsert",
+        false,
+        "",
+        "",
+        "",
+        "{}",
+        "{\"minimax_h3\":{\"reference\":{\"contract_version\":1,\"enabled\":true,\"purposes\":[\"unknown\"]}}}"
+      ]
+    },
+    {
+      "id": 4,
+      "type": "MMH3ReferenceConfigure",
+      "pos": [
+        970,
+        190
+      ],
+      "size": [
+        430,
+        480
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "link": 3
+        },
+        {
+          "name": "resource_id",
+          "type": "STRING",
+          "link": 4,
+          "widget": {
+            "name": "resource_id"
+          }
+        },
+        {
+          "name": "inclusion",
+          "type": "COMBO",
+          "widget": {
+            "name": "inclusion"
+          },
+          "link": null
+        },
+        {
+          "name": "order",
+          "type": "INT",
+          "widget": {
+            "name": "order"
+          },
+          "link": null
+        },
+        {
+          "name": "purposes_json",
+          "type": "STRING",
+          "widget": {
+            "name": "purposes_json"
+          },
+          "link": null
+        },
+        {
+          "name": "binding_action",
+          "type": "COMBO",
+          "widget": {
+            "name": "binding_action"
+          },
+          "link": null
+        },
+        {
+          "name": "video_resource_id",
+          "type": "STRING",
+          "widget": {
+            "name": "video_resource_id"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "links": [
+            6
+          ]
+        },
+        {
+          "name": "resource_id",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "summary",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "info_json",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MMH3ReferenceConfigure"
+      },
+      "widgets_values": [
+        "",
+        "include",
+        -1,
+        "[\"identity\"]",
+        "keep",
+        ""
+      ]
+    },
+    {
+      "id": 6,
+      "type": "MMH3ReferenceReport",
+      "pos": [
+        1980,
+        190
+      ],
+      "size": [
+        460,
+        430
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "link": 6
+        },
+        {
+          "name": "preset",
+          "type": "COMBO",
+          "widget": {
+            "name": "preset"
+          },
+          "link": null
+        },
+        {
+          "name": "target_width_override",
+          "type": "INT",
+          "widget": {
+            "name": "target_width_override"
+          },
+          "link": null
+        },
+        {
+          "name": "target_height_override",
+          "type": "INT",
+          "widget": {
+            "name": "target_height_override"
+          },
+          "link": null
+        },
+        {
+          "name": "target_frames_override",
+          "type": "INT",
+          "widget": {
+            "name": "target_frames_override"
+          },
+          "link": null
+        },
+        {
+          "name": "ref_image_size",
+          "type": "COMBO",
+          "widget": {
+            "name": "ref_image_size"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "links": null
+        },
+        {
+          "name": "ready",
+          "type": "BOOLEAN",
+          "links": null
+        },
+        {
+          "name": "active_count",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "name": "prompt_tags_json",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "binding_map_json",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "summary",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "info_json",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "cost_json",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MMH3ReferenceReport"
+      },
+      "widgets_values": [
+        "identity",
+        768,
+        768,
+        73,
+        "match"
+      ]
+    }
+  ],
+  "links": [
+    [
+      1,
+      1,
+      0,
+      3,
+      0,
+      "MMH3_MEDIA"
+    ],
+    [
+      2,
+      2,
+      0,
+      3,
+      1,
+      "IMAGE"
+    ],
+    [
+      3,
+      3,
+      0,
+      4,
+      0,
+      "MMH3_MEDIA"
+    ],
+    [
+      4,
+      3,
+      1,
+      4,
+      1,
+      "STRING"
+    ],
+    [
+      6,
+      4,
+      0,
+      6,
+      0,
+      "MMH3_MEDIA"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}

@@ -1,0 +1,40 @@
+{
+  "1": {
+    "class_type": "MMH3AutomationAssemblyGate",
+    "inputs": {
+      "ledger_json": "__MMH3_LEDGER_JSON__"
+    }
+  },
+  "2": {
+    "class_type": "MMH3AutomationAssembleChunks",
+    "inputs": {
+      "assembly_map_json": [
+        "1",
+        0
+      ]
+    }
+  },
+  "3": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "video": [
+        "2",
+        1
+      ],
+      "filename_prefix": "mmh3_automation/audio_driven/final_preview",
+      "format": "mp4"
+    }
+  },
+  "4": {
+    "class_type": "MMH3Save",
+    "inputs": {
+      "packet": [
+        "2",
+        0
+      ],
+      "filename_prefix": "mmh3_automation/audio_driven/final",
+      "target": "output",
+      "overwrite": true
+    }
+  }
+}

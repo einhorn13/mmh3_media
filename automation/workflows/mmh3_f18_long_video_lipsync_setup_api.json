@@ -1,0 +1,76 @@
+{
+  "1": {
+    "class_type": "MMH3Load",
+    "inputs": {
+      "file": "(none)",
+      "verify": "on_access",
+      "path_override": "C:/replace/source_long_video.mmh3"
+    }
+  },
+  "2": {
+    "class_type": "MMH3LongVideoChunkPlan",
+    "inputs": {
+      "packet": [
+        "1",
+        0
+      ],
+      "chunk_duration_seconds": 8.0,
+      "overlap_seconds": 1.0,
+      "boundary_mode": "fixed",
+      "scene_cuts_json": "[]",
+      "scene_search_seconds": 1.5,
+      "min_tail_seconds": 2.0,
+      "min_tail_policy": "merge_previous",
+      "audio_sample_rate": 32000
+    }
+  },
+  "3": {
+    "class_type": "MMH3LongVideoAudioSyncSettings",
+    "inputs": {
+      "packet": [
+        "2",
+        0
+      ],
+      "chunk_plan_json": [
+        "2",
+        1
+      ],
+      "mode": "lipsync",
+      "tracks_json": "[]"
+    }
+  },
+  "4": {
+    "class_type": "MMH3AutomationLedger",
+    "inputs": {
+      "plan_json": [
+        "2",
+        1
+      ],
+      "ledger_json": "{}",
+      "action": "initialize",
+      "job_id": "",
+      "lease_id": "",
+      "operation": "long_video_lipsync",
+      "error_policy": "stop_on_error",
+      "effective_settings_json": [
+        "3",
+        0
+      ],
+      "artifact_json": "{}",
+      "packet_path": "",
+      "packet_id": "",
+      "error": "",
+      "resume_mode": "pending_and_failed"
+    }
+  },
+  "5": {
+    "class_type": "MMH3AutomationCheckpoint",
+    "inputs": {
+      "ledger_json": [
+        "4",
+        0
+      ],
+      "filename_prefix": "mmh3_automation/lipsync/ledger"
+    }
+  }
+}

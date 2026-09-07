@@ -27,9 +27,36 @@ function setValue(node, name, value) {
     return true;
 }
 
+function syncSegmentHelpers(node) {
+    const action = node.widgets?.find(item => item.name === "action")?.value;
+    // Only manage helper loaders explicitly marked by the bundled F04 workflow.
+    // User-created/shared input branches are never muted automatically.
+    for (const [input, role, enabled] of [
+        ["chain_packet", "reroll_chain", action === "Reroll accepted"],
+        ["reanchor_image", "reanchor_image", action === "Reanchor"],
+    ]) {
+        const helper = upstream(node, input);
+        if (helper?.properties?.mmh3_segment_helper !== role) continue;
+        if (role === "reanchor_image" && action === "Reroll accepted") continue;
+        helper.mode = enabled ? 0 : 2;
+    }
+    node.graph?.setDirtyCanvas(true, true);
+}
+
 app.registerExtension({
     name: "mmh3.media.segments",
     nodeCreated(node) {
+        if (node.comfyClass === "MMH3H3SegmentPrepare") {
+            const action = node.widgets?.find(item => item.name === "action");
+            if (action) {
+                const changed = action.callback;
+                action.callback = function(...args) {
+                    const result = changed?.apply(this, args);
+                    syncSegmentHelpers(node);
+                    return result;
+                };
+            }
+        }
         if (summaries.has(node.comfyClass)) {
             const text = document.createElement("div");
             text.setAttribute("role", "status");

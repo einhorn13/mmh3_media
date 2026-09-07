@@ -1,0 +1,361 @@
+{
+  "id": "5481f3de-684c-5c70-9337-f16f753af070",
+  "revision": 0,
+  "last_node_id": 3,
+  "last_link_id": 2,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "MMH3Create",
+      "pos": [
+        90,
+        110
+      ],
+      "size": [
+        360,
+        430
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "prompt"
+          }
+        },
+        {
+          "name": "task",
+          "type": "COMFY_DYNAMICCOMBO_V3",
+          "link": null,
+          "widget": {
+            "name": "task"
+          },
+          "label": "Generation type"
+        },
+        {
+          "name": "seed",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "seed"
+          },
+          "label": "Seed"
+        },
+        {
+          "name": "name",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "name"
+          }
+        },
+        {
+          "name": "notes",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "notes"
+          }
+        },
+        {
+          "name": "first_frame",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "last_frame",
+          "type": "IMAGE",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "links": [
+            1
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MMH3Create"
+      },
+      "widgets_values": [
+        "A cinematic landscape.",
+        "Video (optional frames)",
+        42,
+        "fixed",
+        "F15 generation preflight",
+        "Manifest and runtime capability check before heavy model loading."
+      ]
+    },
+    {
+      "id": 2,
+      "type": "MMH3Metadata",
+      "pos": [
+        90,
+        680.0
+      ],
+      "size": [
+        360,
+        260
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "link": 1
+        },
+        {
+          "name": "name",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "name"
+          }
+        },
+        {
+          "name": "tags_action",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "tags_action"
+          }
+        },
+        {
+          "name": "tags",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "tags"
+          }
+        },
+        {
+          "name": "notes_action",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "notes_action"
+          }
+        },
+        {
+          "name": "notes",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "notes"
+          }
+        },
+        {
+          "name": "custom_json_merge_patch",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "custom_json_merge_patch"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "links": [
+            2
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MMH3Metadata"
+      },
+      "widgets_values": [
+        "",
+        "keep",
+        "",
+        "keep",
+        "",
+        "{\"generation\":{\"width\":1344,\"height\":768,\"frames\":124,\"fps\":24}}"
+      ]
+    },
+    {
+      "id": 3,
+      "type": "MMH3Preflight",
+      "pos": [
+        1090,
+        110
+      ],
+      "size": [
+        360,
+        364
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "link": 2
+        },
+        {
+          "name": "operation",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "operation"
+          }
+        },
+        {
+          "name": "unknown_loras",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "unknown_loras"
+          }
+        },
+        {
+          "name": "verify_runtime_nodes",
+          "type": "BOOLEAN",
+          "link": null,
+          "widget": {
+            "name": "verify_runtime_nodes"
+          }
+        },
+        {
+          "name": "verify_lora_files",
+          "type": "BOOLEAN",
+          "link": null,
+          "widget": {
+            "name": "verify_lora_files"
+          }
+        },
+        {
+          "name": "required_nodes_json",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "required_nodes_json"
+          }
+        },
+        {
+          "name": "generation_mode",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "generation_mode"
+          }
+        },
+        {
+          "name": "model_family",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "model_family"
+          }
+        },
+        {
+          "name": "checkpoint_name",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "checkpoint_name"
+          }
+        },
+        {
+          "name": "allow_experimental_model_family",
+          "type": "BOOLEAN",
+          "link": null,
+          "widget": {
+            "name": "allow_experimental_model_family"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "ready",
+          "type": "BOOLEAN",
+          "links": null
+        },
+        {
+          "name": "summary",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "info_json",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MMH3Preflight"
+      },
+      "widgets_values": [
+        "generate",
+        "error",
+        true,
+        true,
+        "[]",
+        "auto",
+        "fl2va",
+        "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+        false
+      ]
+    }
+  ],
+  "links": [
+    [
+      1,
+      1,
+      0,
+      2,
+      0,
+      "MMH3_MEDIA"
+    ],
+    [
+      2,
+      2,
+      0,
+      3,
+      0,
+      "MMH3_MEDIA"
+    ]
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "title": "01 · PACKET INPUT",
+      "bounding": [
+        55,
+        55,
+        430,
+        1030.0
+      ],
+      "color": "#355070",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 3,
+      "title": "02 · VALIDATION / REPORT",
+      "bounding": [
+        1055,
+        55,
+        430,
+        454
+      ],
+      "color": "#6d597a",
+      "font_size": 24,
+      "flags": {}
+    }
+  ],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}
