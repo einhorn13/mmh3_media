@@ -517,10 +517,17 @@ def migrate_api(prompt: dict[str, Any]) -> set[str]:
 
 def main(argv: Iterable[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Repair checked-in MMH3 UI/API workflow contracts.")
-    parser.add_argument("workflow_root", nargs="?", type=Path, default=Path(__file__).resolve().parent / "example_workflows")
+    parser.add_argument("workflow_root", nargs="*", type=Path)
     parser.add_argument("--write", action="store_true", help="Write migrations. Without this flag the command is a dry run.")
     args = parser.parse_args(list(argv) if argv is not None else None)
-    changed, totals = migrate_directory(args.workflow_root, write=args.write)
+    base = Path(__file__).resolve().parent
+    roots = tuple(args.workflow_root) if args.workflow_root else (base / "example_workflows", base / "automation" / "workflows", base / "tests" / "fixtures" / "workflows")
+    changed = 0
+    totals: dict[str, int] = {}
+    for root in roots:
+        count, partial = migrate_directory(root, write=args.write)
+        changed += count
+        for key, value in partial.items(): totals[key] = totals.get(key, 0) + value
     mode = "written" if args.write else "dry-run"
     details = " ".join(f"{name}={count}" for name, count in sorted(totals.items()))
     print(f"workflow_migration={mode} files={changed}" + (f" {details}" if details else ""))

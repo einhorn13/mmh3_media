@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 
-RUNTIME_ROOT_FILES = ("__init__.py", "requirements.txt", "README.md")
+RUNTIME_ROOT_FILES = ("__init__.py", "requirements.txt", "README.md", "automation_runner.py")
 RUNTIME_DOC_FILES = ("docs/MMH3_MEDIA_v0.3.md", "docs/H3_LATENT_CONTRACT_V2.md", "docs/WORKFLOWS.md")
 EXPORT_EXCLUDED_DIRECTORIES = {"dist", "trash"}
 EXPORT_EXCLUDED_SUFFIXES = {".pyc", ".pyo"}
@@ -58,6 +58,7 @@ def collect_package_files(root: str | Path, *, mode: str) -> tuple[Path, ...]:
         files |= _tree(source_root, "web", {".js"})
         files |= _tree(source_root, "schema", {".json"})
         files |= _tree(source_root, "example_workflows", {".json"})
+        files |= _tree(source_root, "automation/workflows", {".json", ".md"})
 
     missing = [path for path in files if not (source_root / path).is_file()]
     if missing:

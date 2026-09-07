@@ -283,10 +283,17 @@ def migrate_directory(root: Path, *, write: bool) -> tuple[int, dict[str, int]]:
 
 def main(argv: Iterable[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Migrate MMH3 Metadata consumers to the descriptive-only node contract.")
-    parser.add_argument("workflow_root", nargs="?", type=Path, default=Path(__file__).resolve().parent / "example_workflows")
+    parser.add_argument("workflow_root", nargs="*", type=Path)
     parser.add_argument("--write", action="store_true")
     args = parser.parse_args(list(argv) if argv is not None else None)
-    changed, totals = migrate_directory(args.workflow_root, write=args.write)
+    base = Path(__file__).resolve().parent
+    roots = tuple(args.workflow_root) if args.workflow_root else (base / "example_workflows", base / "automation" / "workflows", base / "tests" / "fixtures" / "workflows")
+    changed = 0
+    totals: dict[str, int] = {}
+    for root in roots:
+        count, partial = migrate_directory(root, write=args.write)
+        changed += count
+        for key, value in partial.items(): totals[key] = totals.get(key, 0) + value
     mode = "written" if args.write else "dry-run"
     print(f"metadata_workflow_migration={mode} files={changed} " + " ".join(f"{key}={value}" for key, value in sorted(totals.items())))
     return 0

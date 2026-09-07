@@ -597,7 +597,7 @@ def review_directory(
 
 def main(argv: Iterable[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Static MMH3 UI/API workflow review without starting ComfyUI.")
-    parser.add_argument("workflow_root", nargs="?", type=Path, default=Path(__file__).resolve().parent / "example_workflows")
+    parser.add_argument("workflow_root", nargs="*", type=Path, help="Workflow directories. Defaults to UI, automation API, and test-fixture catalogs.")
     parser.add_argument("--ui-only", action="store_true", help="Review user-facing UI workflows and skip *_api.json files.")
     parser.add_argument(
         "--object-info-url",
@@ -615,12 +615,20 @@ def main(argv: Iterable[str] | None = None) -> int:
         if not isinstance(node_schemas, dict):
             print("runtime object_info root must be an object")
             return 2
-    issues = review_directory(args.workflow_root, node_schemas=node_schemas, ui_only=args.ui_only)
+    base = Path(__file__).resolve().parent
+    roots = tuple(args.workflow_root) if args.workflow_root else (
+        base / "example_workflows",
+        base / "automation" / "workflows",
+        base / "tests" / "fixtures" / "workflows",
+    )
+    issues = []
+    for root in roots:
+        issues.extend(review_directory(root, node_schemas=node_schemas, ui_only=args.ui_only))
     if issues:
         for issue in issues:
             print(issue)
         return 1
-    paths = list(args.workflow_root.glob("mmh3_*.json"))
+    paths = [path for root in roots for path in root.glob("mmh3_*.json")]
     if args.ui_only:
         paths = [path for path in paths if not path.name.endswith("_api.json")]
     runtime = " runtime_schema=checked" if node_schemas is not None else ""
