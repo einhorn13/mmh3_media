@@ -329,6 +329,26 @@ def build_control_configuration(
         raise MMH3ResourceError("The opt-in 'auto' algorithm requires a non-empty selection_reason")
     if kind not in H3_CONTROL_KIND_OPTIONS:
         raise MMH3ResourceError(f"Unsupported control kind {kind!r}; expected one of {H3_CONTROL_KIND_OPTIONS}")
+    preprocessor_label = _clean_text(preprocessor_name).lower()
+    if preprocessor_label.startswith("external_"):
+        declared_preprocessor_kind = preprocessor_label[len("external_"):]
+        if declared_preprocessor_kind in H3_CONTROL_KINDS:
+            if kind == "inpaint":
+                if declared_preprocessor_kind != "pose":
+                    raise MMH3ResourceError(
+                        f"Inpaint supplemental control supports only Pose; preprocessor {preprocessor_name!r} "
+                        f"declares {declared_preprocessor_kind!r}"
+                    )
+                if not _clean_text(control_video_resource_id):
+                    raise MMH3ResourceError(
+                        "Inpaint Pose provenance requires an explicit control_video resource ID; "
+                        "leave Pose provenance blank when supplemental Pose is disabled"
+                    )
+            elif kind != declared_preprocessor_kind:
+                raise MMH3ResourceError(
+                    f"Control preprocessor {preprocessor_name!r} declares {declared_preprocessor_kind!r}, "
+                    f"but control_kind={kind!r}; select matching provenance instead of silently changing mode"
+                )
     if temporal not in H3_CONTROL_TEMPORAL_POLICIES:
         raise MMH3ResourceError(
             f"Unsupported temporal policy {temporal!r}; expected one of {H3_CONTROL_TEMPORAL_POLICIES}"

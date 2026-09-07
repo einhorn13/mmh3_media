@@ -22,10 +22,20 @@ from .control_provider import (
     build_control_apply_plan,
     build_control_pass_through_info,
     build_h3_control_expansion,
+    h3_fun_control_video_required,
     materialize_control_video,
     validate_masked_edit_inputs,
 )
+from .h3_fun_model_patch import (
+    CURRENT_BACKEND,
+    CURRENT_PROVIDER,
+    apply_current_h3_fun_patch,
+    available_h3_fun_checkpoints,
+    load_current_h3_fun_patch,
+    current_patch_preflight_info,
+)
 from .node_support import CATEGORY, MMH3, MMH3ResourceError, _packet, _parse_object, folder_paths, hashlib, io, json, ui
+from .util import json_dumps_canonical
 
 
 _CONCRETE_ALGORITHMS = tuple(item for item in H3_CONTROL_ALGORITHMS if item != "auto")
@@ -477,3 +487,127 @@ class MMH3H3ControlApply(io.ComfyNode):
             json.dumps(info, ensure_ascii=False, indent=2),
             expand=expansion.graph,
         )
+
+
+class MMH3H3FunControl(io.ComfyNode):
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        checkpoints = available_h3_fun_checkpoints(folder_paths) or ["minimax_h3_fun_controlnet_union_pruned_int8_convrot.safetensors"]
+        return io.Schema(
+            node_id="MMH3H3FunControl",
+            display_name="MMH3 H3 Fun Control",
+            category=CATEGORY,
+            description=(
+                "High-level F16 owner for the current upstream MiniMax H3 Fun MODEL_PATCH contract (PR #15975). "
+                "Loads the control patch, verifies live checkpoint/base compatibility, aligns strict control inputs, "
+                "patches MODEL, and emits canonical MMH3 control provenance. Checkpoints are resolved from "
+                "models/model_patches first, then models/controlnet."
+            ),
+            inputs=[
+                MMH3.Input("packet"),
+                io.Model.Input("model"),
+                io.Vae.Input("vae"),
+                io.Combo.Input("control_checkpoint", options=checkpoints),
+                io.Int.Input("width", default=1344, min=32, max=16384, step=32),
+                io.Int.Input("height", default=768, min=32, max=16384, step=32),
+                io.Int.Input("target_frames", default=124, min=5, max=3600, step=17),
+                io.Image.Input(
+                    "control_video", optional=True, lazy=True,
+                    tooltip=(
+                        "Lazy structural control input. For inpaint this is an optional supplemental Pose stream; "
+                        "it is requested only when control_video_resource_id is configured."
+                    ),
+                ),
+                io.Mask.Input("mask", optional=True),
+                io.Image.Input("source_video", optional=True),
+            ],
+            outputs=[
+                io.Model.Output("model"),
+                MMH3.Output("packet"),
+                io.String.Output("summary"),
+                io.String.Output("process_info_json"),
+            ],
+        )
+
+    @classmethod
+    def check_lazy_status(
+        cls, packet, model=None, vae=None, control_checkpoint: str = "", width: int = 1344,
+        height: int = 768, target_frames: int = 124, control_video=None, mask=None, source_video=None,
+    ) -> list[str]:
+        """Request the expensive control-video branch only when the configured contract needs it."""
+        config = get_control_configuration(_packet(packet))
+        if config is None:
+            return []
+        if h3_fun_control_video_required(config) and control_video is None:
+            return ["control_video"]
+        return []
+
+    @classmethod
+    def execute(
+        cls, packet, model, vae, control_checkpoint: str, width: int, height: int, target_frames: int,
+        control_video=None, mask=None, source_video=None,
+    ) -> io.NodeOutput:
+        packet = _packet(packet)
+        config = get_control_configuration(packet)
+        if config is None:
+            raise MMH3ResourceError("Packet has no F16 control configuration; run MMH3 Control Configure first")
+        if config.effective_algorithm not in ("fun_controlnet_union_bf16", "fun_controlnet_union_int8_convrot"):
+            raise MMH3ResourceError(
+                f"MMH3 H3 Fun Control requires a Fun Control algorithm, got {config.effective_algorithm!r}"
+            )
+        if int(width) % 32 or int(height) % 32:
+            raise MMH3ResourceError("H3 Fun control width and height must be exact multiples of 32")
+        if int(target_frames) < 5 or (int(target_frames) - 5) % 17:
+            raise MMH3ResourceError("H3 Fun control target_frames must follow the 17n+5 grid")
+
+        if config.strength == 0.0:
+            info = build_control_pass_through_info(config)
+            info["backend"] = CURRENT_BACKEND
+            return io.NodeOutput(
+                model, packet,
+                f"F16 control pass-through · algorithm={config.effective_algorithm} strength=0",
+                json.dumps(info, ensure_ascii=False, indent=2),
+            )
+
+        # Reuse the packet's temporal policy and strict geometry checks before the runtime patch owns any model state.
+        from .control_provider import H3ControlApplyPlan, control_provider_for_algorithm, prepare_control_inputs
+        adapter = control_provider_for_algorithm(config.effective_algorithm)
+        provisional = H3ControlApplyPlan(
+            adapter=adapter, config=config, capability_fingerprint="",
+            target_width=int(width), target_height=int(height), target_frames=int(target_frames),
+            pass_through=False, capability={},
+        )
+        control_video, mask, source_video = prepare_control_inputs(
+            provisional, control_video=control_video, mask=mask, source_video=source_video
+        )
+
+        loaded = load_current_h3_fun_patch(folder_paths, control_checkpoint, model)
+        expected_quant = "bf16" if config.effective_algorithm.endswith("_bf16") else "int8_convrot"
+        if loaded.quantization != expected_quant:
+            raise MMH3ResourceError(
+                f"Selected algorithm requires {expected_quant}, but checkpoint runtime detected {loaded.quantization}"
+            )
+        if config.control_kind == "inpaint" and loaded.control_in_dim != 49:
+            raise MMH3ResourceError(
+                f"H3 Fun inpaint requires control_in_dim=49; checkpoint exposes {loaded.control_in_dim}"
+            )
+
+        patched = apply_current_h3_fun_patch(
+            model, loaded, vae,
+            control_video=control_video, mask=mask, source_video=source_video,
+            strength=config.strength, start_percent=config.start_percent, end_percent=config.end_percent,
+        )
+
+        preflight = current_patch_preflight_info(
+            config, loaded, width=int(width), height=int(height), frames=int(target_frames)
+        )
+        plan = build_control_apply_plan(config, preflight)
+        info = plan.to_dict()
+        info["backend"] = CURRENT_BACKEND
+        info["checkpoint"] = loaded.filename
+        info["checkpoint_source_folder"] = loaded.source_folder
+        summary = (
+            f"F16 H3 Fun MODEL_PATCH applied · kind={config.control_kind} strength={config.strength:g} "
+            f"checkpoint={loaded.filename} capability={plan.capability_fingerprint[:12]}"
+        )
+        return io.NodeOutput(patched, packet, summary, json.dumps(info, ensure_ascii=False, indent=2))

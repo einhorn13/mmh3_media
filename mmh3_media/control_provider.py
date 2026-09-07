@@ -19,7 +19,7 @@ from .control_contract import (
 from .control_preflight import H3_CONTROL_APPLY_NODE_ID
 from .core import MMH3Media
 from .errors import MMH3ResourceError
-from .h3_resource_semantics import control_usage
+from .h3_resource_semantics import control_resource_kind, control_usage
 from .util import deep_copy_json, json_dumps_canonical
 
 
@@ -122,6 +122,21 @@ def control_provider_for_algorithm(algorithm: str) -> H3ControlProviderAdapter:
         raise MMH3ResourceError(
             f"Algorithm {algorithm!r} has no H3 ControlNet provider adapter; expected one of {H3_CONTROLNET_ALGORITHMS}"
         ) from exc
+
+
+def h3_fun_control_video_required(config: H3ControlConfiguration) -> bool:
+    """Return whether the high-level H3 Fun owner must materialize structural control video.
+
+    Structural-only control modes always require it. Inpaint owns mask/source-video as its
+    primary contract and requests a supplemental structural stream only when a resource ID
+    is explicitly configured. The only currently accepted supplemental kind is Pose, which
+    is validated when that resource is materialized.
+    """
+    if not isinstance(config, H3ControlConfiguration):
+        raise MMH3ResourceError("Expected an immutable H3ControlConfiguration")
+    if config.control_kind == "inpaint":
+        return bool(str(config.control_video_resource_id or "").strip())
+    return True
 
 
 def _capability_fingerprint(capability: Mapping[str, Any]) -> str:
@@ -338,6 +353,30 @@ def materialize_control_video(
         raise MMH3ResourceError(
             f"Control resource {selected_id!r} is {descriptor.get('role')}/{descriptor.get('kind')} with H3 usage {actual_usage!r}, expected usage={usage!r}/video"
         )
+    if usage == "control_video":
+        declared_kind = control_resource_kind(descriptor)
+        if declared_kind is None:
+            expected = "pose" if config.control_kind == "inpaint" else config.control_kind
+            raise MMH3ResourceError(
+                f"Control resource {selected_id!r} has no structural control_kind metadata; "
+                f"declare {expected!r} in extensions.minimax_h3.control.control_kind"
+            )
+        if config.control_kind == "inpaint":
+            if declared_kind != "pose":
+                raise MMH3ResourceError(
+                    f"Inpaint supplemental control supports only Pose, but resource {selected_id!r} "
+                    f"declares control_kind={declared_kind!r}"
+                )
+        elif config.control_kind in ("canny", "depth", "hed", "mlsd", "pose"):
+            if declared_kind != config.control_kind:
+                raise MMH3ResourceError(
+                    f"Control resource {selected_id!r} declares control_kind={declared_kind!r}, "
+                    f"but MMH3 Control Configure selected {config.control_kind!r}; hidden mode substitution is forbidden"
+                )
+        else:
+            raise MMH3ResourceError(
+                f"Control video resource {selected_id!r} is not legal for control_kind={config.control_kind!r}"
+            )
     try:
         target_fps_value = float(target_fps)
     except (TypeError, ValueError) as exc:
@@ -366,7 +405,7 @@ def materialize_control_video(
     return MaterializedControlVideo(
         output,
         selected_id,
-        role,
+        str(descriptor.get("role") or "control"),
         source_fps,
         target_fps_value,
         int(frames.shape[0]),

@@ -378,11 +378,22 @@ def build_chunk_assembly_map(ledger: Mapping[str, Any]) -> dict[str, Any]:
     expected_end = int(excluded["start_frame"]) if excluded else total_frames
     if expected_frame != expected_end:
         raise MMH3ResourceError("Chunk assembly does not cover the declared output timeline")
+
+    effective_settings = ledger["effective_settings"]
+    mode = None
+    if effective_settings.get("contract") == "mmh3_long_video_audio_sync_settings_v2":
+        mode = str(effective_settings.get("mode") or "")
+        if mode not in {"audio_driven", "lipsync"}:
+            raise MMH3ResourceError("Audio-sync assembly settings contain an unsupported mode")
+        if ledger.get("operation") != f"long_video_{mode}":
+            raise MMH3ResourceError("Audio-sync assembly operation does not match the frozen settings mode")
+
     return {
         "contract": "mmh3_chunk_assembly_map_v1",
         "plan_sha256": ledger["plan_sha256"],
         "operation": ledger["operation"],
-        "effective_settings": deep_copy_json(ledger["effective_settings"]),
+        "mode": mode,
+        "effective_settings": deep_copy_json(effective_settings),
         "effective_settings_sha256": ledger["effective_settings_sha256"],
         "segments": segments,
         "output_frames": expected_frame,

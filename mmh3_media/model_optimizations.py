@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Any, Callable, Mapping, Sequence
 
 from .errors import MMH3ResourceError
 from .util import deep_copy_json
+from .vdn_optimization import build_vdn_settings, validate_vdn_sampling_profile
 
 
 MODEL_OPTIMIZATION_CONTRACT = "mmh3_h3_model_optimizations_v1"
@@ -14,8 +16,10 @@ ATTENTION_MODES = (
     "comfy_kitchen",
     "sage_attention_kj",
     "sol_attn",
+    "sol_native",
     "h3_sla",
     "h3_sla_sol_attn",
+    "vdn_h3",
 )
 FP16_ACCUMULATION_MODES = ("inherit", "enabled", "disabled")
 ATTENTION_NODE_IDS = {
@@ -23,7 +27,9 @@ ATTENTION_NODE_IDS = {
     "comfy_kitchen": "ModelAttentionBackend",
     "sage_attention_kj": "PatchSageAttentionKJ",
     "sol_attn": "SolAttnPatch",
+    "sol_native": "BlockSparseAttention",
     "h3_sla": "MMH3H3SLAApply",
+    "vdn_h3": "MMH3H3VDNApply",
 }
 FP16_PATCH_NODE_ID = "MMH3H3FP16AccumulationPatch"
 
@@ -98,12 +104,23 @@ def build_model_optimization_plan(
     sol_int8_qk: bool = True,
     sol_sink_conditioning: str = "exact_kv_and_rows",
     sol_dense_blocks: str = "",
-    sla_sparsity_ratio: float = 0.85,
+    sol_extra_tokens: int = 256,
+    sla_sparsity_ratio: float = 0.90,
     sla_block_size: str = "64",
-    sla_min_seq_len: int = 8192,
-    sla_dense_last_steps: int = 0,
+    sla_min_seq_len: int = 4096,
+    sla_dense_last_steps: int = 1,
     sla_protect_audio: bool = True,
     sla_dense_backend: str = "comfy_kitchen",
+    vdn_task_family: str = "fl2va",
+    vdn_checkpoint: str = "stage-dmd-step-250",
+    vdn_apply_turbo_adapter: bool = True,
+    vdn_strength: float = 1.0,
+    vdn_lora_mode: str = "merge",
+    vdn_branch_weights: str = "auto",
+    vdn_retain_buffers: str = "auto",
+    vdn_attention_backend: str = "grouped",
+    vdn_verbose: bool = False,
+    sampling_profile: Mapping[str, Any] | None = None,
 ) -> ModelOptimizationPlan:
     if not enabled:
         return ModelOptimizationPlan(False, "inherit", "inherit", {})
@@ -115,7 +132,7 @@ def build_model_optimization_plan(
     attention: dict[str, Any] = {}
     if attention_mode == "sage_attention_kj":
         attention = {"sage_mode": str(sage_mode), "allow_compile": bool(sage_allow_compile)}
-    if attention_mode in {"sol_attn", "h3_sla_sol_attn"}:
+    if attention_mode in {"sol_attn", "sol_native", "h3_sla_sol_attn"}:
         if not 0 <= sol_start_percent <= sol_end_percent <= 1:
             raise MMH3ResourceError("Sol-Attn requires 0 <= start <= end <= 1")
         if sol_sink_conditioning not in {"exact_kv", "exact_kv_and_rows", "off"}:
@@ -130,6 +147,29 @@ def build_model_optimization_plan(
             "dense_blocks": str(sol_dense_blocks),
         }
         attention = {"sol_attn": sol_settings} if attention_mode == "h3_sla_sol_attn" else sol_settings
+        if attention_mode == "sol_native":
+            if int(sol_extra_tokens) not in {0, 64, 128, 192, 256}:
+                raise MMH3ResourceError("Native Sol extra tokens must be 0, 64, 128, 192 or 256")
+            if any(part.strip() and not re.fullmatch(r"\s*\d+\s*(?:-\s*\d+\s*)?", part)
+                   for part in str(sol_dense_blocks).split(",")):
+                raise MMH3ResourceError("Native Sol requires non-negative dense block indices")
+            attention.pop("int8_qk")
+            attention["extra_tokens"] = int(sol_extra_tokens)
+    if attention_mode == "vdn_h3":
+        vdn = build_vdn_settings(
+            task_family=vdn_task_family,
+            checkpoint=vdn_checkpoint,
+            apply_turbo_adapter=vdn_apply_turbo_adapter,
+            strength=vdn_strength,
+            lora_mode=vdn_lora_mode,
+            branch_weights=vdn_branch_weights,
+            retain_buffers=vdn_retain_buffers,
+            attention_backend=vdn_attention_backend,
+            verbose=vdn_verbose,
+        )
+        validated_sampling = validate_vdn_sampling_profile(vdn, sampling_profile)
+        attention = vdn.to_dict()
+        attention["sampling"] = validated_sampling
     if attention_mode in {"h3_sla", "h3_sla_sol_attn"}:
         sla_settings = {
             "sparsity_ratio": float(sla_sparsity_ratio),
@@ -210,6 +250,18 @@ def build_model_optimization_expansion(
                 allow_compile=settings["allow_compile"],
             )
             current_model = sage.out(0)
+        elif stage == "sol_native":
+            native_settings = dict(settings)
+            tau = native_settings.pop("tau")
+            sol = graph.node(
+                "BlockSparseAttention",
+                model=current_model,
+                selection="Sol-Attn (adaptive tau)",
+                **{"selection.tau": tau},
+                **native_settings,
+                verbose=False,
+            )
+            current_model = sol.out(0)
         elif stage == "sol_attn":
             sol = graph.node(
                 "SolAttnPatch",
@@ -221,6 +273,22 @@ def build_model_optimization_expansion(
                 use_tma=False,
             )
             current_model = sol.out(0)
+        elif stage == "vdn_h3":
+            vdn = graph.node(
+                "MMH3H3VDNApply",
+                model=current_model,
+                task_family=settings["task_family"],
+                vdn_checkpoint=settings["checkpoint"],
+                apply_turbo_adapter=settings["apply_turbo_adapter"],
+                strength=settings["strength"],
+                lora_mode=settings["lora_mode"],
+                branch_weights=settings["branch_weights"],
+                retain_buffers=settings["retain_buffers"],
+                attention_backend=settings["attention_backend"],
+                verbose=settings["verbose"],
+                sampling_profile_json=__import__("json").dumps(settings["sampling"], ensure_ascii=False),
+            )
+            current_model = vdn.out(0)
         elif stage == "h3_sla":
             sla = graph.node(
                 "MMH3H3SLAApply",

@@ -601,6 +601,8 @@ class MMH3H3RefineLoRAs(io.ComfyNode):
                 io.Combo.Input("missing_policy", options=["error", "skip_missing"], default="error"),
                 io.String.Input("turbo_override", default="", optional=True, advanced=True,
                                 tooltip="Replace only source acceleration LoRAs with this model-only LoRA at strength 1."),
+                io.Combo.Input("acceleration_policy", options=["preserve", "drop"], default="preserve", optional=True, advanced=True,
+                               tooltip="drop removes source Turbo/PDD/FastH3 acceleration adapters but preserves creative/style/content LoRAs. Required when changing to a trajectory-owning architecture such as VDN."),
             ],
             outputs=[
                 io.Model.Output("model"),
@@ -622,11 +624,18 @@ class MMH3H3RefineLoRAs(io.ComfyNode):
         unknown_policy: str,
         missing_policy: str,
         turbo_override: str = "",
+        acceleration_policy: str = "preserve",
     ) -> io.NodeOutput:
         packet = _packet(packet)
-        from .upscale_overrides import replace_upscale_turbo
+        from .upscale_overrides import drop_upscale_acceleration_loras, replace_upscale_turbo
         turbo_override = turbo_override.strip().replace('\\', '/')
-        if turbo_override:
+        if acceleration_policy not in {"preserve", "drop"}:
+            raise MMH3ResourceError(f"Unknown acceleration_policy {acceleration_policy!r}")
+        if turbo_override and acceleration_policy == "drop":
+            raise MMH3ResourceError("turbo_override cannot be combined with acceleration_policy='drop'")
+        if acceleration_policy == "drop":
+            packet = drop_upscale_acceleration_loras(packet)
+        elif turbo_override:
             packet = replace_upscale_turbo(packet, turbo_override)
         recorded = get_generation_loras(packet) or ()
         wanted_hash_names = {
@@ -665,6 +674,7 @@ class MMH3H3RefineLoRAs(io.ComfyNode):
         info["operation"] = "high_sigma_refine_lora_reapply"
         if turbo_override:
             info['turbo_override'] = turbo_override
+        info['acceleration_policy'] = acceleration_policy
         applied_loras = [
             {key: value for key, value in entry.items() if key != "source_index"}
             for entry in plan.applied

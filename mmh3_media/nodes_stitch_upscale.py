@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from .nodes_optimization import h3_optimization_inputs
 from .node_support import CATEGORY, MMH3, MMH3ResourceError, _packet, io, ui
 from .stitch_upscale import (DEFAULT_UPSCALER, UPSCALER_NODE, UPSCALE_ASPECTS,
     build_stitch_upscale_expansion, restore_upscale_av, resolve_stitch_upscale_geometry)
@@ -42,6 +43,9 @@ class MMH3H3StitchUpscale(io.ComfyNode):
                 io.Combo.Input('turbo_override', options=['Source'] + folder_paths.get_filename_list('loras'),
                                default='Source', optional=True, advanced=True,
                                tooltip='Upscale-only Turbo LoRA at strength 1. Replaces source acceleration adapters; other LoRAs retain their order and strengths. Match the model family. Sampler/AV shifts remain from source.'),
+                *h3_optimization_inputs(optional=True),
+                io.Boolean.Input('force_unload', default=True, advanced=True, optional=True,
+                                 tooltip='Unload the learned upscaler after each part to save VRAM. Disable only with enough memory.'),
             ],
             outputs=[MMH3.Output('packet'), io.Video.Output('video'), io.Latent.Output('latent'),
                      io.String.Output('assembly_report_json')], enable_expand=True,
@@ -49,7 +53,8 @@ class MMH3H3StitchUpscale(io.ComfyNode):
 
     @classmethod
     def execute(cls, segments, clip, video_vae, audio_vae, resolution, denoise, upscaler_model,
-                fl2va_model=None, ref2va_model=None, steps_override=0, manual_sigmas='', turbo_override='Source'):
+                fl2va_model=None, ref2va_model=None, steps_override=0, manual_sigmas='', turbo_override='Source',
+                attention='Default', fp16_accumulation='Default', force_unload=True):
         packets = [_packet(segments[key]) for key in sorted(segments, key=lambda key: int(key.rsplit('_', 1)[1]))
                    if segments[key] is not None]
         import nodes
@@ -65,7 +70,8 @@ class MMH3H3StitchUpscale(io.ComfyNode):
             models={'fl2va': fl2va_model, 'ref2va': ref2va_model}, clip=clip,
             video_vae=video_vae, audio_vae=audio_vae, upscaler_model=upscaler_model,
             steps_override=steps_override, manual_sigmas=manual_sigmas,
-            turbo_override='' if turbo_override == 'Source' else turbo_override)
+            turbo_override='' if turbo_override == 'Source' else turbo_override,
+            attention=attention, fp16_accumulation=fp16_accumulation, force_unload=force_unload)
         summary = f'{plan.source_width}×{plan.source_height} → {summary}'
         if plan.warnings:
             summary += '\n' + '\n'.join(plan.warnings)

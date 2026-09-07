@@ -11,14 +11,27 @@ from .fasth3 import FASTH3_PROFILE
 STANDARD_PROFILE = "standard (20 steps)"
 TURBO_4_PROFILE = "turbo (4 steps)"
 TURBO_8_PROFILE = "turbo (8 steps)"
+VDN_DMD_PROFILE = "vdn-h3 dmd (8 steps)"
+VDN_STAGE_B_PROFILE = "vdn-h3 stage-b (50 steps)"
 CUSTOM_PROFILE = "custom"
 SAMPLING_PRESET_CONTRACT = "mmh3_h3_sampling_preset_v2"
-SAMPLING_PROFILES = (STANDARD_PROFILE, TURBO_4_PROFILE, TURBO_8_PROFILE, FASTH3_PROFILE, CUSTOM_PROFILE)
+SAMPLING_PROFILE_ATTACHMENT = "mmh3_sampling_profile"
+SAMPLING_ADAPTER_ATTACHMENT = "mmh3_sampling_adapter"
+SAMPLING_PROFILES = (
+    STANDARD_PROFILE,
+    TURBO_4_PROFILE,
+    TURBO_8_PROFILE,
+    FASTH3_PROFILE,
+    VDN_DMD_PROFILE,
+    VDN_STAGE_B_PROFILE,
+    CUSTOM_PROFILE,
+)
 PROFILE_PRESETS: dict[str, dict[str, Any]] = {
     FASTH3_PROFILE: {
         "steps": 6, "video_shift": 12.0, "audio_shift": 3.0,
         "sampler": "res_multistep", "scheduler": "simple",
         "sigma_preset": "scheduler_generated", "runtime_validated": False,
+        "trajectory": "fasth3_dense_6",
     },
     STANDARD_PROFILE: {
         "steps": 20,
@@ -28,6 +41,32 @@ PROFILE_PRESETS: dict[str, dict[str, Any]] = {
         "scheduler": "simple",
         "sigma_preset": "scheduler_generated",
         "runtime_validated": True,
+        "trajectory": "h3_base_20",
+    },
+    # VDN is an architecture/trajectory pair, not a generic attention backend.  These
+    # presets intentionally do NOT load ordinary H3 Turbo LoRAs.  ApplyVDNH3 owns the
+    # released VDN trajectory adapter for the DMD path.
+    VDN_DMD_PROFILE: {
+        "steps": 8,
+        "video_shift": 12.0,
+        "audio_shift": 3.0,
+        "sampler": "res_multistep",
+        "scheduler": "simple",
+        "sigma_preset": "scheduler_generated",
+        "runtime_validated": False,
+        "trajectory": "vdn_dmd8",
+        "vdn_required": True,
+    },
+    VDN_STAGE_B_PROFILE: {
+        "steps": 50,
+        "video_shift": 12.0,
+        "audio_shift": 3.0,
+        "sampler": "res_multistep",
+        "scheduler": "simple",
+        "sigma_preset": "scheduler_generated",
+        "runtime_validated": False,
+        "trajectory": "vdn_stage_b50",
+        "vdn_required": True,
     },
 }
 TURBO_RECIPES: dict[str, dict[str, Any]] = {
@@ -40,6 +79,7 @@ TURBO_RECIPES: dict[str, dict[str, Any]] = {
         "scheduler": "simple",
         "sigma_preset": "scheduler_generated",
         "runtime_validated": True,
+        "trajectory": "h3_turbo4",
         "recommended_lora": "minimax\\turbo\\minimax_h3_fl2v_turbo_4step_v1.1_768p_comfyui_bf16.safetensors",
         "task_overrides": {
             "ref2va": {
@@ -57,6 +97,7 @@ TURBO_RECIPES: dict[str, dict[str, Any]] = {
         "scheduler": "simple",
         "sigma_preset": "scheduler_generated",
         "runtime_validated": True,
+        "trajectory": "h3_turbo8",
         "recommended_lora": "minimax\\turbo\\minimax_h3_fl2v_turbo_8step_v1.0_768p_comfyui_bf16.safetensors",
     },
 }
@@ -74,6 +115,8 @@ class SamplingPreset:
     sigma_preset: str
     recommended_lora: str | None
     runtime_validated: bool
+    trajectory: str
+    vdn_required: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -89,6 +132,8 @@ class SamplingPreset:
             "sigma_preset": self.sigma_preset,
             "recommended_lora": self.recommended_lora,
             "runtime_validated": self.runtime_validated,
+            "trajectory": self.trajectory,
+            "vdn_required": self.vdn_required,
         }
 
     def summary(self) -> str:
@@ -124,6 +169,7 @@ def build_sampling_preset(
             "scheduler": str(custom_scheduler),
             "sigma_preset": "scheduler_generated",
             "runtime_validated": False,
+            "trajectory": "custom",
         }
     else:
         recipe = deep_copy_json(PROFILE_PRESETS.get(profile) or TURBO_RECIPES[profile])
@@ -146,18 +192,24 @@ def build_sampling_preset(
         sigma_preset=str(recipe.get("sigma_preset", "scheduler_generated")),
         recommended_lora=(str(recipe["recommended_lora"]) if recipe.get("recommended_lora") else None),
         runtime_validated=bool(recipe.get("runtime_validated", False)),
+        trajectory=str(recipe.get("trajectory") or "unknown"),
+        vdn_required=bool(recipe.get("vdn_required", False)),
     )
 
 
 __all__ = [
     "CUSTOM_PROFILE",
     "PROFILE_PRESETS",
+    "SAMPLING_ADAPTER_ATTACHMENT",
     "SAMPLING_PRESET_CONTRACT",
+    "SAMPLING_PROFILE_ATTACHMENT",
     "SAMPLING_PROFILES",
     "STANDARD_PROFILE",
     "SamplingPreset",
     "TURBO_4_PROFILE",
     "TURBO_8_PROFILE",
     "TURBO_RECIPES",
+    "VDN_DMD_PROFILE",
+    "VDN_STAGE_B_PROFILE",
     "build_sampling_preset",
 ]

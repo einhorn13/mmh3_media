@@ -53,6 +53,8 @@ class MMH3H3SegmentPrepare(io.ComfyNode):
                                tooltip="Future conditioning for Continue. First segment/New scene use the source packet's generation mode."),
                 MMH3.Input("chain_packet", optional=True, tooltip="Reroll only: latest accepted chain. Source must be the target's parent."),
                 io.String.Input("target_segment_id", default="", advanced=True, tooltip="Reroll only. Blank selects the last accepted segment."),
+                io.Image.Input("reanchor_image", optional=True,
+                               tooltip="Reanchor only: first frame of a fresh scene, without the previous AV prefix. Required again when rerolling a reanchored scene."),
             ],
             outputs=[io.Conditioning.Output("positive"), io.Latent.Output("latent"),
                      io.Int.Output("seed"), MMH3.Output("packet"), io.String.Output("mode"),
@@ -64,11 +66,11 @@ class MMH3H3SegmentPrepare(io.ComfyNode):
     @classmethod
     def execute(cls, packet, action, prompts, seed, clip, video_vae, width, height, frames,
                 context_frames=39, task_family="auto", audio_vae=None, chain_packet=None,
-                target_segment_id=""):
+                target_segment_id="", reanchor_image=None):
         plan = prepare_segment(_packet(packet), action=action, prompts=prompts, seed=seed,
                                frames=frames, context_frames=context_frames,
                                chain_packet=_packet(chain_packet) if chain_packet is not None else None,
-                               target_segment_id=target_segment_id)
+                               target_segment_id=target_segment_id, reanchor_image=reanchor_image)
         outputs, graph = build_segment_expansion(plan, clip=clip, video_vae=video_vae,
                                                  audio_vae=audio_vae, width=width, height=height,
                                                  task_family=task_family)

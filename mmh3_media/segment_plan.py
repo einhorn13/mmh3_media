@@ -11,7 +11,7 @@ from .errors import MMH3ResourceError
 from .util import deep_copy_json, json_dumps_canonical
 
 
-SEGMENT_ACTIONS = ("First segment", "Continue", "Reroll accepted", "New scene")
+SEGMENT_ACTIONS = ("First segment", "Continue", "Reroll accepted", "New scene", "Reanchor")
 PLAN_CONTRACT = "mmh3_segment_plan_v1"
 
 
@@ -57,7 +57,8 @@ class SegmentPlan:
 
 def prepare_segment(packet: MMH3Media, *, action: str, prompts: str = "", seed: int = -1,
                     frames: int = 124, context_frames: int = 39,
-                    chain_packet: MMH3Media | None = None, target_segment_id: str = "") -> SegmentPlan:
+                    chain_packet: MMH3Media | None = None, target_segment_id: str = "",
+                    reanchor_image=None) -> SegmentPlan:
     """Select from accepted state only. Queueing a draft never advances the plan."""
     if action not in SEGMENT_ACTIONS:
         raise MMH3ResourceError(f"Unknown segment action {action!r}")
@@ -99,8 +100,8 @@ def prepare_segment(packet: MMH3Media, *, action: str, prompts: str = "", seed: 
             if packet.manifest != chain_packet.manifest:
                 raise MMH3ResourceError("Continue/New scene must use the accepted head as its source")
         index = int((head.get("segment_plan") or {}).get("prompt_index", head["index"])) + 1 if head else 0
-        commit_action = "reanchor" if action == "New scene" else "append"
-        operation = "generate" if action == "New scene" else "continuation"
+        commit_action = "reanchor" if action in {"New scene", "Reanchor"} else "append"
+        operation = "generate" if action in {"New scene", "Reanchor"} else "continuation"
 
     inherited = (target or {}).get("segment_plan") or prior
     text = prompts.strip() or str(inherited.get("prompts") or "")
@@ -117,11 +118,17 @@ def prepare_segment(packet: MMH3Media, *, action: str, prompts: str = "", seed: 
     selected_seed = int(seed if seed >= 0 else inherited.get("seed", packet.manifest.get("generation", {}).get("seed", 0)))
     if not 0 <= selected_seed <= 0xFFFFFFFFFFFFFFFF:
         raise MMH3ResourceError("Saved seed is invalid; set an unsigned 64-bit seed")
+    preparation_action = action if target is None else str(
+        (target.get("segment_plan") or {}).get("preparation_action") or
+        ("New scene" if target.get("handover") == "reanchor" else "First segment" if operation == "generate" else "Continue"))
+    if preparation_action == "Reanchor" and reanchor_image is None:
+        raise MMH3ResourceError("Reanchor requires an image; rerolling a reanchored segment requires its anchor again")
     timing = segment_timing(frames, context_frames if operation == "continuation" else 0)
     from .resolution import resolve_reference_set
     references = resolve_reference_set(packet, preset="all")
     info = {
         "contract": PLAN_CONTRACT, "state": "draft", "action": commit_action,
+        "preparation_action": preparation_action,
         "operation": operation, "target_segment_id": target_segment_id if target else "",
         "prompt_index": index, "prompts": text, "prompt": prompt, "seed": selected_seed,
         "parent_segment_id": (target or {}).get("parent_segment_id", chain["head_segment_id"]),
@@ -132,14 +139,20 @@ def prepare_segment(packet: MMH3Media, *, action: str, prompts: str = "", seed: 
         "source_process_sha256": _ledger_digest(_namespace(packet).get("last_process")),
     }
     out = packet.set_extension_value("mmh3_media", "chain", chain)
-    if action == "New scene":
+    if preparation_action in {"New scene", "Reanchor"}:
         # Generated boundary frames are output state, not an instruction for the next scene.
         from .h3_resource_semantics import find_context_resource
         for usage in ("first_frame", "last_frame"):
             resource = find_context_resource(out, usage)
             if resource is not None:
                 out = out.remove(resource_id=resource["id"], record_history=False)
-        out = out.edit_metadata(task="ref2va" if info["reference_ids"] else "t2va")
+        if preparation_action == "Reanchor":
+            from .h3_resource_semantics import make_context_contract
+            out = out.put(reanchor_image[:1], kind="image", role="context", name="Reanchor first frame",
+                          extensions={"minimax_h3": {"context": make_context_contract(usage="first_frame")}})
+            out = out.edit_metadata(task="i2va")
+        else:
+            out = out.edit_metadata(task="ref2va" if info["reference_ids"] else "t2va")
     out = out.edit_metadata(prompt=prompt, seed=selected_seed)
     out = out.set_extension_value("mmh3_media", "segment_plan", info)
     return SegmentPlan(out, info)

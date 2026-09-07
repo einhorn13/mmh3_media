@@ -20,6 +20,42 @@ def parse_upscale_sigmas(text):
     return values
 
 
+def _source_sampling_adapter_name(packet):
+    sampling = packet.manifest.get('extensions', {}).get('mmh3_media', {}).get('last_process', {}).get('info', {}).get('sampling', {})
+    adapter = sampling.get('adapter') or {}
+    return str(adapter.get('name') or sampling.get('recommended_lora') or '').replace('\\', '/')
+
+
+def _looks_like_acceleration(entry, *, adapter_name=''):
+    """Classify only trajectory/acceleration adapters; creative purposes always win."""
+    purpose = str(entry.get('purpose') or 'unknown')
+    name = str(entry.get('name') or '').replace('\\', '/')
+    if purpose == 'acceleration' or (adapter_name and name == adapter_name):
+        return True
+    if purpose != 'unknown':
+        return False
+    lowered = name.lower()
+    return any(token in lowered for token in (
+        'turbo', 'pdd', 'minimax_h3_acc', 'minimax-h3-acc', 'fasth3', 'fast_h3',
+    ))
+
+
+def drop_upscale_acceleration_loras(packet):
+    """Remove source trajectory adapters while preserving creative/style/content LoRAs.
+
+    VDN owns its trained trajectory adapter.  Reusing a source H3 Turbo/PDD/FastH3
+    acceleration LoRA underneath VDN creates an unsupported stacked trajectory, so callers
+    switching architecture families must drop only acceleration entries and keep the rest in
+    exact recorded order.
+    """
+    recorded = get_generation_loras(packet)
+    if recorded is None:
+        raise MMH3ResourceError('Record source LoRAs before changing the acceleration trajectory')
+    adapter_name = _source_sampling_adapter_name(packet)
+    kept = [entry for entry in recorded if not _looks_like_acceleration(entry, adapter_name=adapter_name)]
+    return set_generation_loras(packet, kept)
+
+
 def replace_upscale_turbo(packet, name, digest=None):
     recorded = get_generation_loras(packet)
     if recorded is None:
@@ -29,18 +65,11 @@ def replace_upscale_turbo(packet, name, digest=None):
         purpose='acceleration', loader='LoraLoaderModelOnly', reapply_for_high_sigma=True)
     if digest:
         replacement['sha256'] = digest
-    sampling = packet.manifest.get('extensions', {}).get('mmh3_media', {}).get('last_process', {}).get('info', {}).get('sampling', {})
-    adapter = sampling.get('adapter') or {}
-    adapter_name = str(adapter.get('name') or sampling.get('recommended_lora') or '').replace('\\', '/')
+    adapter_name = _source_sampling_adapter_name(packet)
     result = []
     inserted = False
     for entry in recorded:
-        # Explicit creative purposes win over filename heuristics.
-        accelerated = entry['purpose'] == 'acceleration' or entry['name'] == adapter_name
-        if entry['purpose'] == 'unknown':
-            accelerated |= any(token in entry['name'].lower() for token in
-                               ('turbo', 'pdd', 'minimax_h3_acc', 'minimax-h3-acc', 'fasth3', 'fast_h3'))
-        if accelerated:
+        if _looks_like_acceleration(entry, adapter_name=adapter_name):
             if not inserted:
                 result.append(replacement)
                 inserted = True
@@ -49,3 +78,10 @@ def replace_upscale_turbo(packet, name, digest=None):
     if not inserted:
         result.insert(0, replacement)
     return set_generation_loras(packet, result)
+
+
+__all__ = [
+    'drop_upscale_acceleration_loras',
+    'parse_upscale_sigmas',
+    'replace_upscale_turbo',
+]

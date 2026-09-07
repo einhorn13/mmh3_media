@@ -86,10 +86,28 @@ def validate_sources(packets, width, height, denoise):
 
 def build_stitch_upscale_expansion(packets, *, width, height, denoise, models, clip,
                                    video_vae, audio_vae, upscaler_model=DEFAULT_UPSCALER,
-                                   graph_builder_factory=None, steps_override=0, manual_sigmas='', turbo_override=''):
+                                   graph_builder_factory=None, steps_override=0, manual_sigmas='', turbo_override='',
+                                   attention='Default', fp16_accumulation='Default', force_unload=True):
     if not 0 <= steps_override <= 100:
         raise MMH3ResourceError('Upscale steps must be within 0–100 (0 inherits source)')
     explicit_sigmas = parse_upscale_sigmas(manual_sigmas)
+    selected_attention = dict(attention) if isinstance(attention, dict) else {'attention': attention}
+    attention_label = str(selected_attention.get('attention') or 'Default')
+    is_vdn = attention_label.startswith('VDN-H3') or attention_label == 'vdn_h3'
+    if is_vdn:
+        if turbo_override:
+            raise MMH3ResourceError(
+                'VDN-H3 owns its trajectory adapter; Upscale Turbo override must be empty'
+            )
+        raise MMH3ResourceError(
+            'VDN-H3 is not enabled for Upscale + Stitch low-sigma refine: this path truncates the '
+            'scheduler with denoise<1, so it cannot guarantee the trained 8-NFE DMD or ~50-NFE Stage-B '
+            'trajectory. Use a stock/SLA/Sol refine path until a dedicated validated VDN refine contract exists. '
+            'MMH3H3RefineLoRAs now supports acceleration_policy=drop for that future/dedicated path.'
+        )
+    optimization_inputs = {'attention': selected_attention.pop('attention', 'Default'),
+                           'fp16_accumulation': fp16_accumulation}
+    optimization_inputs.update({'attention.' + key: value for key, value in selected_attention.items()})
     recipes, summary = validate_sources(packets, width, height, denoise)
     if explicit_sigmas:
         summary += f' · manual sigmas: {len(explicit_sigmas) - 1} steps'
@@ -123,10 +141,12 @@ def build_stitch_upscale_expansion(packets, *, width, height, denoise, models, c
                              align=32, enable_chunking=True)
         upscale = graph.node(UPSCALER_NODE, latent=prepare.out(1), model_name=upscaler_model,
                              mode='target dimensions', **{'mode.width': width, 'mode.height': height},
-                             align=32, enable_temporal_chunking=True, force_unload=True,
+                             align=32, enable_temporal_chunking=True, force_unload=force_unload,
                              device='cuda', precision='bf16')
         loras = graph.node('MMH3H3RefineLoRAs', packet=prepare.out(0), model=models[recipe.task_family],
                            clip=clip, unknown_policy='error', missing_policy='error', turbo_override=turbo_override)
+        optimized = graph.node('MMH3H3ModelOptimizations', model=loras.out(0),
+                               **optimization_inputs)
         condition = graph.node('MMH3H3AutoCondition', packet=prepare.out(0), prompt_override='', seed_override=-1,
                                clip=loras.out(1), video_vae=video_vae, audio_vae=audio_vae,
                                width_override=width, height_override=height, frames_override=prepare.out(5))
@@ -140,7 +160,7 @@ def build_stitch_upscale_expansion(packets, *, width, height, denoise, models, c
                             upscaled_video_latent=upscale.out(0), source_audio_latent=prepare.out(2),
                             upscale_process_info_json=report.out(0), conditioning_info_json=condition.out(6),
                             **({'previous_high_packet': high[-1]} if high else {}))
-        shifted = graph.node('MiniMaxH3SigmaShift', model=loras.out(0), shift_video=recipe.video_shift,
+        shifted = graph.node('MiniMaxH3SigmaShift', model=optimized.out(0), shift_video=recipe.video_shift,
                              shift_audio=recipe.audio_shift)
         guider = graph.node('BasicGuider', model=shifted.out(0), conditioning=condition.out(0))
         noise = graph.node('RandomNoise', noise_seed=condition.out(2))
@@ -157,7 +177,7 @@ def build_stitch_upscale_expansion(packets, *, width, height, denoise, models, c
         packed = graph.node('MMH3PackH3Result', packet=prepare.out(0), latent=restored.out(0),
                             operation=target.out(1), mode=target.out(2), status=target.out(3),
                             process_info_json=target.out(4), latent_origin='sampler_output',
-                            applied_loras_json=loras.out(5))
+                            applied_loras_json=loras.out(5), optimization_profile_json=optimized.out(1))
         high.append(packed.out(0))
     stitch = graph.node('MMH3H3LatentStitch', **{f'segments.segment_{i}': value for i, value in enumerate(high, 1)})
     video = graph.node('VAEDecode', samples=stitch.out(1), vae=video_vae)
@@ -165,5 +185,6 @@ def build_stitch_upscale_expansion(packets, *, width, height, denoise, models, c
     movie = graph.node('CreateVideo', images=video.out(0), audio=audio.out(0), fps=24.0, bit_depth=8)
     packed = graph.node('MMH3PackH3Result', packet=stitch.out(0), latent=stitch.out(1), video=movie.out(0),
                         audio=audio.out(0), operation='latent_stitch_decode', mode='h3_continuation',
-                        status=stitch.out(2), process_info_json=stitch.out(3), latent_origin='derived')
+                        status=stitch.out(2), process_info_json=stitch.out(3), latent_origin='derived',
+                        optimization_profile_json=optimized.out(1))
     return (packed.out(0), movie.out(0), stitch.out(1), stitch.out(3)), graph.finalize(), summary

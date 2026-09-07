@@ -22,6 +22,7 @@ from .node_support import (
     concat_h3_av_latent,
     deep_copy_json,
     finalize_external_tile_video,
+    folder_paths,
     h3_expected_audio_t,
     io,
     json,
@@ -39,6 +40,13 @@ from .control_provider import (
     build_control_apply_plan,
     build_control_pass_through_info,
     prepare_control_inputs,
+)
+from .h3_fun_model_patch import (
+    CURRENT_BACKEND,
+    apply_current_h3_fun_patch,
+    available_h3_fun_checkpoints,
+    current_patch_preflight_info,
+    load_current_h3_fun_patch,
 )
 from .control_tiles import (
     apply_control_to_conditioning,
@@ -472,6 +480,13 @@ class MMH3H3NativeTileRefine(io.ComfyNode):
                 io.Combo.Input("context_source", options=list(TILE_CONTEXT_SOURCES), default="composited"),
                 MMH3.Input("packet", optional=True),
                 io.Conditioning.Input("positive", optional=True),
+                io.Combo.Input(
+                    "control_checkpoint",
+                    options=available_h3_fun_checkpoints(folder_paths) or [""],
+                    default="",
+                    optional=True,
+                    tooltip="Current #15975 MODEL_PATCH checkpoint. Preferred over legacy control_net inputs.",
+                ),
                 io.ControlNet.Input("control_net", optional=True),
                 io.Vae.Input("control_vae", optional=True),
                 io.String.Input(
@@ -516,6 +531,7 @@ class MMH3H3NativeTileRefine(io.ComfyNode):
         context_source: str,
         packet=None,
         positive=None,
+        control_checkpoint: str = "",
         control_net=None,
         control_vae=None,
         control_preflight_info_json: str = "{}",
@@ -555,11 +571,12 @@ class MMH3H3NativeTileRefine(io.ComfyNode):
         )
 
         control_plan = None
+        current_control_patch = None
         prepared_control = (None, None, None)
         control_process_info: dict[str, Any] | None = None
         supplied_control_inputs = any(
             value is not None
-            for value in (positive, control_net, control_vae, control_video, mask, source_video)
+            for value in (positive, control_checkpoint, control_net, control_vae, control_video, mask, source_video)
         ) or str(control_preflight_info_json or "{}").strip() not in ("", "{}")
         if packet is None:
             if supplied_control_inputs:
@@ -574,14 +591,33 @@ class MMH3H3NativeTileRefine(io.ComfyNode):
             if config.strength == 0.0:
                 control_process_info = build_control_pass_through_info(config)
             else:
-                if positive is None or control_net is None:
-                    raise MMH3ResourceError(
-                        "Active tile-aware F16 control requires positive and control_net"
+                current_control_patch = None
+                selected_checkpoint = str(control_checkpoint or "").strip()
+                if selected_checkpoint:
+                    current_control_patch = load_current_h3_fun_patch(
+                        folder_paths, selected_checkpoint, guider.model_patcher
                     )
-                preflight_info = _parse_object(
-                    control_preflight_info_json,
-                    "control_preflight_info_json",
-                )
+                    expected_quant = (
+                        "bf16" if config.effective_algorithm.endswith("_bf16") else "int8_convrot"
+                    )
+                    if current_control_patch.quantization != expected_quant:
+                        raise MMH3ResourceError(
+                            f"Selected tile control algorithm requires {expected_quant}, but checkpoint runtime detected {current_control_patch.quantization}"
+                        )
+                    preflight_info = current_patch_preflight_info(
+                        config, current_control_patch, width=width, height=height, frames=frames
+                    )
+                else:
+                    # Backward-compatible #15860 path for old saved workflows. New examples use MODEL_PATCH.
+                    if positive is None or control_net is None:
+                        raise MMH3ResourceError(
+                            "Active tile-aware F16 control requires control_checkpoint for current MODEL_PATCH, "
+                            "or positive + control_net + preflight for the legacy #15860 path"
+                        )
+                    preflight_info = _parse_object(
+                        control_preflight_info_json,
+                        "control_preflight_info_json",
+                    )
                 control_plan = build_control_apply_plan(config, preflight_info)
                 prepared_control = prepare_control_inputs(
                     control_plan,
@@ -590,6 +626,9 @@ class MMH3H3NativeTileRefine(io.ComfyNode):
                     source_video=source_video,
                 )
                 control_process_info = build_tiled_control_process_info(control_plan, plan)
+                if current_control_patch is not None:
+                    control_process_info["backend"] = CURRENT_BACKEND
+                    control_process_info["checkpoint"] = current_control_patch.filename
 
         import comfy.model_management  # type: ignore
         import comfy.sample  # type: ignore
@@ -609,18 +648,33 @@ class MMH3H3NativeTileRefine(io.ComfyNode):
                     mask=prepared_control[1],
                     source_video=prepared_control[2],
                 )
-                tile_positive = apply_control_to_conditioning(
-                    positive,
-                    control_net,
-                    control_vae if control_vae is not None else video_vae,
-                    control_plan,
-                    tile_inputs,
-                )
-                tile_guider = clone_guider_with_conditioning(
-                    guider,
-                    tile_positive,
-                    convert_conditioning=comfy.sampler_helpers.convert_cond,
-                )
+                if current_control_patch is not None:
+                    import copy
+                    tile_guider = copy.copy(guider)
+                    tile_guider.model_patcher = apply_current_h3_fun_patch(
+                        guider.model_patcher,
+                        current_control_patch,
+                        control_vae if control_vae is not None else video_vae,
+                        control_video=tile_inputs.control_video,
+                        mask=tile_inputs.mask,
+                        source_video=tile_inputs.source_video,
+                        strength=control_plan.config.strength,
+                        start_percent=control_plan.config.start_percent,
+                        end_percent=control_plan.config.end_percent,
+                    )
+                else:
+                    tile_positive = apply_control_to_conditioning(
+                        positive,
+                        control_net,
+                        control_vae if control_vae is not None else video_vae,
+                        control_plan,
+                        tile_inputs,
+                    )
+                    tile_guider = clone_guider_with_conditioning(
+                        guider,
+                        tile_positive,
+                        convert_conditioning=comfy.sampler_helpers.convert_cond,
+                    )
             latent_image = target["samples"]
             noise = comfy.sample.prepare_noise(latent_image, int(seed), target.get("batch_index"))
             callback = latent_preview.prepare_callback(tile_guider.model_patcher, sigmas.shape[-1] - 1)

@@ -69,10 +69,19 @@ def make_context_contract(*, usage: str) -> dict[str, Any]:
     return {"contract_version": H3_CONTEXT_CONTRACT_VERSION, "usage": usage}
 
 
-def make_control_resource_contract(*, usage: str) -> dict[str, Any]:
+def make_control_resource_contract(*, usage: str, control_kind: str | None = None) -> dict[str, Any]:
     if usage not in _CONTROL_USAGES:
         raise MMH3ResourceError(f"Unsupported H3 control resource usage {usage!r}")
-    return {"contract_version": H3_CONTROL_RESOURCE_CONTRACT_VERSION, "usage": usage}
+    value: dict[str, Any] = {"contract_version": H3_CONTROL_RESOURCE_CONTRACT_VERSION, "usage": usage}
+    if control_kind is not None:
+        kind = str(control_kind or "").strip().lower()
+        structural = ("canny", "depth", "hed", "mlsd", "pose")
+        if usage != "control_video":
+            raise MMH3ResourceError("control_kind metadata is only legal for usage='control_video'")
+        if kind not in structural:
+            raise MMH3ResourceError(f"Unsupported structural control kind metadata {kind!r}; expected one of {structural}")
+        value["control_kind"] = kind
+    return value
 
 
 def make_cache_contract(value: Mapping[str, Any]) -> dict[str, Any]:
@@ -148,6 +157,23 @@ def context_usage(descriptor: Mapping[str, Any]) -> str | None:
     if descriptor.get("kind") != "image":
         raise MMH3ResourceError(f"H3 context {descriptor.get('id')!r} usage {usage!r} requires kind='image'")
     return str(usage)
+
+
+def control_resource_kind(descriptor: Mapping[str, Any]) -> str | None:
+    """Return declared structural control type for a canonical control-video resource."""
+    usage = control_usage(descriptor)
+    if usage != "control_video":
+        return None
+    value = _h3_extension(descriptor).get("control")
+    kind = str(value.get("control_kind") or "").strip().lower() if isinstance(value, Mapping) else ""
+    if not kind:
+        return None
+    structural = ("canny", "depth", "hed", "mlsd", "pose")
+    if kind not in structural:
+        raise MMH3ResourceError(
+            f"H3 control resource {descriptor.get('id')!r} declares unsupported control_kind {kind!r}; expected one of {structural}"
+        )
+    return kind
 
 
 def control_usage(descriptor: Mapping[str, Any]) -> str | None:
