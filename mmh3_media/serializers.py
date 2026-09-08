@@ -197,8 +197,18 @@ def serialize_latent(payload: dict, path: Path, *, h3: bool = False) -> dict[str
     }
 
 
-def deserialize_latent(path: Path, res: dict[str, Any]) -> dict:
+def _load_owned_tensors(path: Path) -> dict[str, torch.Tensor]:
+    # CPU safetensors may retain file-backed storage after load_file returns.
+    # Archive extraction files are deleted immediately after deserialization,
+    # so every returned tensor must own storage independent of that file.
     tensors = safe_load_file(str(path), device="cpu")
+    for key in tensors:
+        tensors[key] = tensors[key].clone()
+    return tensors
+
+
+def deserialize_latent(path: Path, res: dict[str, Any]) -> dict:
+    tensors = _load_owned_tensors(path)
     storage = _serialization_descriptor(res)
     layout = storage.get("latent_layout")
     if not isinstance(layout, dict):
@@ -278,7 +288,7 @@ def serialize_mask(payload: torch.Tensor, path: Path) -> dict[str, Any]:
 
 
 def deserialize_mask(path: Path) -> torch.Tensor:
-    data = safe_load_file(str(path), device="cpu")
+    data = _load_owned_tensors(path)
     if "mask" not in data:
         raise MMH3ResourceError("Mask safetensors is missing 'mask'")
     return data["mask"]

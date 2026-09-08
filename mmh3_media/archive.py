@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import logging
 import os
 import shutil
 import tempfile
@@ -32,6 +33,7 @@ from .representations import (
 
 PACKET_JSON = "packet.json"
 MAX_PACKET_JSON = 16 * 1024 * 1024
+_LOGGER = logging.getLogger(__name__)
 
 
 def _zip_compression_for(res: dict[str, Any] | None) -> int:
@@ -300,7 +302,13 @@ def get_resource_payload(packet: MMH3Media, res: dict[str, Any]) -> Any:
     finally:
         # Tensor/image/audio/json payloads are fully loaded by deserialize_payload; the extracted
         # member is no longer needed and must not accumulate in the temp cache.
-        path.unlink(missing_ok=True)
+        try:
+            path.unlink(missing_ok=True)
+        except OSError as exc:
+            # An external reader (e.g. on SMB) can still hold the cache file.
+            # Session/stale-cache cleanup will retry; never mask a load error
+            # or discard a successful payload because optional cleanup failed.
+            _LOGGER.warning("Could not remove extracted MMH3 cache file %s; deferring cleanup: %s", path, exc)
 
 
 def get_representation_bytes(packet: MMH3Media, record: dict[str, Any]) -> bytes:
