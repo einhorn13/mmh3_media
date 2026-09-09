@@ -184,9 +184,9 @@ def apply_external_h3_sla(
         profile = build_h3_sla_execution_profile(settings, patch_materialized=False)
         return model, profile, "BYPASS · H3 SLA disabled · dense baseline"
 
-    from .fasth3 import FASTH3_PROFILE
-    if getattr(model, "get_attachment", lambda _key: None)("mmh3_sampling_adapter") == FASTH3_PROFILE:
-        raise MMH3ResourceError("FastH3 dense cannot be combined with SLA in this experimental profile")
+    from .optimization_contract import validate_optimization_application, record_optimization
+    fp16 = "disabled" if settings["disable_fp16_accum"] else "inherit"
+    validate_optimization_application(model, "h3_sla", fp16)
 
     input_ids = require_h3_sla_node_contract(node_class)
     if _sla_wrappers(model):
@@ -238,6 +238,7 @@ def apply_external_h3_sla(
 
     transformer_options["optimized_attention_override"] = admission_probe
 
+    record_optimization(patched, "h3_sla", fp16)
     profile = build_h3_sla_execution_profile(settings, patch_materialized=True)
     return patched, profile, "READY · H3 SLA v1.3.6 hooks materialized · kernel execution pending"
 

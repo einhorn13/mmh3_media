@@ -769,6 +769,8 @@ class MMH3H3AutoCondition(io.ComfyNode):
         audio_vae=None,
     ) -> io.NodeOutput:
         packet = _packet(packet)
+        from .scheduled_references import validate_scene_compilation
+        validate_scene_compilation(packet, prompt_override or packet.manifest.get("generation", {}).get("prompt", ""))
         reference_size_mode, reference_short_edge = reference_image_sizing_from_manifest(packet.manifest)
         native_ref_image_size = native_reference_image_size(reference_size_mode)
         resolved = resolve_packet(

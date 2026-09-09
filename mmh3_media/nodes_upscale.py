@@ -482,7 +482,7 @@ class MMH3H3NativeTileRefine(io.ComfyNode):
                 io.Conditioning.Input("positive", optional=True),
                 io.Combo.Input(
                     "control_checkpoint",
-                    options=available_h3_fun_checkpoints(folder_paths) or [""],
+                    options=["", *available_h3_fun_checkpoints(folder_paths)],
                     default="",
                     optional=True,
                     tooltip="Current #15975 MODEL_PATCH checkpoint. Preferred over legacy control_net inputs.",
@@ -576,8 +576,8 @@ class MMH3H3NativeTileRefine(io.ComfyNode):
         control_process_info: dict[str, Any] | None = None
         supplied_control_inputs = any(
             value is not None
-            for value in (positive, control_checkpoint, control_net, control_vae, control_video, mask, source_video)
-        ) or str(control_preflight_info_json or "{}").strip() not in ("", "{}")
+            for value in (positive, control_net, control_vae, control_video, mask, source_video)
+        ) or bool(str(control_checkpoint or "").strip()) or str(control_preflight_info_json or "{}").strip() not in ("", "{}")
         if packet is None:
             if supplied_control_inputs:
                 raise MMH3ResourceError(

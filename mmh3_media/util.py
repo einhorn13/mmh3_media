@@ -68,7 +68,7 @@ def safe_member_path(path: str) -> str:
     if not isinstance(path, str) or not path.strip():
         raise MMH3FormatError("Resource path must be a non-empty string")
     p = PurePosixPath(path.replace("\\", "/"))
-    if p.is_absolute() or ".." in p.parts or any(part in ("", ".") for part in p.parts):
+    if not p.parts or p.is_absolute() or ".." in p.parts or any(part in ("", ".") for part in p.parts):
         raise MMH3FormatError(f"Unsafe archive member path: {path!r}")
     # Windows drive/UNC-like prefixes are not valid ZIP logical paths either.
     if ":" in p.parts[0]:

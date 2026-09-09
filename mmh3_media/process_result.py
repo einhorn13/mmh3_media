@@ -37,7 +37,7 @@ class PackedH3Result:
 
     def summary(self) -> str:
         resources = ", ".join(f"{role}={resource_id}" for role, resource_id in self.resource_ids.items())
-        return f"PACKED · {self.operation} · mode={self.mode or 'unspecified'} · {resources}"
+        return f"PACKED Â· {self.operation} Â· mode={self.mode or 'unspecified'} Â· {resources}"
 
 
 @dataclass(frozen=True)
@@ -110,6 +110,10 @@ def pack_h3_result(
     if not operation:
         raise MMH3ResourceError("Process operation must be a non-empty string")
     process_info = deep_copy_json(dict(process_info or {}))
+    h3_extensions = packet.manifest.get("extensions", {}).get("minimax_h3", {})
+    for key in ("av_edit_policy", "av_bridge", "compiled_references"):
+        if key in h3_extensions:
+            process_info.setdefault(key, deep_copy_json(h3_extensions[key]))
     if not is_jsonable(process_info):
         raise MMH3ResourceError("process_info must be JSON serializable")
     if "control" in process_info:

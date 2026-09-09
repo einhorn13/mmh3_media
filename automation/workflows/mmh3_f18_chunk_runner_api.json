@@ -4,7 +4,7 @@
     "inputs": {
       "file": "(none)",
       "verify": "on_access",
-      "path_override": "C:/replace/source_long_video.mmh3"
+      "path_override": ""
     }
   },
   "2": {

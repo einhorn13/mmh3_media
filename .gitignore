@@ -1,0 +1,66 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+
+# Isolated ComfyUI runtime state and generated evidence are local-only.
+.comfy_test_instance/
+_runtime/
+_audit/
+
+# Local runtime residue.
+*.log
+*.pid
+*.lock
+*.tmp
+*.bak
+
+# Local development tools and agent workspace (not required by the custom node).
+/_robots/
+/.agents/
+/.codex/
+/.idea/
+/.vscode/
+/tests/
+/subgraphs/
+/workflow_recipes/
+/deploy.py
+/export.py
+/package_manifest.py
+/workflow_generate.py
+/workflow_schema.py
+/workflow_review.py
+/workflow_migrate_*.py
+/stitch_upscale_legacy.py
+/robots.md
+/robots_ru.md
+/trash/
+
+# Keep user-facing runtime documentation; omit internal research and handoffs.
+/docs/*
+!/docs/MMH3_MEDIA_v0.3.md
+!/docs/H3_LATENT_CONTRACT_V2.md
+!/docs/WORKFLOWS.md
+!/docs/AV_EDIT_BRIDGE_REFERENCES.md
+
+# Local environments, secrets and generated media/model artifacts.
+/.venv/
+/venv/
+/.env
+/.env.*
+!.env.example
+*.mmh3
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+*.zip
+*.7z
+*.mp4
+*.webm
+*.mkv
+*.wav
+*.mp3
+/docs/

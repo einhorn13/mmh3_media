@@ -60,7 +60,7 @@
       "widgets_values": [
         "(none)",
         "on_access",
-        "C:/replace/source_sampler_output.mmh3"
+        ""
       ]
     },
     {
@@ -1530,6 +1530,9 @@
         "Node name for S&R": "MMH3H3NativeTileRefine"
       },
       "widgets_values": [
+        5,
+        0,
+        "fixed",
         640,
         384,
         64,

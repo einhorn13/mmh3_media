@@ -226,6 +226,8 @@ def acquire_next_execution_job(
     if not candidates:
         return deep_copy_json(dict(ledger)), None
     job_id = candidates[0]
+    if _job_entry(ledger, job_id)["state"] == "cancelled":
+        ledger = transition_execution_job(ledger, job_id, "reset")
     updated = transition_execution_job(ledger, job_id, "start", lease_timeout_seconds=lease_timeout_seconds)
     entry = _job_entry(updated, job_id)
     lease = {

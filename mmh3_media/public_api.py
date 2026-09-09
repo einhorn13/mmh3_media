@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
+from .av_edit import apply_av_edit_policy, restore_av_protection, select_edit_delivery_audio
+from .av_bridge import prepare_av_bridge, encode_av_bridge, trim_bridge_components
+from .scheduled_references import configure_reference_schedule, compile_scene_references, add_reference_alias
 from .archive import get_resource_payload
 from .core import MMH3Media
 from .resource_ref import MMH3ResourceRef
@@ -302,6 +305,9 @@ def put_resource(
 
 
 __all__ = [
+    "apply_av_edit_policy", "restore_av_protection", "select_edit_delivery_audio",
+    "prepare_av_bridge", "encode_av_bridge", "trim_bridge_components",
+    "configure_reference_schedule", "compile_scene_references", "add_reference_alias",
     "MMH3_ADAPTER_API_VERSION",
     "list_resource_refs",
     "select_resource_ref",

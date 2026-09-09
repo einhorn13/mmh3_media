@@ -4,6 +4,10 @@ import json
 
 
 from .node_support import CATEGORY, MMH3ResourceError, io
+from .optimization_contract import (
+    record_optimization, require_unoptimized_sampling_model,
+    resolve_sampling_profile, validate_optimization_application,
+)
 from .model_optimizations import (
     build_model_optimization_expansion,
     build_model_optimization_plan,
@@ -200,6 +204,7 @@ class MMH3H3FP16AccumulationPatch(io.ComfyNode):
         import torch
         from comfy.patcher_extension import CallbacksMP  # type: ignore
 
+        validate_optimization_application(model, fp16="enabled" if enabled else "disabled")
         backend = torch.backends.cuda.matmul
         if not hasattr(backend, "allow_fp16_accumulation"):
             raise MMH3ResourceError("FP16 accumulation requires a PyTorch build that exposes allow_fp16_accumulation")
@@ -216,6 +221,24 @@ class MMH3H3FP16AccumulationPatch(io.ComfyNode):
 
         patched.add_callback(CallbacksMP.ON_PRE_RUN, before_run)
         patched.add_callback(CallbacksMP.ON_CLEANUP, after_run)
+        record_optimization(patched, fp16="enabled" if enabled else "disabled")
+        return io.NodeOutput(patched)
+
+
+class MMH3H3OptimizationRecord(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="MMH3H3OptimizationRecord", category=f"{CATEGORY}/Internal",
+            inputs=[io.Model.Input("model"), io.String.Input("attention_mode"),
+                    io.String.Input("fp16_accumulation")],
+            outputs=[io.Model.Output("model")],
+        )
+
+    @classmethod
+    def execute(cls, model, attention_mode: str, fp16_accumulation: str):
+        patched = model.clone()
+        record_optimization(patched, attention_mode, fp16_accumulation)
         return io.NodeOutput(patched)
 
 
@@ -280,6 +303,7 @@ class MMH3H3SamplingPreset(io.ComfyNode):
             raise MMH3ResourceError("H3 Sampling requires the unpatched base MODEL input")
         if getattr(model, "patches", None) or getattr(model, "object_patches", None):
             raise MMH3ResourceError("H3 Sampling requires an unpatched base; apply creative LoRAs after Sampling")
+        require_unoptimized_sampling_model(model)
         selected = profile if isinstance(profile, dict) else {"profile": profile}
         label = str(selected.get("profile") or "Turbo - 4 steps")
         profile_names = {
@@ -353,6 +377,27 @@ def _sol_attention_inputs(native=False):
     ]
 
 
+def _vsa_attention_inputs():
+    return [
+        io.Float.Input("vsa_keep_percent", display_name="Keep video blocks (%)", default=10.0, min=0.5, max=95.0, step=0.5,
+                       tooltip="Requires complete VSA model weights and their sampling recipe. No gate transplantation."),
+        io.Float.Input("vsa_start_percent", display_name="Start fraction", default=0.0, min=0.0, max=1.0, step=0.01, advanced=True),
+        io.Float.Input("vsa_end_percent", display_name="End fraction", default=1.0, min=0.0, max=1.0, step=0.01, advanced=True),
+        io.Int.Input("vsa_min_tokens", display_name="Minimum tokens", default=0, min=0, max=1048576, step=512, advanced=True),
+        io.String.Input("vsa_dense_blocks", display_name="Dense blocks", default="", advanced=True,
+                        tooltip="Optional dense-only blocks. Changes the VSA execution recipe."),
+        io.Boolean.Input("vsa_verbose", display_name="Log attention routing", default=True, advanced=True),
+    ]
+
+
+def _native_sla_attention_inputs():
+    return [
+        io.Float.Input("native_sla_keep_percent", display_name="Keep blocks (%)", default=15.0, min=0.5, max=95.0, step=0.5,
+                       tooltip="Percentage kept exact, not sparsity. Core SLA-style routing; not identical to PlagueKind SLA."),
+        *_sol_attention_inputs(native=True)[1:],
+    ]
+
+
 def _sla_attention_inputs():
     return [
         io.Float.Input("sla_sparsity_ratio", display_name="Sparsity", default=0.90, min=0.0, max=0.95, step=0.05, advanced=True),
@@ -403,6 +448,8 @@ def h3_optimization_inputs(*, optional=False):
                 io.DynamicCombo.Option("Sol (Kijai)", _sol_attention_inputs()),
                 # Retain the serialized label for existing UI/API workflows.
                 io.DynamicCombo.Option("Sol Attention", _sol_attention_inputs()),
+                io.DynamicCombo.Option("VSA (ComfyUI)", _vsa_attention_inputs()),
+                io.DynamicCombo.Option("SLA (ComfyUI)", _native_sla_attention_inputs()),
                 io.DynamicCombo.Option("H3 SLA", _sla_attention_inputs()),
                 io.DynamicCombo.Option("SLA → Sol (experimental)", _sla_attention_inputs() + _sol_attention_inputs()),
                 io.DynamicCombo.Option("VDN-H3 · FL2VA (experimental)", _vdn_attention_inputs("fl2va")),
@@ -445,6 +492,8 @@ class MMH3H3ModelOptimizations(io.ComfyNode):
             "Sol Attention": "sol_attn",
             "Sol (Kijai)": "sol_attn",
             "Sol (ComfyUI)": "sol_native",
+            "SLA (ComfyUI)": "sla_native",
+            "VSA (ComfyUI)": "vsa_native",
             "H3 SLA": "h3_sla",
             "SLA → Sol (experimental)": "h3_sla_sol_attn",
             "VDN-H3 · FL2VA (experimental)": "vdn_h3",
@@ -456,11 +505,6 @@ class MMH3H3ModelOptimizations(io.ComfyNode):
             selected["vdn_task_family"] = "fl2va"
         elif attention_label == "VDN-H3 · Ref2VA (experimental)":
             selected["vdn_task_family"] = "ref2va"
-        from .fasth3 import FASTH3_PROFILE
-        adapter = getattr(model, "get_attachment", lambda _key: None)(SAMPLING_ADAPTER_ATTACHMENT)
-        if adapter == FASTH3_PROFILE and attention_mode in {"h3_sla", "h3_sla_sol_attn", "vdn_h3"}:
-            raise MMH3ResourceError("FastH3 dense cannot be combined with SLA or VDN-H3")
-        attached_sampling = getattr(model, "get_attachment", lambda _key: None)(SAMPLING_PROFILE_ATTACHMENT)
         explicit_sampling = None
         if sampling_profile_json.strip():
             try:
@@ -469,19 +513,7 @@ class MMH3H3ModelOptimizations(io.ComfyNode):
                 raise MMH3ResourceError(f"sampling_profile_json is not valid JSON: {exc}") from exc
             if not isinstance(explicit_sampling, dict):
                 raise MMH3ResourceError("sampling_profile_json must contain a JSON object")
-        if (explicit_sampling is not None and attached_sampling is not None
-                and explicit_sampling != attached_sampling
-                and (attention_mode == "vdn_h3" or
-                     isinstance(attached_sampling, dict) and attached_sampling.get("vdn_required"))):
-            raise MMH3ResourceError("Explicit sampling profile conflicts with the MODEL sampling attachment")
-        sampling_profile = explicit_sampling if explicit_sampling is not None else attached_sampling
-        if attention_mode == "vdn_h3" and adapter:
-            raise MMH3ResourceError(
-                "VDN-H3 cannot be stacked with an ordinary H3/FastH3 acceleration adapter; "
-                "select the VDN-H3 DMD or Stage-B sampling preset"
-            )
-        if attention_mode != "vdn_h3" and isinstance(sampling_profile, dict) and sampling_profile.get("vdn_required"):
-            raise MMH3ResourceError("VDN-H3 sampling preset requires VDN-H3 in H3 Optimizations")
+        sampling_profile = resolve_sampling_profile(model, explicit_sampling)
         fp16_mode = fp16_modes.get(fp16_accumulation, fp16_accumulation)
         plan = build_model_optimization_plan(
             enabled=attention_mode != "inherit" or fp16_mode != "inherit",
@@ -490,6 +522,7 @@ class MMH3H3ModelOptimizations(io.ComfyNode):
             sampling_profile=sampling_profile,
             **{key: value for key, value in selected.items() if key != "attention"},
         )
+        validate_optimization_application(model, plan.attention_mode, plan.fp16_accumulation, sampling_profile)
         runtime_nodes = None
         if plan.enabled:
             import nodes as comfy_nodes  # type: ignore

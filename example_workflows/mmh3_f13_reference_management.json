@@ -1,8 +1,8 @@
 {
   "id": "f13a0c0d-5cb0-4775-93e5-315406ae5c1b",
   "revision": 0,
-  "last_node_id": 6,
-  "last_link_id": 6,
+  "last_node_id": 8,
+  "last_link_id": 9,
   "nodes": [
     {
       "id": 1,
@@ -341,13 +341,15 @@
           "name": "packet",
           "type": "MMH3_MEDIA",
           "links": [
-            6
+            7
           ]
         },
         {
           "name": "resource_id",
           "type": "STRING",
-          "links": null
+          "links": [
+            8
+          ]
         },
         {
           "name": "summary",
@@ -376,7 +378,7 @@
       "id": 6,
       "type": "MMH3ReferenceReport",
       "pos": [
-        1980,
+        2500,
         190
       ],
       "size": [
@@ -485,6 +487,129 @@
         73,
         "match"
       ]
+    },
+    {
+      "id": 7,
+      "type": "MMH3ReferenceAlias",
+      "pos": [
+        1480,
+        190
+      ],
+      "size": [
+        430,
+        480
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "MMH3ReferenceAlias"
+      },
+      "inputs": [
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "link": 7
+        },
+        {
+          "name": "resource_id",
+          "type": "STRING",
+          "link": 8
+        },
+        {
+          "name": "alias",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "alias"
+          }
+        },
+        {
+          "name": "scenes_json",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "scenes_json"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "links": [
+            9
+          ]
+        }
+      ],
+      "widgets_values": [
+        "hero_face",
+        "[\"scene_1\",\"scene_2\"]"
+      ]
+    },
+    {
+      "id": 8,
+      "type": "MMH3SceneReferences",
+      "pos": [
+        1980,
+        190
+      ],
+      "size": [
+        430,
+        480
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "MMH3SceneReferences"
+      },
+      "inputs": [
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "link": 9
+        },
+        {
+          "name": "scene_id",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "scene_id"
+          }
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "prompt"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "links": [
+            6
+          ]
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "links": []
+        },
+        {
+          "name": "info_json",
+          "type": "STRING",
+          "links": []
+        }
+      ],
+      "widgets_values": [
+        "scene_1",
+        "Keep the identity and clothing of @hero_face in a cinematic tracking shot."
+      ]
     }
   ],
   "links": [
@@ -522,9 +647,33 @@
     ],
     [
       6,
-      4,
+      8,
       0,
       6,
+      0,
+      "MMH3_MEDIA"
+    ],
+    [
+      7,
+      4,
+      0,
+      7,
+      0,
+      "MMH3_MEDIA"
+    ],
+    [
+      8,
+      4,
+      1,
+      7,
+      1,
+      "STRING"
+    ],
+    [
+      9,
+      7,
+      0,
+      8,
       0,
       "MMH3_MEDIA"
     ]

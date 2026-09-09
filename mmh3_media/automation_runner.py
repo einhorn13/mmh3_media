@@ -37,6 +37,7 @@ def materialize_job_workflow(template: Mapping[str, Any], ledger: Mapping[str, A
         "filename_prefix": str(lease["filename_prefix"]),
         "effective_settings_json": json.dumps(ledger.get("effective_settings", {}), ensure_ascii=False),
     }
+    replaced: set[str] = set()
 
     def replace(value: Any) -> Any:
         if isinstance(value, dict):
@@ -44,6 +45,7 @@ def materialize_job_workflow(template: Mapping[str, Any], ledger: Mapping[str, A
         if isinstance(value, list):
             return [replace(item) for item in value]
         if isinstance(value, str) and value in PLACEHOLDERS:
+            replaced.add(value)
             return values[PLACEHOLDERS[value]]
         if isinstance(value, str):
             match = re.fullmatch(r"__MMH3_SETTING_([A-Za-z0-9_.-]+)__", value)
@@ -57,7 +59,7 @@ def materialize_job_workflow(template: Mapping[str, Any], ledger: Mapping[str, A
         return value
 
     result = replace(deep_copy_json(dict(template)))
-    missing = [placeholder for placeholder in ("__MMH3_PLAN_JSON__", "__MMH3_JOB_ID__", "__MMH3_FILENAME_PREFIX__") if placeholder not in json.dumps(template)]
+    missing = [placeholder for placeholder in ("__MMH3_PLAN_JSON__", "__MMH3_JOB_ID__", "__MMH3_FILENAME_PREFIX__") if placeholder not in replaced]
     if missing:
         raise MMH3ResourceError("Workflow template is missing required placeholders: " + ", ".join(missing))
     return result
@@ -67,20 +69,23 @@ def materialize_assembly_workflow(template: Mapping[str, Any], ledger: Mapping[s
     if ledger.get("status") != "completed":
         raise MMH3ResourceError("Final assembly requires a completed execution ledger")
     ledger_json = json.dumps(ledger, ensure_ascii=False)
+    replaced = False
 
     def replace(value: Any) -> Any:
+        nonlocal replaced
         if isinstance(value, dict):
             return {key: replace(item) for key, item in value.items()}
         if isinstance(value, list):
             return [replace(item) for item in value]
         if value == "__MMH3_LEDGER_JSON__":
+            replaced = True
             return ledger_json
         return value
 
-    serialized = json.dumps(template)
-    if "__MMH3_LEDGER_JSON__" not in serialized:
+    result = replace(deep_copy_json(dict(template)))
+    if not replaced:
         raise MMH3ResourceError("Assembly workflow template is missing __MMH3_LEDGER_JSON__")
-    return replace(deep_copy_json(dict(template)))
+    return result
 
 
 def run_final_assembly(
@@ -202,8 +207,6 @@ def run_execution_ledger(
             current = commit_execution_artifact(
                 current, job_id, lease_id=lease["lease_id"], packet_path=packet_path
             )
-            save_execution_ledger(current, checkpoint_path)
-            on_event(f"DONE {job_id} -> {packet_path}")
         except (Exception, KeyboardInterrupt) as exc:
             current = transition_execution_job(
                 current, job_id, "fail", error=f"{type(exc).__name__}: {exc}", lease_id=lease["lease_id"]
@@ -214,6 +217,11 @@ def run_execution_ledger(
                 if isinstance(exc, KeyboardInterrupt):
                     raise
                 return current
+        else:
+            # The artifact is committed. Persistence/reporting failures must propagate
+            # without attempting an invalid completed -> fail transition.
+            save_execution_ledger(current, checkpoint_path)
+            on_event(f"DONE {job_id} -> {packet_path}")
 
 
 def format_execution_summary(summary: Mapping[str, Any]) -> str:

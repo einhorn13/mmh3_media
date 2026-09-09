@@ -1,37 +1,55 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 import re
 from typing import Any, Callable, Mapping, Sequence
 
 from .errors import MMH3ResourceError
 from .util import deep_copy_json
 from .vdn_optimization import build_vdn_settings, validate_vdn_sampling_profile
+from .optimization_contract import (
+    ATTENTION_MODES, FP16_ACCUMULATION_MODES, validate_optimization_application,
+)
 
 
 MODEL_OPTIMIZATION_CONTRACT = "mmh3_h3_model_optimizations_v1"
-ATTENTION_MODES = (
-    "inherit",
-    "pytorch",
-    "comfy_kitchen",
-    "sage_attention_kj",
-    "sol_attn",
-    "sol_native",
-    "h3_sla",
-    "h3_sla_sol_attn",
-    "vdn_h3",
-)
-FP16_ACCUMULATION_MODES = ("inherit", "enabled", "disabled")
 ATTENTION_NODE_IDS = {
     "pytorch": "ModelAttentionBackend",
     "comfy_kitchen": "ModelAttentionBackend",
-    "sage_attention_kj": "PatchSageAttentionKJ",
+    # KJNodes registers this historical spelling (including the extra 'h').
+    "sage_attention_kj": "PathchSageAttentionKJ",
     "sol_attn": "SolAttnPatch",
     "sol_native": "BlockSparseAttention",
+    "sla_native": "BlockSparseAttention",
+    "vsa_native": "BlockSparseAttention",
     "h3_sla": "MMH3H3SLAApply",
     "vdn_h3": "MMH3H3VDNApply",
 }
 FP16_PATCH_NODE_ID = "MMH3H3FP16AccumulationPatch"
+
+
+def native_sol_selection(node_class: type) -> str:
+    return native_sparse_selection(node_class, "sol_native")
+
+
+def native_sparse_selection(node_class: type, mode: str) -> str:
+    """Resolve the native DynamicCombo key across ComfyUI schema revisions."""
+    inputs = node_class.INPUT_TYPES()
+    fields = {**inputs.get("required", {}), **inputs.get("optional", {})}
+    try:
+        options = fields["selection"][1]["options"]
+        keys = ({"sla_native": ("sla",), "vsa_native": ("vsa",)}.get(mode, ("sol-attn", "Sol-Attn (adaptive tau)")))
+        field = "tau" if mode == "sol_native" else "keep_percent"
+        for key in keys:
+            for option in options:
+                if option["key"] == key:
+                    nested = option["inputs"]
+                    if field in {**nested.get("required", {}), **nested.get("optional", {})}:
+                        return key
+    except (KeyError, TypeError, IndexError):
+        pass
+    raise MMH3ResourceError(f"Unsupported BlockSparseAttention {mode} schema; update compatible ComfyUI/comfy_kitchen")
 
 
 @dataclass(frozen=True)
@@ -105,6 +123,13 @@ def build_model_optimization_plan(
     sol_sink_conditioning: str = "exact_kv_and_rows",
     sol_dense_blocks: str = "",
     sol_extra_tokens: int = 256,
+    native_sla_keep_percent: float = 15.0,
+    vsa_keep_percent: float = 10.0,
+    vsa_start_percent: float = 0.0,
+    vsa_end_percent: float = 1.0,
+    vsa_min_tokens: int = 0,
+    vsa_dense_blocks: str = "",
+    vsa_verbose: bool = True,
     sla_sparsity_ratio: float = 0.90,
     sla_block_size: str = "64",
     sla_min_seq_len: int = 4096,
@@ -132,7 +157,16 @@ def build_model_optimization_plan(
     attention: dict[str, Any] = {}
     if attention_mode == "sage_attention_kj":
         attention = {"sage_mode": str(sage_mode), "allow_compile": bool(sage_allow_compile)}
-    if attention_mode in {"sol_attn", "sol_native", "h3_sla_sol_attn"}:
+    if attention_mode in {"sol_attn", "sol_native", "sla_native", "h3_sla_sol_attn"}:
+        try:
+            sol_tau = float(sol_tau)
+            token_count = float(sol_min_tokens)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise MMH3ResourceError("Sol tau and minimum tokens must be finite numbers") from exc
+        if not math.isfinite(sol_tau) or not 0 <= sol_tau <= 4:
+            raise MMH3ResourceError("Sol tau must be finite and between 0 and 4")
+        if not math.isfinite(token_count) or not token_count.is_integer() or not 0 <= token_count <= 1048576:
+            raise MMH3ResourceError("Sol minimum tokens must be an integer between 0 and 1048576")
         if not 0 <= sol_start_percent <= sol_end_percent <= 1:
             raise MMH3ResourceError("Sol-Attn requires 0 <= start <= end <= 1")
         if sol_sink_conditioning not in {"exact_kv", "exact_kv_and_rows", "off"}:
@@ -147,14 +181,42 @@ def build_model_optimization_plan(
             "dense_blocks": str(sol_dense_blocks),
         }
         attention = {"sol_attn": sol_settings} if attention_mode == "h3_sla_sol_attn" else sol_settings
-        if attention_mode == "sol_native":
-            if int(sol_extra_tokens) not in {0, 64, 128, 192, 256}:
+        if attention_mode in {"sol_native", "sla_native"}:
+            if isinstance(sol_extra_tokens, bool) or sol_extra_tokens not in (0, 64, 128, 192, 256):
                 raise MMH3ResourceError("Native Sol extra tokens must be 0, 64, 128, 192 or 256")
             if any(part.strip() and not re.fullmatch(r"\s*\d+\s*(?:-\s*\d+\s*)?", part)
                    for part in str(sol_dense_blocks).split(",")):
                 raise MMH3ResourceError("Native Sol requires non-negative dense block indices")
             attention.pop("int8_qk")
             attention["extra_tokens"] = int(sol_extra_tokens)
+        if attention_mode == "sla_native":
+            try:
+                keep = float(native_sla_keep_percent)
+            except (TypeError, ValueError, OverflowError) as exc:
+                raise MMH3ResourceError("Native SLA keep percent must be between 0.5 and 95") from exc
+            if not math.isfinite(keep) or not 0.5 <= keep <= 95:
+                raise MMH3ResourceError("Native SLA keep percent must be between 0.5 and 95")
+            attention.pop("tau")
+            attention["keep_percent"] = keep
+    if attention_mode == "vsa_native":
+        from .vsa_optimization import validate_vsa_sampling
+        validate_vsa_sampling(sampling_profile)
+        try:
+            keep, start, end, tokens = map(float, (vsa_keep_percent, vsa_start_percent, vsa_end_percent, vsa_min_tokens))
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise MMH3ResourceError("Native VSA parameters must be finite numbers") from exc
+        if not all(math.isfinite(x) for x in (keep, start, end, tokens)):
+            raise MMH3ResourceError("Native VSA parameters must be finite numbers")
+        if not 0.5 <= keep <= 95 or not 0 <= start <= end <= 1:
+            raise MMH3ResourceError("Native VSA requires keep=0.5..95 and 0 <= start <= end <= 1")
+        if not tokens.is_integer() or not 0 <= tokens <= 1048576:
+            raise MMH3ResourceError("Native VSA minimum tokens must be an integer between 0 and 1048576")
+        if any(part.strip() and not re.fullmatch(r"\s*\d+\s*(?:-\s*\d+\s*)?", part)
+               for part in str(vsa_dense_blocks).split(",")):
+            raise MMH3ResourceError("Native VSA requires non-negative dense block indices")
+        attention = {"keep_percent": keep, "start_percent": start, "end_percent": end,
+                     "min_tokens": int(tokens), "dense_blocks": str(vsa_dense_blocks),
+                     "extra_tokens": 0, "sink_conditioning": "exact_kv_and_rows", "verbose": bool(vsa_verbose)}
     if attention_mode == "vdn_h3":
         vdn = build_vdn_settings(
             task_family=vdn_task_family,
@@ -198,20 +260,50 @@ def build_model_optimization_expansion(
     model: Any,
     runtime_node_ids: Sequence[str] | None = None,
     graph_builder_factory: Callable[[], Any] | None = None,
+    native_sol_node_class: type | None = None,
 ) -> ModelOptimizationExpansion:
     profile = plan.to_dict()
     if not plan.enabled:
         return ModelOptimizationExpansion(model, profile, plan.summary(), {})
+    validate_optimization_application(
+        model, plan.attention_mode, plan.fp16_accumulation,
+        plan.settings.get("attention", {}).get("sampling"),
+    )
 
+    sage_node_id = ATTENTION_NODE_IDS["sage_attention_kj"]
     if runtime_node_ids is not None:
-        missing = [node_id for node_id in plan.required_nodes if node_id not in set(runtime_node_ids)]
+        available = set(runtime_node_ids)
+        if sage_node_id not in available and "PatchSageAttentionKJ" in available:
+            sage_node_id = "PatchSageAttentionKJ"
+        required = [sage_node_id if node_id == ATTENTION_NODE_IDS["sage_attention_kj"] else node_id
+                    for node_id in plan.required_nodes]
+        missing = [node_id for node_id in required if node_id not in available]
         if missing:
             hint = (
                 ". Sol Attention requires ComfyUI-SolAttn_triton (Patch Sol-Attn / SolAttnPatch). "
                 "If installed, check its startup import errors and restart ComfyUI after fixing them."
                 if "SolAttnPatch" in missing else ""
             )
+            if ATTENTION_NODE_IDS["sage_attention_kj"] in missing:
+                hint += (". SageAttention (KJ) requires ComfyUI-KJNodes: PathchSageAttentionKJ "
+                         "(or the compatible PatchSageAttentionKJ alias). Check KJNodes startup import errors.")
             raise MMH3ResourceError("Missing selected optimization node(s): " + ", ".join(missing) + hint)
+    if plan.attention_mode == "sage_attention_kj":
+        profile["runtime_attention_node"] = sage_node_id
+
+    if plan.attention_mode == "vsa_native":
+        from .vsa_optimization import validate_vsa_model
+        profile["vsa_model"] = validate_vsa_model(model)
+        profile["sampling_validation"] = "caller_managed_checkpoint_recipe"
+    sol_selection = {"sla_native": "sla", "vsa_native": "vsa"}.get(plan.attention_mode, "Sol-Attn (adaptive tau)")
+    if plan.attention_mode in {"sol_native", "sla_native", "vsa_native"}:
+        if native_sol_node_class is None and graph_builder_factory is None:
+            import nodes as comfy_nodes
+            native_sol_node_class = comfy_nodes.NODE_CLASS_MAPPINGS.get("BlockSparseAttention")
+            if native_sol_node_class is None:
+                raise MMH3ResourceError("Native Sol requires BlockSparseAttention; update ComfyUI/comfy_kitchen")
+        if native_sol_node_class is not None:
+            sol_selection = native_sparse_selection(native_sol_node_class, plan.attention_mode)
 
     if graph_builder_factory is None:
         from comfy_execution.graph_utils import GraphBuilder  # type: ignore
@@ -244,22 +336,24 @@ def build_model_optimization_expansion(
             current_model = backend.out(0)
         elif stage == "sage_attention_kj":
             sage = graph.node(
-                "PatchSageAttentionKJ",
+                sage_node_id,
                 model=current_model,
                 sage_attention=settings["sage_mode"],
                 allow_compile=settings["allow_compile"],
             )
             current_model = sage.out(0)
-        elif stage == "sol_native":
+        elif stage in {"sol_native", "sla_native", "vsa_native"}:
             native_settings = dict(settings)
-            tau = native_settings.pop("tau")
+            selection_field = "tau" if stage == "sol_native" else "keep_percent"
+            selection_value = native_settings.pop(selection_field)
+            verbose = native_settings.pop("verbose", False)
             sol = graph.node(
                 "BlockSparseAttention",
                 model=current_model,
-                selection="Sol-Attn (adaptive tau)",
-                **{"selection.tau": tau},
+                selection=sol_selection,
+                **{f"selection.{selection_field}": selection_value},
                 **native_settings,
-                verbose=False,
+                verbose=verbose,
             )
             current_model = sol.out(0)
         elif stage == "sol_attn":
@@ -306,8 +400,12 @@ def build_model_optimization_expansion(
             )
             current_model = sla.out(0)
 
+    recorded = graph.node(
+        "MMH3H3OptimizationRecord", model=current_model,
+        attention_mode=plan.attention_mode, fp16_accumulation=plan.fp16_accumulation,
+    )
     return ModelOptimizationExpansion(
-        current_model,
+        recorded.out(0),
         profile,
         plan.summary(),
         graph.finalize(),

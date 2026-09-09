@@ -81,6 +81,8 @@ def apply_fasth3(model, path: str, name: str):
     """Runtime-only, CPU adapter loading; reject partial applications and stacked patches."""
     import torch
     import comfy.lora
+    from .optimization_contract import require_unoptimized_sampling_model
+    require_unoptimized_sampling_model(model)
 
     if getattr(model, "patches", None) or getattr(model, "object_patches", None):
         raise MMH3ResourceError("FastH3 experimental profile requires an unpatched base model")
@@ -114,6 +116,8 @@ def apply_packaged_turbo(model, recommended_name: str):
     from pathlib import PurePosixPath
     import folder_paths
     import comfy.lora
+    from .optimization_contract import require_unoptimized_sampling_model
+    require_unoptimized_sampling_model(model)
     import comfy.lora_convert
 
     if getattr(model, "patches", None) or getattr(model, "object_patches", None):

@@ -211,6 +211,8 @@ def validate_vdn_runtime_node(node_class: Any) -> None:
 
 def apply_external_vdn(model: Any, node_class: Any, settings: VDNOptimizationSettings, sampling_profile: Mapping[str, Any] | None = None):
     sampling = validate_vdn_sampling_profile(settings, sampling_profile)
+    from .optimization_contract import validate_optimization_application, record_optimization
+    validate_optimization_application(model, "vdn_h3", sampling_profile=sampling)
     validate_vdn_runtime_node(node_class)
     schema = node_class.INPUT_TYPES()
     inputs = {**schema.get("required", {}), **schema.get("optional", {})}
@@ -242,6 +244,7 @@ def apply_external_vdn(model: Any, node_class: Any, settings: VDNOptimizationSet
     )
     if not isinstance(result, (tuple, list)) or len(result) != 1:
         raise MMH3ResourceError("ApplyVDNH3 returned an unexpected result shape")
+    record_optimization(result[0], "vdn_h3")
     profile = {
         "contract": "mmh3_vdn_h3_v1",
         "enabled": True,
