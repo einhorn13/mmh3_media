@@ -35,7 +35,6 @@ _audit/
 /workflow_migrate_*.py
 /stitch_upscale_legacy.py
 /robots.md
-/robots_ru.md
 /trash/
 
 # Keep user-facing runtime documentation; omit internal research and handoffs.
