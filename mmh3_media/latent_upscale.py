@@ -205,10 +205,25 @@ def prepare_packet_latent_upscale(
     if descriptor is None or descriptor.get("kind") != "latent":
         raise MMH3ResourceError("F07 requires a primary H3 latent resource")
     origin = h3_latent_contract_from_resource(descriptor).get("origin", "unknown")
-    if origin != "sampler_output":
+    previous = _previous_upscale_sampling(packet)
+    process, _ = _last_process_info(packet)
+    known_derived = (origin == "derived" and previous is not None
+                     and process.get("output_resource_ids", {}).get("latent") == descriptor["id"])
+    if origin != "sampler_output" and not known_derived:
         raise MMH3ResourceError(f"F07 high-sigma refine requires sampler_output provenance; got {origin!r}")
     latent = get_resource_payload(packet, descriptor)
     info = validate_h3_av_latent(latent, strict_audio_length=True)
+    if known_derived:
+        recorded_content = process.get("output_content", {}).get("latent")
+        if recorded_content is not None and recorded_content != packet.ref(descriptor["id"]).descriptor["content"]:
+            raise MMH3ResourceError("F07 source latent changed after its recorded upscale result")
+        target = _last_process_info(packet)[1].get("geometry", {}).get("target")
+        if target != {"width": info.width, "height": info.height, "frames": info.frames}:
+            raise MMH3ResourceError("Previous F07 output geometry disagrees with its latent")
+        source_mode = previous.get("conditioning_mode")
+        if source_mode not in {"t2va", "i2va", "l2va", "fl2va", "ref2va"}:
+            source_mode = "ref2va" if previous["task_family"] == "ref2va" else "t2va"
+        packet = packet.edit_metadata(merge_patch_json={"generation": {"task": source_mode}})
     plan = plan_latent_upscale_geometry(
         info,
         geometry_mode=geometry_mode,
@@ -493,6 +508,8 @@ def build_latent_upscale_process_report(
         "tile_policy": tile_policy,
         "audio_policy": "preserve_exact_source_latent_after_joint_refine",
     }
+    if normalized_refine_sampling is not None:
+        info["task_family"] = normalized_refine_sampling["task_family"]
     return LatentUpscaleProcessReport(info, tuple(actual_stack))
 
 
@@ -543,8 +560,10 @@ class LatentUpscaleRefineSampling:
 
     def summary(self) -> str:
         return (
-            f"READY · F05 source-aware refine · {self.task_family} · "
-            f"{self.sampler}/{self.scheduler} · steps={self.steps} · denoise={self.denoise:.3f}"
+            f"READY · F05/F07 source-aware refine · {self.task_family} · "
+            f"{self.sampler}/{self.scheduler} · steps={self.steps} "
+            f"({'override' if self.info['refine'].get('steps_override', 0) else 'auto'}) · denoise={self.denoise:.3f} · "
+            f"mode={self.info['refine'].get('schedule_mode', 'regenerated_tail')}"
         )
 
 
@@ -557,6 +576,11 @@ def _packet_task_family(packet: MMH3Media) -> str:
     family = str(info.get("task_family") or "")
     if family in {"fl2va", "ref2va"}:
         return family
+    previous = _previous_upscale_sampling(packet)
+    if previous is not None:
+        family = previous.get("task_family")
+        if family in {"fl2va", "ref2va"}:
+            return family
     mode = str(process.get("mode") or packet.manifest.get("generation", {}).get("task") or "")
     if mode == "ref2va":
         return "ref2va"
@@ -569,22 +593,35 @@ def build_latent_upscale_refine_sampling(
     packet: MMH3Media,
     *,
     denoise_override: float = 0.0,
+    steps_override: int = 0,
+    schedule_mode: str = "regenerated_tail",
 ) -> LatentUpscaleRefineSampling:
     """Derive a low-sigma HR refine schedule from the source MMH3 generation contract.
 
     The upscale second pass must not silently replace the source trajectory family with a
     generic high-sigma Euler recipe.  We inherit task family, sampler/scheduler, step grid
-    and AV shifts recorded by the source packet, then truncate that *same* trajectory to a
-    conservative tail using ``BasicScheduler.denoise``.  This keeps Turbo/custom sources on
-    their own sampling grid while reducing context drift from excessive re-noising.
+    and AV shifts recorded by the source packet. BasicScheduler builds a grid of
+    int(effective_steps / denoise) and retains effective_steps intervals. This preserves
+    the scheduler family, not the exact source sigma grid. Zero overrides inherit defaults.
     """
     if not isinstance(packet, MMH3Media):
-        raise MMH3ResourceError("F05 refine sampling expects an MMH3_MEDIA packet")
+        raise MMH3ResourceError("F05/F07 refine sampling expects an MMH3_MEDIA packet")
+    if type(steps_override) is not int or not 0 <= steps_override <= 10000:
+        raise MMH3ResourceError("steps_override must be an integer in 0..10000 (0 = inherit source)")
+    if schedule_mode not in {"regenerated_tail", "source_tail"}:
+        raise MMH3ResourceError("schedule_mode must be regenerated_tail or source_tail")
+    if type(denoise_override) not in (int, float) or not math.isfinite(denoise_override):
+        raise MMH3ResourceError("denoise_override must be finite: 0 or 0.05..0.50")
+    if denoise_override != 0 and not 0.05 <= denoise_override <= 0.50:
+        raise MMH3ResourceError("denoise_override must be 0 (auto) or 0.05..0.50")
     family = _packet_task_family(packet)
     if family not in {"fl2va", "ref2va"}:
-        raise MMH3ResourceError("F05 refine sampling cannot resolve FL2VA/Ref2VA task family from the source packet")
+        raise MMH3ResourceError("F05/F07 refine sampling cannot resolve FL2VA/Ref2VA task family from the source packet")
     process, info = _last_process_info(packet)
     raw_sampling = info.get("sampling") if isinstance(info.get("sampling"), Mapping) else None
+    previous = _previous_upscale_sampling(packet)
+    if previous is not None:
+        raw_sampling = previous["source_sampling"]
     warnings: list[str] = []
     inherited = raw_sampling is not None
 
@@ -596,7 +633,7 @@ def build_latent_upscale_refine_sampling(
         trajectory_tokens = ("turbo", "pdd", "minimax-h3-acc", "minimax_h3_acc", "fasth3", "fast_h3")
         if any(any(token in name for token in trajectory_tokens) for name in names):
             raise MMH3ResourceError(
-                "F05 upscale source uses a trajectory-specific acceleration LoRA but has no recorded sampling profile; "
+                "F05/F07 upscale source uses a trajectory-specific acceleration LoRA but has no recorded sampling profile; "
                 "repack/regenerate the segment with sampling provenance instead of guessing a refine schedule"
             )
         raw_sampling = {
@@ -618,29 +655,33 @@ def build_latent_upscale_refine_sampling(
     contract = str(sampling.get("contract") or "")
     if contract != "mmh3_h3_sampling_preset_v2":
         raise MMH3ResourceError(
-            f"F05 upscale does not know how to preserve source sampling contract {contract!r}; "
+            f"F05/F07 upscale does not know how to preserve source sampling contract {contract!r}; "
             "trajectory-coupled methods require an explicit compatible refine adapter"
         )
     recorded_family = str(sampling.get("task_family") or family)
     if recorded_family != family:
         raise MMH3ResourceError(
-            f"F05 upscale sampling/task-family mismatch: packet={family}, sampling={recorded_family}"
+            f"F05/F07 upscale sampling/task-family mismatch: packet={family}, sampling={recorded_family}"
         )
     sigma_preset = str(sampling.get("sigma_preset") or "scheduler_generated")
     if sigma_preset != "scheduler_generated":
         raise MMH3ResourceError(
-            f"F05 upscale requires a scheduler-generated source trajectory; got sigma_preset={sigma_preset!r}"
+            f"F05/F07 upscale requires a scheduler-generated source trajectory; got sigma_preset={sigma_preset!r}"
         )
     try:
-        steps = int(sampling["steps"])
+        steps = sampling["steps"]
         video_shift = float(sampling["video_shift"])
         audio_shift = float(sampling["audio_shift"])
         sampler = str(sampling["sampler"])
         scheduler = str(sampling["scheduler"])
     except (KeyError, TypeError, ValueError) as exc:
-        raise MMH3ResourceError("F05 source sampling provenance is incomplete") from exc
-    if steps < 1 or not sampler or not scheduler:
-        raise MMH3ResourceError("F05 source sampling provenance contains invalid steps/sampler/scheduler")
+        raise MMH3ResourceError("F05/F07 source sampling provenance is incomplete") from exc
+    if type(steps) is not int or not 1 <= steps <= 10000 or not sampler or not scheduler:
+        raise MMH3ResourceError("F05/F07 source sampling provenance contains invalid steps/sampler/scheduler")
+    if not all(math.isfinite(value) for value in (video_shift, audio_shift)):
+        raise MMH3ResourceError("Source AV shifts must be finite")
+    source_steps = previous["refine"]["steps"] if previous else steps
+    steps = steps_override or source_steps
 
     profile = str(sampling.get("profile") or "custom").lower()
     from .fasth3 import FASTH3_PROFILE
@@ -649,36 +690,59 @@ def build_latent_upscale_refine_sampling(
     if denoise_override and float(denoise_override) > 0:
         denoise = float(denoise_override)
     elif "turbo (4" in profile:
-        # Keep two trained trajectory intervals rather than restarting near sigma~1.
+        # Use the lower-noise half of the scheduler-generated grid.
         denoise = 0.50
     elif "turbo (8" in profile:
-        # Keep roughly the final three intervals.
+        # Use a conservative low-noise scheduler tail.
         denoise = 0.375
     else:
         # Base/custom: approximately the final quarter of the source trajectory.
         denoise = 0.25
     if not (0.05 <= denoise <= 0.50):
-        raise MMH3ResourceError("F05 refine denoise must stay within 0.05–0.50 to protect upscale context")
+        raise MMH3ResourceError("F05/F07 refine denoise must stay within 0.05–0.50 to protect upscale context")
+    source_sigmas = previous.get("executed_sigmas") if previous else sampling.get("executed_sigmas")
+    if schedule_mode == "source_tail":
+        if source_sigmas is None:
+            raise MMH3ResourceError("Exact source_tail requires recorded executed sigmas. Use regenerated_tail for older packets.")
+        from .upscale_execution import validate_sigma_values
+        validate_sigma_values(source_sigmas)
+        source_steps = len(source_sigmas) - 1
+        steps = steps_override or max(1, int(source_steps * denoise))
+        if steps > source_steps // 2:
+            raise MMH3ResourceError("source_tail may retain at most half of the source intervals; reduce steps_override")
+    if steps_override and steps_override != source_steps:
+        change = "sigma grid changes" if schedule_mode == "regenerated_tail" else "recorded tail length changes"
+        warnings.append(f"Refine steps overridden: source={source_steps}, effective={steps}; {change}.")
+        if "turbo" in profile:
+            warnings.append("Turbo step overrides are experimental; extra steps do not guarantee better quality.")
 
     refine = {
         "version": 1,
         "contract": "mmh3_f05_upscale_refine_sampling_v1",
         "task_family": family,
-        "conditioning_mode": str(process.get("mode") or ""),
+        "conditioning_mode": str(previous.get("conditioning_mode") if previous else process.get("mode") or ""),
         "source_sampling_inherited": inherited,
         "source_sampling": sampling,
         "refine": {
             "steps": steps,
+            "source_steps": source_steps,
+            "steps_override": steps_override,
+            "scheduler_total_steps": int(steps / denoise) if schedule_mode == "regenerated_tail" else source_steps,
+            "schedule_mode": schedule_mode,
+            "schedule_semantics": "basic_scheduler_expanded_grid_tail" if schedule_mode == "regenerated_tail" else "exact_recorded_sigma_tail",
             "video_shift": video_shift,
             "audio_shift": audio_shift,
             "sampler": sampler,
             "scheduler": scheduler,
             "denoise": denoise,
-            "policy": "truncate_source_scheduler_tail",
+            "policy": "basic_scheduler_low_sigma_tail" if schedule_mode == "regenerated_tail" else "exact_recorded_sigma_tail",
             "max_denoise": 0.50,
         },
         "warnings": warnings,
     }
+    if schedule_mode == "source_tail":
+        refine["source_sigmas"] = list(source_sigmas)
+        refine["source_sigma_dtype"] = (previous or sampling).get("sigma_dtype", "torch.float32")
     return LatentUpscaleRefineSampling(
         family, steps, video_shift, audio_shift, sampler, scheduler, denoise, refine
     )
@@ -691,6 +755,21 @@ def _last_process_info(packet: MMH3Media) -> tuple[Mapping[str, Any], Mapping[st
     process = process if isinstance(process, Mapping) else {}
     info = process.get("info") if isinstance(process.get("info"), Mapping) else {}
     return process, info
+
+
+def _previous_upscale_sampling(packet: MMH3Media) -> Mapping[str, Any] | None:
+    _, info = _last_process_info(packet)
+    if info.get("contract") != "mmh3_f07_latent_upscale_refine_v1":
+        return None
+    previous = info.get("refine", {}).get("source_aware_sampling")
+    if not isinstance(previous, Mapping) or previous.get("contract") != "mmh3_f05_upscale_refine_sampling_v1":
+        raise MMH3ResourceError("Previous F07 result has no valid source-aware sampling provenance")
+    if not isinstance(previous.get("source_sampling"), Mapping) or not isinstance(previous.get("refine"), Mapping):
+        raise MMH3ResourceError("Previous F07 sampling provenance is incomplete")
+    steps = previous["refine"].get("steps")
+    if type(steps) is not int or not 1 <= steps <= 10000:
+        raise MMH3ResourceError("Previous F07 result has invalid effective steps")
+    return previous
 
 
 def _source_upscale_identity(packet: MMH3Media) -> tuple[str, str, str]:

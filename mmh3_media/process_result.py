@@ -192,6 +192,10 @@ def pack_h3_result(
     generation_provenance = _resolved_generation_provenance(process_info)
     if mode:
         generation_provenance["task"] = mode
+    if process_info.get("contract") == "mmh3_f07_latent_upscale_refine_v1":
+        source_mode = process_info.get("refine", {}).get("source_aware_sampling", {}).get("conditioning_mode")
+        if source_mode in {"t2va", "i2va", "l2va", "fl2va", "ref2va"}:
+            generation_provenance["task"] = source_mode
     if generation_provenance:
         out = out.edit_metadata(merge_patch_json={"generation": generation_provenance})
     if applied_loras is not None:
@@ -207,6 +211,7 @@ def pack_h3_result(
         "status": str(status or ""),
         "input_resource_ids": _selected_input_resource_ids(process_info),
         "output_resource_ids": dict(resource_ids),
+        "output_content": {key: deep_copy_json(out.ref(rid).descriptor["content"]) for key, rid in resource_ids.items()},
         "info": process_info,
     }
     out = out.set_extension_value("mmh3_media", "last_process", process_record)

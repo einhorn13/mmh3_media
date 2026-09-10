@@ -240,8 +240,8 @@ class MMH3H3UpscaleRefineSampling(io.ComfyNode):
             category=CATEGORY,
             description=(
                 "Derive the HR second-pass sampler from the source MMH3 packet. Inherits task family, "
-                "sampler/scheduler, steps and AV shifts, then truncates that same trajectory to a low-sigma "
-                "tail so upscale refinement does not restart near sigma=1 and drift from source context."
+                "sampler/scheduler and AV shifts. Steps inherit the source unless explicitly overridden. "
+                "Choose a regenerated low-noise grid or an exact recorded tail with H3 Refine Scheduler."
             ),
             inputs=[
                 MMH3.Input("packet"),
@@ -252,8 +252,12 @@ class MMH3H3UpscaleRefineSampling(io.ComfyNode):
                     max=0.5,
                     step=0.025,
                     advanced=True,
-                    tooltip="0 = source-aware auto. Non-zero is clamped to the safe 0.05–0.50 refine range.",
+                    tooltip="0 = source-aware auto. Non-zero must be within 0.05–0.50; invalid values are rejected.",
                 ),
+                io.Int.Input("steps_override", default=0, min=0, max=10000, optional=True,
+                    tooltip="0 = inherit count in regenerated_tail, or select a denoise fraction in source_tail. Positive = actual refine steps. Turbo overrides are experimental."),
+                io.Combo.Input("schedule_mode", options=["regenerated_tail", "source_tail"], default="regenerated_tail", optional=True,
+                    tooltip="source_tail reuses recorded sigmas exactly; 0 steps selects denoise fraction of recorded intervals. Older packets require regenerated_tail."),
             ],
             outputs=[
                 io.String.Output("refine_sampling_json"),
@@ -269,9 +273,9 @@ class MMH3H3UpscaleRefineSampling(io.ComfyNode):
         )
 
     @classmethod
-    def execute(cls, packet, denoise_override: float) -> io.NodeOutput:
+    def execute(cls, packet, denoise_override: float, steps_override: int = 0, schedule_mode: str = "regenerated_tail") -> io.NodeOutput:
         recipe = build_latent_upscale_refine_sampling(
-            _packet(packet), denoise_override=float(denoise_override)
+            _packet(packet), denoise_override=denoise_override, steps_override=steps_override, schedule_mode=schedule_mode
         )
         return io.NodeOutput(
             json.dumps(recipe.info, ensure_ascii=False, indent=2),
@@ -312,6 +316,9 @@ class MMH3H3LatentUpscaleReport(io.ComfyNode):
                 io.Combo.Input("precision", options=["fp32", "fp16", "bf16"], default="bf16"),
                 io.Combo.Input("sigma_profile", options=["3_steps", "4_steps", "5_steps", "fast_res2m_4step", "source_aware"], default="3_steps"),
                 io.String.Input("refine_sampling_json", default="", multiline=True, optional=True, advanced=True),
+                io.String.Input("preflight_json", default="", multiline=True, optional=True, advanced=True,
+                    tooltip="When connected, the checked settings replace the legacy upscaler model/device/precision widgets."),
+                io.String.Input("audio_delivery_json", default="", multiline=True, optional=True, advanced=True),
             ],
             outputs=[
                 io.String.Output("process_info_json"),
@@ -336,7 +343,17 @@ class MMH3H3LatentUpscaleReport(io.ComfyNode):
         sigma_profile: str,
         refine_sampling_json: str = "",
         execution_profile_json: str = "",
+        preflight_json: str = "",
+        audio_delivery_json: str = "",
     ) -> io.NodeOutput:
+        preflight = _parse_object(preflight_json, "preflight") if preflight_json.strip() else None
+        if preflight is not None:
+            if preflight.get("contract") != "mmh3_f07_preflight_v1" or preflight.get("ready") is not True:
+                raise MMH3ResourceError("F07 report requires a successful preflight")
+            if preflight["geometry"] != _parse_object(geometry_report_json, "geometry"):
+                raise MMH3ResourceError("F07 report geometry disagrees with preflight")
+            settings = preflight["settings"]
+            upscaler_model, device, precision = settings["upscaler_model"], settings["device"], settings["precision"]
         try:
             process_loras = json.loads(process_loras_json or "[]")
         except json.JSONDecodeError as exc:
@@ -369,6 +386,8 @@ class MMH3H3LatentUpscaleReport(io.ComfyNode):
             if str(refine_sampling_json or "").strip()
             else None
         )
+        if preflight is not None and (refine_sampling is None or refine_sampling.get("refine") != preflight["refine"]):
+            raise MMH3ResourceError("F07 executed sampling recipe disagrees with preflight")
         report = build_latent_upscale_process_report(
             _parse_object(geometry_report_json, "geometry_report_json"),
             _parse_object(source_lora_report_json, "source_lora_report_json"),
@@ -384,8 +403,15 @@ class MMH3H3LatentUpscaleReport(io.ComfyNode):
             native_tile_adapter_report=native_tile_adapter,
             external_tile_report=external_tile_report,
         )
+        info = report.to_dict()
+        if preflight is not None:
+            info["preflight"] = preflight
+        if audio_delivery_json.strip():
+            info["audio_delivery"] = _parse_object(audio_delivery_json, "audio delivery")
+            if preflight is not None and info["audio_delivery"]["policy"] != settings["audio_policy"]:
+                raise MMH3ResourceError("F07 audio delivery disagrees with preflight")
         return io.NodeOutput(
-            json.dumps(report.to_dict(), ensure_ascii=False, indent=2),
+            json.dumps(info, ensure_ascii=False, indent=2),
             json.dumps(list(report.applied_loras), ensure_ascii=False, indent=2),
             report.summary(),
         )
