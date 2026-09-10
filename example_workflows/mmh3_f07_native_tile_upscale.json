@@ -4,7 +4,7 @@
   "groups": [
     {
       "id": 1,
-      "title": "01 Ãƒâ€šÃ‚Â· INPUTS / ASSETS",
+      "title": "01 · INPUTS / ASSETS",
       "bounding": [
         55,
         55,
@@ -17,7 +17,7 @@
     },
     {
       "id": 2,
-      "title": "02 Ãƒâ€šÃ‚Â· MODEL / ENCODERS / OPTIMIZATION",
+      "title": "02 · MODEL / ENCODERS / OPTIMIZATION",
       "bounding": [
         555,
         55,
@@ -30,7 +30,7 @@
     },
     {
       "id": 3,
-      "title": "03 Ãƒâ€šÃ‚Â· SETTINGS / CONDITIONING / CONTROL",
+      "title": "03 · SETTINGS / CONDITIONING / CONTROL",
       "bounding": [
         1055,
         55,
@@ -43,7 +43,7 @@
     },
     {
       "id": 4,
-      "title": "04 Ãƒâ€šÃ‚Â· LATENT / TIMELINE PREP",
+      "title": "04 · LATENT / TIMELINE PREP",
       "bounding": [
         1555,
         55,
@@ -56,7 +56,7 @@
     },
     {
       "id": 5,
-      "title": "05 Ãƒâ€šÃ‚Â· H3 SAMPLING + AV DECODE",
+      "title": "05 · H3 SAMPLING + AV DECODE",
       "bounding": [
         2055,
         55,
@@ -69,7 +69,7 @@
     },
     {
       "id": 7,
-      "title": "06 Ãƒâ€šÃ‚Â· PREVIEW / PACK / SAVE",
+      "title": "06 · PREVIEW / PACK / SAVE",
       "bounding": [
         3055,
         55,
@@ -1217,7 +1217,7 @@
         {
           "name": "preflight_json",
           "type": "STRING",
-          "link": null,
+          "link": 71,
           "widget": {
             "name": "preflight_json"
           }
@@ -2023,7 +2023,7 @@
         "cuda",
         "bf16",
         "auto",
-        "decoded_latent"
+        "source_pcm"
       ]
     },
     {
@@ -2037,7 +2037,7 @@
       ],
       "flags": {},
       "order": 0,
-      "mode": 4,
+      "mode": 0,
       "properties": {
         "Node name for S&R": "MMH3H3UpscalePreflight"
       },
@@ -2110,7 +2110,9 @@
         {
           "name": "preflight_json",
           "type": "STRING",
-          "links": []
+          "links": [
+            71
+          ]
         }
       ],
       "widgets_values": [
@@ -2681,10 +2683,18 @@
       28,
       6,
       "STRING"
+    ],
+    [
+      71,
+      28,
+      2,
+      20,
+      13,
+      "STRING"
     ]
   ],
   "last_node_id": 28,
-  "last_link_id": 70,
+  "last_link_id": 71,
   "definitions": {
     "subgraphs": [
       {

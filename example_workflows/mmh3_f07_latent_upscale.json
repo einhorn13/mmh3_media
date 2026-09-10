@@ -4,7 +4,7 @@
   "groups": [
     {
       "id": 1,
-      "title": "01 Ãƒâ€šÃ‚Â· INPUTS / ASSETS",
+      "title": "01 · INPUTS / ASSETS",
       "bounding": [
         55,
         55,
@@ -17,7 +17,7 @@
     },
     {
       "id": 2,
-      "title": "02 Ãƒâ€šÃ‚Â· MODEL / ENCODERS / OPTIMIZATION",
+      "title": "02 · MODEL / ENCODERS / OPTIMIZATION",
       "bounding": [
         555,
         55,
@@ -30,7 +30,7 @@
     },
     {
       "id": 3,
-      "title": "03 Ãƒâ€šÃ‚Â· SETTINGS / CONDITIONING / CONTROL",
+      "title": "03 · SETTINGS / CONDITIONING / CONTROL",
       "bounding": [
         1055,
         55,
@@ -43,7 +43,7 @@
     },
     {
       "id": 4,
-      "title": "04 Ãƒâ€šÃ‚Â· LATENT / TIMELINE PREP",
+      "title": "04 · LATENT / TIMELINE PREP",
       "bounding": [
         1555,
         55,
@@ -56,7 +56,7 @@
     },
     {
       "id": 5,
-      "title": "05 Ãƒâ€šÃ‚Â· H3 SAMPLING + AV DECODE",
+      "title": "05 · H3 SAMPLING + AV DECODE",
       "bounding": [
         2055,
         55,
@@ -69,7 +69,7 @@
     },
     {
       "id": 7,
-      "title": "06 Ãƒâ€šÃ‚Â· PREVIEW / PACK / SAVE",
+      "title": "06 · PREVIEW / PACK / SAVE",
       "bounding": [
         3055,
         55,
@@ -1794,7 +1794,7 @@
       ],
       "outputs": [],
       "widgets_values": [
-        "**Optional H3 SLA**\n\nThe normal workflow uses `Attention = Default` and does not require the external SLA backend. To use the former SLA recipe, set **H3 Optimizations ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ Attention = H3 SLA** and **FP16 accumulation = Disabled**. The SLA controls default to sparsity `0.90`, block `64`, minimum sequence `4096`, one dense final step, protected audio and `comfy_kitchen` dense backend.\n\nSource LoRAs are restored first; Optimizations stay before Sigma Shift and sampling. The selected optimization profile is written into the result packet."
+        "**Optional H3 SLA**\n\nThe normal workflow uses `Attention = Default` and does not require the external SLA backend. To use the former SLA recipe, set **H3 Optimizations → Attention = H3 SLA** and **FP16 accumulation = Disabled**. The SLA controls default to sparsity `0.90`, block `64`, minimum sequence `4096`, one dense final step, protected audio and `comfy_kitchen` dense backend.\n\nSource LoRAs are restored first; Optimizations stay before Sigma Shift and sampling. The selected optimization profile is written into the result packet."
       ]
     },
     {
