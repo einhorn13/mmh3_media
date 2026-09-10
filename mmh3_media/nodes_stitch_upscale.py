@@ -4,6 +4,7 @@ from .nodes_optimization import h3_optimization_inputs
 from .node_support import CATEGORY, MMH3, MMH3ResourceError, _packet, io, ui
 from .stitch_upscale import (DEFAULT_UPSCALER, UPSCALER_NODE, UPSCALE_ASPECTS,
     build_stitch_upscale_expansion, restore_upscale_av, resolve_stitch_upscale_geometry)
+from .upscaler_adapter import resolve_upscaler_api
 
 
 class MMH3H3StitchUpscale(io.ComfyNode):
@@ -30,8 +31,8 @@ class MMH3H3StitchUpscale(io.ComfyNode):
                         io.Int.Input('width', default=1344, min=32, max=4096, step=32),
                         io.Int.Input('height', default=768, min=32, max=4096, step=32)]),
                 ]),
-                io.Float.Input('denoise', default=0.0, min=0.0, max=0.5, step=0.05, advanced=True,
-                               tooltip='0 inherits the conservative source-specific refine amount. Source sampler, steps, shifts and LoRAs are retained.'),
+                io.Float.Input('denoise', default=0.0, min=0.0, max=1.0, step=0.05, advanced=True,
+                               tooltip='0 inherits the source-aware amount. 0.05–0.50 is recommended; stronger refinement may replace source structure.'),
                 io.String.Input('upscaler_model', default=DEFAULT_UPSCALER, advanced=True,
                                 tooltip='Installed model filename in latent_upscale_models.'),
                 io.Model.Input('fl2va_model', optional=True, tooltip='Unpatched FL2VA base for T2VA/I2VA/FL2VA segments.'),
@@ -61,9 +62,7 @@ class MMH3H3StitchUpscale(io.ComfyNode):
         backend = nodes.NODE_CLASS_MAPPINGS.get(UPSCALER_NODE)
         if backend is None:
             raise MMH3ResourceError('Install Minimax H3 Latent Upscaler (3D) to use Upscale + Stitch')
-        required = {'latent', 'model_name', 'mode', 'align', 'enable_temporal_chunking', 'force_unload', 'device', 'precision'}
-        if not required.issubset({item.id for item in backend.define_schema().inputs}):
-            raise MMH3ResourceError('Unsupported latent upscaler schema; update the 3D upscaler')
+        upscaler_api = resolve_upscaler_api(backend)
         plan = resolve_stitch_upscale_geometry(packets, resolution)
         outputs, graph, summary = build_stitch_upscale_expansion(
             packets, width=plan.target_width, height=plan.target_height, denoise=denoise,
@@ -71,7 +70,8 @@ class MMH3H3StitchUpscale(io.ComfyNode):
             video_vae=video_vae, audio_vae=audio_vae, upscaler_model=upscaler_model,
             steps_override=steps_override, manual_sigmas=manual_sigmas,
             turbo_override='' if turbo_override == 'Source' else turbo_override,
-            attention=attention, fp16_accumulation=fp16_accumulation, force_unload=force_unload)
+            attention=attention, fp16_accumulation=fp16_accumulation, force_unload=force_unload,
+            upscaler_api=upscaler_api)
         summary = f'{plan.source_width}×{plan.source_height} → {summary}'
         if plan.warnings:
             summary += '\n' + '\n'.join(plan.warnings)

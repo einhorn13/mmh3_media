@@ -134,9 +134,9 @@
           "type": "MMH3_MEDIA",
           "links": [
             2,
-            53,
-            57,
-            58
+            54,
+            58,
+            59
           ]
         }
       ],
@@ -192,7 +192,7 @@
         }
       ],
       "widgets_values": [
-        "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
+        "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
         "default"
       ]
     },
@@ -289,7 +289,7 @@
           "type": "VAE",
           "links": [
             14,
-            45
+            46
           ]
         }
       ],
@@ -331,7 +331,7 @@
           "type": "VAE",
           "links": [
             18,
-            47
+            48
           ]
         }
       ],
@@ -426,14 +426,14 @@
           "links": [
             9,
             12,
-            31
+            32
           ]
         },
         {
           "name": "video_latent",
           "type": "LATENT",
           "links": [
-            59
+            60
           ]
         },
         {
@@ -441,7 +441,7 @@
           "type": "LATENT",
           "links": [
             20,
-            30
+            31
           ]
         },
         {
@@ -465,7 +465,7 @@
           "type": "INT",
           "links": [
             17,
-            55
+            56
           ]
         },
         {
@@ -483,7 +483,7 @@
           "type": "STRING",
           "links": [
             21,
-            61
+            62
           ]
         }
       ],
@@ -510,46 +510,38 @@
       "order": 8,
       "mode": 0,
       "properties": {
-        "Node name for S&R": "MinimaxH3LatentUpscaler3D"
+        "Node name for S&R": "MMH3H3LearnedUpscale"
       },
       "id": 3,
-      "type": "MinimaxH3LatentUpscaler3D",
+      "type": "MMH3H3LearnedUpscale",
       "inputs": [
         {
-          "name": "latent",
+          "name": "video_latent",
           "type": "LATENT",
           "link": 3
         },
         {
           "name": "model_name",
-          "type": "COMBO",
+          "type": "STRING",
           "link": 6,
           "widget": {
             "name": "model_name"
           }
         },
         {
-          "name": "mode",
-          "type": "COMFY_DYNAMICCOMBO_V3",
-          "link": null,
-          "widget": {
-            "name": "mode"
-          }
-        },
-        {
-          "name": "mode.width",
+          "name": "target_width",
           "type": "INT",
           "link": 4,
           "widget": {
-            "name": "mode.width"
+            "name": "target_width"
           }
         },
         {
-          "name": "mode.height",
+          "name": "target_height",
           "type": "INT",
           "link": 5,
           "widget": {
-            "name": "mode.height"
+            "name": "target_height"
           }
         },
         {
@@ -558,22 +550,6 @@
           "link": null,
           "widget": {
             "name": "align"
-          }
-        },
-        {
-          "name": "enable_temporal_chunking",
-          "type": "BOOLEAN",
-          "link": null,
-          "widget": {
-            "name": "enable_temporal_chunking"
-          }
-        },
-        {
-          "name": "force_unload",
-          "type": "BOOLEAN",
-          "link": null,
-          "widget": {
-            "name": "force_unload"
           }
         },
         {
@@ -591,12 +567,28 @@
           "widget": {
             "name": "precision"
           }
+        },
+        {
+          "name": "offload_after_upscale",
+          "type": "BOOLEAN",
+          "link": null,
+          "widget": {
+            "name": "offload_after_upscale"
+          }
+        },
+        {
+          "name": "legacy_temporal_chunking",
+          "type": "BOOLEAN",
+          "link": null,
+          "widget": {
+            "name": "legacy_temporal_chunking"
+          }
         }
       ],
       "outputs": [
         {
-          "name": "latent",
-          "type": "*",
+          "name": "video_latent",
+          "type": "LATENT",
           "links": [
             19
           ]
@@ -604,14 +596,13 @@
       ],
       "widgets_values": [
         "minimax_h3_latent_upscaler_3d_bf16.safetensors",
-        "target dimensions",
         768,
         768,
         32,
-        true,
-        true,
         "cuda",
-        "bf16"
+        "bf16",
+        true,
+        false
       ]
     },
     {
@@ -685,7 +676,7 @@
           "name": "model",
           "type": "MODEL",
           "links": [
-            56
+            57
           ]
         },
         {
@@ -801,7 +792,7 @@
           "name": "positive",
           "type": "CONDITIONING",
           "links": [
-            41
+            42
           ]
         },
         {
@@ -813,7 +804,7 @@
           "name": "seed",
           "type": "INT",
           "links": [
-            42
+            43
           ]
         },
         {
@@ -881,7 +872,7 @@
           "name": "latent",
           "type": "LATENT",
           "links": [
-            43
+            44
           ]
         },
         {
@@ -977,7 +968,7 @@
         {
           "name": "upscaler_model",
           "type": "STRING",
-          "link": 25,
+          "link": 26,
           "widget": {
             "name": "upscaler_model"
           }
@@ -985,7 +976,7 @@
         {
           "name": "device",
           "type": "COMBO",
-          "link": 26,
+          "link": 27,
           "widget": {
             "name": "device"
           }
@@ -993,7 +984,7 @@
         {
           "name": "precision",
           "type": "COMBO",
-          "link": 27,
+          "link": 28,
           "widget": {
             "name": "precision"
           }
@@ -1017,7 +1008,7 @@
         {
           "name": "preflight_json",
           "type": "STRING",
-          "link": 65,
+          "link": 25,
           "widget": {
             "name": "preflight_json"
           }
@@ -1036,21 +1027,21 @@
           "name": "process_info_json",
           "type": "STRING",
           "links": [
-            33
+            34
           ]
         },
         {
           "name": "applied_loras_json",
           "type": "STRING",
           "links": [
-            37
+            38
           ]
         },
         {
           "name": "summary",
           "type": "STRING",
           "links": [
-            32
+            33
           ]
         }
       ],
@@ -1093,7 +1084,7 @@
         {
           "name": "av_latent",
           "type": "LATENT",
-          "link": 28
+          "link": 29
         }
       ],
       "outputs": [
@@ -1101,7 +1092,7 @@
           "name": "video_latent",
           "type": "LATENT",
           "links": [
-            29
+            30
           ]
         },
         {
@@ -1133,12 +1124,12 @@
         {
           "name": "video_latent",
           "type": "LATENT",
-          "link": 29
+          "link": 30
         },
         {
           "name": "audio_latent",
           "type": "LATENT",
-          "link": 30
+          "link": 31
         }
       ],
       "outputs": [
@@ -1146,9 +1137,9 @@
           "name": "latent",
           "type": "LATENT",
           "links": [
-            34,
-            44,
-            46
+            35,
+            45,
+            47
           ]
         }
       ],
@@ -1178,7 +1169,7 @@
         {
           "name": "packet",
           "type": "MMH3_MEDIA",
-          "link": 31
+          "link": 32
         },
         {
           "name": "operation",
@@ -1199,7 +1190,7 @@
         {
           "name": "status",
           "type": "STRING",
-          "link": 32,
+          "link": 33,
           "widget": {
             "name": "status"
           }
@@ -1207,7 +1198,7 @@
         {
           "name": "process_info_json",
           "type": "STRING",
-          "link": 33,
+          "link": 34,
           "widget": {
             "name": "process_info_json"
           }
@@ -1223,17 +1214,17 @@
         {
           "name": "latent",
           "type": "LATENT",
-          "link": 34
+          "link": 35
         },
         {
           "name": "video",
           "type": "VIDEO",
-          "link": 35
+          "link": 36
         },
         {
           "name": "audio",
           "type": "AUDIO",
-          "link": 36
+          "link": 37
         },
         {
           "name": "first_frame",
@@ -1264,7 +1255,7 @@
         {
           "name": "optimization_profile_json",
           "type": "STRING",
-          "link": 38,
+          "link": 39,
           "widget": {
             "name": "optimization_profile_json"
           }
@@ -1272,7 +1263,7 @@
         {
           "name": "applied_loras_json",
           "type": "STRING",
-          "link": 37,
+          "link": 38,
           "widget": {
             "name": "applied_loras_json"
           }
@@ -1291,7 +1282,7 @@
           "name": "packet",
           "type": "MMH3_MEDIA",
           "links": [
-            40
+            41
           ]
         },
         {
@@ -1340,7 +1331,7 @@
         {
           "name": "video",
           "type": "VIDEO",
-          "link": 39
+          "link": 40
         },
         {
           "name": "filename_prefix",
@@ -1402,7 +1393,7 @@
         {
           "name": "packet",
           "type": "MMH3_MEDIA",
-          "link": 40
+          "link": 41
         },
         {
           "name": "filename_prefix",
@@ -1469,77 +1460,77 @@
         {
           "name": "model",
           "type": "MODEL",
-          "link": 48
+          "link": 49
         },
         {
           "name": "conditioning",
           "type": "CONDITIONING",
-          "link": 41
+          "link": 42
         },
         {
           "name": "seed",
           "type": "INT",
-          "link": 42
+          "link": 43
         },
         {
           "name": "latent",
           "type": "LATENT",
-          "link": 43
+          "link": 44
         },
         {
           "name": "samples",
           "type": "LATENT",
-          "link": 44
+          "link": 45
         },
         {
           "name": "video_vae",
           "type": "VAE",
-          "link": 45
+          "link": 46
         },
         {
           "name": "samples_2",
           "type": "LATENT",
-          "link": 46
+          "link": 47
         },
         {
           "name": "audio_vae",
           "type": "VAE",
-          "link": 47
+          "link": 48
         },
         {
           "name": "sampler_name",
           "type": "COMBO",
-          "link": 49
+          "link": 50
         },
         {
           "name": "video_shift",
           "type": "FLOAT",
-          "link": 50
+          "link": 51
         },
         {
           "name": "audio_shift",
           "type": "FLOAT",
-          "link": 51
+          "link": 52
         },
         {
           "name": "refine_sampling_json",
           "type": "STRING",
-          "link": 52
+          "link": 53
         },
         {
           "name": "source_packet",
           "type": "MMH3_MEDIA",
-          "link": 53
+          "link": 54
         },
         {
           "name": "settings_json",
           "type": "STRING",
-          "link": 54
+          "link": 55
         },
         {
           "name": "frames",
           "type": "INT",
-          "link": 55
+          "link": 56
         }
       ],
       "outputs": [
@@ -1547,22 +1538,22 @@
           "name": "latent",
           "type": "LATENT",
           "links": [
-            28
+            29
           ]
         },
         {
           "name": "video",
           "type": "VIDEO",
           "links": [
-            35,
-            39
+            36,
+            40
           ]
         },
         {
           "name": "audio",
           "type": "AUDIO",
           "links": [
-            36
+            37
           ]
         },
         {
@@ -1604,7 +1595,7 @@
         {
           "name": "model",
           "type": "MODEL",
-          "link": 56
+          "link": 57
         },
         {
           "name": "attention",
@@ -1636,15 +1627,15 @@
           "name": "model",
           "type": "MODEL",
           "links": [
-            60
+            61
           ]
         },
         {
           "name": "optimization_profile_json",
           "type": "STRING",
           "links": [
-            38,
-            64
+            39,
+            65
           ]
         }
       ],
@@ -1675,7 +1666,7 @@
         {
           "name": "packet",
           "type": "MMH3_MEDIA",
-          "link": 57
+          "link": 58
         },
         {
           "name": "denoise_override",
@@ -1707,8 +1698,8 @@
           "name": "refine_sampling_json",
           "type": "STRING",
           "links": [
-            52,
-            62
+            53,
+            63
           ]
         },
         {
@@ -1725,21 +1716,21 @@
           "name": "video_shift",
           "type": "FLOAT",
           "links": [
-            50
+            51
           ]
         },
         {
           "name": "audio_shift",
           "type": "FLOAT",
           "links": [
-            51
+            52
           ]
         },
         {
           "name": "sampler_name",
           "type": "COMBO",
           "links": [
-            49
+            50
           ]
         },
         {
@@ -1869,45 +1860,45 @@
           "name": "settings_json",
           "type": "STRING",
           "links": [
-            54,
-            63
+            55,
+            64
           ]
         },
         {
           "name": "upscaler_model",
-          "type": "COMBO",
+          "type": "AnyType",
           "links": [
             6
           ]
         },
         {
           "name": "refine_checkpoint",
-          "type": "COMBO",
+          "type": "AnyType",
           "links": [
             1
           ]
         },
         {
           "name": "device",
-          "type": "COMBO",
+          "type": "AnyType",
           "links": [
             7,
-            26
+            27
           ]
         },
         {
           "name": "precision",
-          "type": "COMBO",
+          "type": "AnyType",
           "links": [
             8,
-            27
+            28
           ]
         },
         {
           "name": "upscaler_model_text",
           "type": "STRING",
           "links": [
-            25
+            26
           ]
         }
       ],
@@ -1941,22 +1932,22 @@
         {
           "name": "video_latent",
           "type": "LATENT",
-          "link": 59
+          "link": 60
         },
         {
           "name": "model",
           "type": "MODEL",
-          "link": 60
+          "link": 61
         },
         {
           "name": "packet",
           "type": "MMH3_MEDIA",
-          "link": 58
+          "link": 59
         },
         {
           "name": "geometry_json",
           "type": "STRING",
-          "link": 61,
+          "link": 62,
           "widget": {
             "name": "geometry_json"
           }
@@ -1964,7 +1955,7 @@
         {
           "name": "refine_sampling_json",
           "type": "STRING",
-          "link": 62,
+          "link": 63,
           "widget": {
             "name": "refine_sampling_json"
           }
@@ -1972,7 +1963,7 @@
         {
           "name": "settings_json",
           "type": "STRING",
-          "link": 63,
+          "link": 64,
           "widget": {
             "name": "settings_json"
           }
@@ -1980,7 +1971,7 @@
         {
           "name": "optimization_profile_json",
           "type": "STRING",
-          "link": 64,
+          "link": 65,
           "widget": {
             "name": "optimization_profile_json"
           }
@@ -1998,14 +1989,14 @@
           "name": "model",
           "type": "MODEL",
           "links": [
-            48
+            49
           ]
         },
         {
           "name": "preflight_json",
           "type": "STRING",
           "links": [
-            65
+            25
           ]
         }
       ],
@@ -2047,7 +2038,7 @@
       2,
       3,
       3,
-      3,
+      2,
       "INT"
     ],
     [
@@ -2055,7 +2046,7 @@
       2,
       4,
       3,
-      4,
+      3,
       "INT"
     ],
     [
@@ -2064,14 +2055,14 @@
       1,
       3,
       1,
-      "COMBO"
+      "STRING"
     ],
     [
       7,
       30,
       3,
       3,
-      8,
+      5,
       "COMBO"
     ],
     [
@@ -2079,7 +2070,7 @@
       30,
       4,
       3,
-      9,
+      6,
       "COMBO"
     ],
     [
@@ -2212,6 +2203,14 @@
     ],
     [
       25,
+      31,
+      2,
+      21,
+      13,
+      "STRING"
+    ],
+    [
+      26,
       30,
       5,
       21,
@@ -2219,7 +2218,7 @@
       "STRING"
     ],
     [
-      26,
+      27,
       30,
       3,
       21,
@@ -2227,7 +2226,7 @@
       "COMBO"
     ],
     [
-      27,
+      28,
       30,
       4,
       21,
@@ -2235,7 +2234,7 @@
       "COMBO"
     ],
     [
-      28,
+      29,
       26,
       0,
       16,
@@ -2243,7 +2242,7 @@
       "LATENT"
     ],
     [
-      29,
+      30,
       16,
       0,
       17,
@@ -2251,7 +2250,7 @@
       "LATENT"
     ],
     [
-      30,
+      31,
       2,
       2,
       17,
@@ -2259,7 +2258,7 @@
       "LATENT"
     ],
     [
-      31,
+      32,
       2,
       0,
       22,
@@ -2267,7 +2266,7 @@
       "MMH3_MEDIA"
     ],
     [
-      32,
+      33,
       21,
       2,
       22,
@@ -2275,7 +2274,7 @@
       "STRING"
     ],
     [
-      33,
+      34,
       21,
       0,
       22,
@@ -2283,7 +2282,7 @@
       "STRING"
     ],
     [
-      34,
+      35,
       17,
       0,
       22,
@@ -2291,7 +2290,7 @@
       "LATENT"
     ],
     [
-      35,
+      36,
       26,
       1,
       22,
@@ -2299,7 +2298,7 @@
       "VIDEO"
     ],
     [
-      36,
+      37,
       26,
       2,
       22,
@@ -2307,7 +2306,7 @@
       "AUDIO"
     ],
     [
-      37,
+      38,
       21,
       1,
       22,
@@ -2315,7 +2314,7 @@
       "STRING"
     ],
     [
-      38,
+      39,
       27,
       1,
       22,
@@ -2323,7 +2322,7 @@
       "STRING"
     ],
     [
-      39,
+      40,
       26,
       1,
       25,
@@ -2331,7 +2330,7 @@
       "VIDEO"
     ],
     [
-      40,
+      41,
       22,
       0,
       23,
@@ -2339,7 +2338,7 @@
       "MMH3_MEDIA"
     ],
     [
-      41,
+      42,
       10,
       0,
       26,
@@ -2347,7 +2346,7 @@
       "CONDITIONING"
     ],
     [
-      42,
+      43,
       10,
       2,
       26,
@@ -2355,7 +2354,7 @@
       "INT"
     ],
     [
-      43,
+      44,
       4,
       0,
       26,
@@ -2363,7 +2362,7 @@
       "LATENT"
     ],
     [
-      44,
+      45,
       17,
       0,
       26,
@@ -2371,7 +2370,7 @@
       "LATENT"
     ],
     [
-      45,
+      46,
       8,
       0,
       26,
@@ -2379,7 +2378,7 @@
       "VAE"
     ],
     [
-      46,
+      47,
       17,
       0,
       26,
@@ -2387,7 +2386,7 @@
       "LATENT"
     ],
     [
-      47,
+      48,
       9,
       0,
       26,
@@ -2395,7 +2394,7 @@
       "VAE"
     ],
     [
-      48,
+      49,
       31,
       1,
       26,
@@ -2403,7 +2402,7 @@
       "MODEL"
     ],
     [
-      49,
+      50,
       28,
       5,
       26,
@@ -2411,7 +2410,7 @@
       "COMBO"
     ],
     [
-      50,
+      51,
       28,
       3,
       26,
@@ -2419,7 +2418,7 @@
       "FLOAT"
     ],
     [
-      51,
+      52,
       28,
       4,
       26,
@@ -2427,7 +2426,7 @@
       "FLOAT"
     ],
     [
-      52,
+      53,
       28,
       0,
       26,
@@ -2435,7 +2434,7 @@
       "STRING"
     ],
     [
-      53,
+      54,
       1,
       0,
       26,
@@ -2443,7 +2442,7 @@
       "MMH3_MEDIA"
     ],
     [
-      54,
+      55,
       30,
       0,
       26,
@@ -2451,7 +2450,7 @@
       "STRING"
     ],
     [
-      55,
+      56,
       2,
       5,
       26,
@@ -2459,7 +2458,7 @@
       "INT"
     ],
     [
-      56,
+      57,
       7,
       0,
       27,
@@ -2467,7 +2466,7 @@
       "MODEL"
     ],
     [
-      57,
+      58,
       1,
       0,
       28,
@@ -2475,7 +2474,7 @@
       "MMH3_MEDIA"
     ],
     [
-      58,
+      59,
       1,
       0,
       31,
@@ -2483,7 +2482,7 @@
       "MMH3_MEDIA"
     ],
     [
-      59,
+      60,
       2,
       1,
       31,
@@ -2491,7 +2490,7 @@
       "LATENT"
     ],
     [
-      60,
+      61,
       27,
       0,
       31,
@@ -2499,7 +2498,7 @@
       "MODEL"
     ],
     [
-      61,
+      62,
       2,
       8,
       31,
@@ -2507,7 +2506,7 @@
       "STRING"
     ],
     [
-      62,
+      63,
       28,
       0,
       31,
@@ -2515,7 +2514,7 @@
       "STRING"
     ],
     [
-      63,
+      64,
       30,
       0,
       31,
@@ -2523,19 +2522,11 @@
       "STRING"
     ],
     [
-      64,
+      65,
       27,
       1,
       31,
       6,
-      "STRING"
-    ],
-    [
-      65,
-      31,
-      2,
-      21,
-      13,
       "STRING"
     ]
   ],

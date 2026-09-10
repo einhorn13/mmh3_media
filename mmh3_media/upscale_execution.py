@@ -42,8 +42,8 @@ def build_refine_sigmas(recipe, calculate):
     if mode == "source_tail":
         source = report.get("source_sigmas")
         validate_sigma_values(source)
-        if steps > (len(source) - 1) // 2:
-            raise MMH3ResourceError("Exact source tail cannot exceed half the recorded intervals")
+        if steps > len(source) - 1:
+            raise MMH3ResourceError("Exact source tail cannot exceed the recorded intervals")
         dtype = {"torch.float32": torch.float32, "torch.float64": torch.float64,
                  "torch.float16": torch.float16, "torch.bfloat16": torch.bfloat16}.get(report.get("source_sigma_dtype", "torch.float32"))
         if dtype is None:
@@ -51,8 +51,8 @@ def build_refine_sigmas(recipe, calculate):
         sigmas = torch.tensor(source[-steps-1:], dtype=dtype)
     elif mode == "regenerated_tail":
         denoise = refine["denoise"]
-        if type(denoise) not in (float, int) or not math.isfinite(denoise) or not .05 <= denoise <= .5:
-            raise MMH3ResourceError("Refine denoise must be within 0.05..0.50")
+        if type(denoise) not in (float, int) or not math.isfinite(denoise) or not 0 < denoise <= 1:
+            raise MMH3ResourceError("Refine denoise must be within 0..1")
         total = int(steps / denoise)
         if refine.get("scheduler_total_steps", total) != total:
             raise MMH3ResourceError("Refine sigma grid length disagrees with steps/denoise")
@@ -70,6 +70,7 @@ def build_refine_sigmas(recipe, calculate):
 
 def select_upscale_audio(packet, decoded_audio, policy, frames):
     import torch
+    from .h3 import AUDIO_LATENT_FPS, h3_expected_audio_t
     if policy not in {"source_pcm", "decoded_latent"}:
         raise MMH3ResourceError("Unknown upscale audio policy")
     audio = decoded_audio
@@ -85,10 +86,22 @@ def select_upscale_audio(packet, decoded_audio, policy, frames):
     waveform, rate = audio["waveform"], audio.get("sample_rate")
     if type(rate) is not int or rate <= 0 or waveform.ndim != 3 or waveform.shape[0] != 1:
         raise MMH3ResourceError("Invalid upscale audio waveform or sample rate")
-    if policy == "source_pcm" and abs(waveform.shape[-1] - round(frames * rate / 24)) > 1:
-        raise MMH3ResourceError("Original PCM duration differs from the video; align it explicitly")
+    timeline_samples = round(frames * rate / 24)
+    # H3 audio is quantized to a 40 Hz latent timeline.  Decoding that stream
+    # retains the final latent hop, so e.g. 73 video frames produce T40=122 and
+    # 97,600 PCM samples at 32 kHz rather than the unquantized 97,333 samples.
+    h3_padded_samples = round(h3_expected_audio_t(frames) * rate / AUDIO_LATENT_FPS)
+    sample_count = int(waveform.shape[-1])
+    if policy == "source_pcm" and not any(
+        abs(sample_count - expected) <= 1 for expected in (timeline_samples, h3_padded_samples)
+    ):
+        raise MMH3ResourceError(
+            "Original PCM duration differs from both the video timeline and its H3 audio-latent boundary; "
+            "align it explicitly"
+        )
     return audio, {"policy": policy, "sample_rate": rate, "samples": waveform.shape[-1],
-                   "frames": frames, "pcm_preserved": policy == "source_pcm"}
+                   "frames": frames, "pcm_preserved": policy == "source_pcm",
+                   "timeline_samples": timeline_samples, "h3_padded_samples": h3_padded_samples}
 
 
 def upscale_preflight(packet, geometry, sampling, settings, optimization, available_nodes):

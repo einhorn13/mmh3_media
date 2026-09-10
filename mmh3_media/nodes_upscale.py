@@ -54,6 +54,85 @@ from .control_tiles import (
     clone_guider_with_conditioning,
     crop_control_inputs_for_tile,
 )
+from .upscaler_adapter import UPSCALER_NODE, build_upscaler_inputs, resolve_upscaler_api
+
+
+class MMH3H3LearnedUpscale(io.ComfyNode):
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="MMH3H3LearnedUpscale",
+            display_name="MMH3 H3 Learned Upscale",
+            category=CATEGORY,
+            description=(
+                "Stable MMH3 adapter for legacy and Plus MinimaxH3LatentUpscaler3D releases. "
+                "Upscales video only to the exact prepared dimensions."
+            ),
+            inputs=[
+                io.Latent.Input("video_latent"),
+                io.String.Input("model_name"),
+                io.Int.Input("target_width", min=32, max=8192, step=32),
+                io.Int.Input("target_height", min=32, max=8192, step=32),
+                io.Int.Input("align", default=32, min=16, max=512, step=16, advanced=True),
+                io.Combo.Input("device", options=["cuda", "rocm", "cpu"], default="cuda"),
+                io.Combo.Input("precision", options=["fp16", "bf16", "fp32"], default="bf16"),
+                io.Boolean.Input(
+                    "offload_after_upscale",
+                    default=True,
+                    advanced=True,
+                    tooltip="Free learned-upscaler VRAM before H3 refinement; disable for faster repeated runs.",
+                ),
+                io.Boolean.Input(
+                    "legacy_temporal_chunking",
+                    default=False,
+                    advanced=True,
+                    tooltip=(
+                        "Legacy low-VRAM fallback only. Full-sequence inference is recommended because temporal "
+                        "chunking changes Conv3D/GroupNorm context and can create boundary differences."
+                    ),
+                ),
+            ],
+            outputs=[io.Latent.Output("video_latent")],
+            enable_expand=True,
+        )
+
+    @classmethod
+    def execute(
+        cls,
+        video_latent,
+        model_name: str,
+        target_width: int,
+        target_height: int,
+        align: int,
+        device: str,
+        precision: str,
+        offload_after_upscale: bool,
+        legacy_temporal_chunking: bool,
+    ) -> io.NodeOutput:
+        import nodes
+        from comfy_execution.graph_utils import GraphBuilder
+
+        backend = nodes.NODE_CLASS_MAPPINGS.get(UPSCALER_NODE)
+        if backend is None:
+            raise MMH3ResourceError("Install Minimax H3 Latent Upscaler (3D) to use F07")
+        api = resolve_upscaler_api(backend)
+        graph = GraphBuilder()
+        upscaler = graph.node(
+            UPSCALER_NODE,
+            **build_upscaler_inputs(
+                api,
+                latent=video_latent,
+                model_name=model_name,
+                target_width=target_width,
+                target_height=target_height,
+                align=align,
+                device=device,
+                precision=precision,
+                offload_after_upscale=offload_after_upscale,
+                legacy_temporal_chunking=legacy_temporal_chunking,
+            ),
+        )
+        return io.NodeOutput(upscaler.out(0), expand=graph.finalize())
 
 class MMH3H3LatentUpscalePrepare(io.ComfyNode):
     @classmethod
@@ -249,10 +328,10 @@ class MMH3H3UpscaleRefineSampling(io.ComfyNode):
                     "denoise_override",
                     default=0.0,
                     min=0.0,
-                    max=0.5,
+                    max=1.0,
                     step=0.025,
                     advanced=True,
-                    tooltip="0 = source-aware auto. Non-zero must be within 0.05–0.50; invalid values are rejected.",
+                    tooltip="0 = source-aware auto. The full 0–1 domain is available; 0.05–0.50 is recommended because stronger refinement may replace source structure.",
                 ),
                 io.Int.Input("steps_override", default=0, min=0, max=10000, optional=True,
                     tooltip="0 = inherit count in regenerated_tail, or select a denoise fraction in source_tail. Positive = actual refine steps. Turbo overrides are experimental."),

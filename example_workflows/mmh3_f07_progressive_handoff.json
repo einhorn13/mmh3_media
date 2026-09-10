@@ -1,0 +1,1315 @@
+{
+  "id": "70d1479b-46b3-5ccf-bbca-8cc355e85618",
+  "revision": 0,
+  "groups": [
+    {
+      "id": 1,
+      "title": "01 · MODEL / TARGET",
+      "bounding": [
+        40,
+        40,
+        520,
+        760
+      ],
+      "color": "#355070",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 2,
+      "title": "02 · PROGRESSIVE HANDOFF",
+      "bounding": [
+        600,
+        40,
+        560,
+        760
+      ],
+      "color": "#6d597a",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 3,
+      "title": "03 · SAMPLING",
+      "bounding": [
+        1200,
+        40,
+        520,
+        760
+      ],
+      "color": "#9c6644",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 4,
+      "title": "04 · DECODE / SAVE",
+      "bounding": [
+        1760,
+        40,
+        940,
+        760
+      ],
+      "color": "#2a9d8f",
+      "font_size": 24,
+      "flags": {}
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.8,
+      "offset": [
+        220,
+        180
+      ]
+    }
+  },
+  "version": 0.4,
+  "nodes": [
+    {
+      "title": "H3 FL2VA Model",
+      "pos": [
+        80,
+        100
+      ],
+      "size": [
+        440,
+        136
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "UNETLoader"
+      },
+      "id": 1,
+      "type": "UNETLoader",
+      "inputs": [
+        {
+          "name": "unet_name",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "unet_name"
+          }
+        },
+        {
+          "name": "weight_dtype",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "weight_dtype"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            3
+          ]
+        }
+      ],
+      "widgets_values": [
+        "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+        "default"
+      ]
+    },
+    {
+      "title": "Text Encoder",
+      "pos": [
+        80,
+        270
+      ],
+      "size": [
+        440,
+        160
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "CLIPLoader"
+      },
+      "id": 2,
+      "type": "CLIPLoader",
+      "inputs": [
+        {
+          "name": "clip_name",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "clip_name"
+          }
+        },
+        {
+          "name": "type",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "type"
+          }
+        },
+        {
+          "name": "device",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "device"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            1
+          ]
+        }
+      ],
+      "widgets_values": [
+        "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+        "minimax",
+        "default"
+      ]
+    },
+    {
+      "title": "Video VAE",
+      "pos": [
+        80,
+        465
+      ],
+      "size": [
+        440,
+        100
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "VAELoader"
+      },
+      "id": 3,
+      "type": "VAELoader",
+      "inputs": [
+        {
+          "name": "vae_name",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "vae_name"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            2,
+            15
+          ]
+        }
+      ],
+      "widgets_values": [
+        "minimax_h3_video_vae_fp16.safetensors"
+      ]
+    },
+    {
+      "title": "Audio VAE",
+      "pos": [
+        80,
+        600
+      ],
+      "size": [
+        440,
+        100
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "VAELoader"
+      },
+      "id": 4,
+      "type": "VAELoader",
+      "inputs": [
+        {
+          "name": "vae_name",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "vae_name"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            17
+          ]
+        }
+      ],
+      "widgets_values": [
+        "minimax_h3_audio_vae_fp32.safetensors"
+      ]
+    },
+    {
+      "title": "Target Resolution / Prompt",
+      "pos": [
+        620,
+        90
+      ],
+      "size": [
+        500,
+        360
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "MiniMaxH3ImageToVideo"
+      },
+      "id": 5,
+      "type": "MiniMaxH3ImageToVideo",
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 1
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 2
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "prompt"
+          }
+        },
+        {
+          "name": "width",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "width"
+          }
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "height"
+          }
+        },
+        {
+          "name": "length",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "length"
+          }
+        },
+        {
+          "name": "first_frame",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "last_frame",
+          "type": "IMAGE",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "links": [
+            8
+          ]
+        },
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            13
+          ]
+        }
+      ],
+      "widgets_values": [
+        "A single continuous cinematic shot with coherent motion, natural synchronized ambience, no cuts, no text or subtitles.",
+        1152,
+        640,
+        124
+      ]
+    },
+    {
+      "title": "Flow Trajectory",
+      "pos": [
+        620,
+        490
+      ],
+      "size": [
+        240,
+        110
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "H3FlowTrajectory"
+      },
+      "id": 6,
+      "type": "H3FlowTrajectory",
+      "inputs": [
+        {
+          "name": "storage_mode",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "storage_mode"
+          }
+        },
+        {
+          "name": "max_states",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "max_states"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "H3_FLOW_TRAJECTORY",
+          "type": "H3_FLOW_TRAJECTORY",
+          "links": [
+            4
+          ]
+        }
+      ],
+      "widgets_values": [
+        "system_ram",
+        4
+      ]
+    },
+    {
+      "title": "Learned 3D Handoff",
+      "pos": [
+        880,
+        490
+      ],
+      "size": [
+        240,
+        180
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "MinimaxH3LatentUpscaler3DProvider"
+      },
+      "id": 7,
+      "type": "MinimaxH3LatentUpscaler3DProvider",
+      "inputs": [
+        {
+          "name": "model_name",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "model_name"
+          }
+        },
+        {
+          "name": "device",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "device"
+          }
+        },
+        {
+          "name": "precision",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "precision"
+          }
+        },
+        {
+          "name": "offload_after_upscale",
+          "type": "BOOLEAN",
+          "link": null,
+          "widget": {
+            "name": "offload_after_upscale"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "learned_upscaler",
+          "type": "H3_LATENT_UPSCALER",
+          "links": [
+            5
+          ]
+        }
+      ],
+      "widgets_values": [
+        "minimax_h3_latent_upscaler_3d_bf16.safetensors",
+        "cuda",
+        "bf16",
+        true
+      ]
+    },
+    {
+      "title": "Progressive Target-Input Handoff",
+      "pos": [
+        1220,
+        90
+      ],
+      "size": [
+        460,
+        520
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "H3ProgressiveTargetInputHandoff"
+      },
+      "id": 8,
+      "type": "H3ProgressiveTargetInputHandoff",
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 3
+        },
+        {
+          "name": "trajectory",
+          "type": "H3_FLOW_TRAJECTORY",
+          "link": 4
+        },
+        {
+          "name": "source_mode",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "source_mode"
+          }
+        },
+        {
+          "name": "source_scale",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "source_scale"
+          }
+        },
+        {
+          "name": "source_width",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "source_width"
+          }
+        },
+        {
+          "name": "source_height",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "source_height"
+          }
+        },
+        {
+          "name": "handoff_coordinate",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "handoff_coordinate"
+          }
+        },
+        {
+          "name": "handoff_selection",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "handoff_selection"
+          }
+        },
+        {
+          "name": "guidance_mode",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "guidance_mode"
+          }
+        },
+        {
+          "name": "direction_weight",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "direction_weight"
+          }
+        },
+        {
+          "name": "acceleration_weight",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "acceleration_weight"
+          }
+        },
+        {
+          "name": "consistency_weight",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "consistency_weight"
+          }
+        },
+        {
+          "name": "low_frequency_cutoff",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "low_frequency_cutoff"
+          }
+        },
+        {
+          "name": "temporal_weight",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "temporal_weight"
+          }
+        },
+        {
+          "name": "handoff_transfer",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "handoff_transfer"
+          }
+        },
+        {
+          "name": "metrics",
+          "type": "H3_FLOW_METRICS",
+          "link": null
+        },
+        {
+          "name": "learned_upscaler",
+          "type": "H3_LATENT_UPSCALER",
+          "link": 5
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "links": [
+            6,
+            7
+          ]
+        },
+        {
+          "name": "metrics",
+          "type": "H3_FLOW_METRICS",
+          "links": []
+        }
+      ],
+      "widgets_values": [
+        "scale",
+        0.7,
+        864,
+        640,
+        0.35,
+        "fixed",
+        "direction",
+        0.25,
+        0.0,
+        0.0,
+        0.25,
+        0.0,
+        "learned_3d"
+      ]
+    },
+    {
+      "pos": [
+        1220,
+        650
+      ],
+      "size": [
+        220,
+        100
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "RandomNoise"
+      },
+      "id": 9,
+      "type": "RandomNoise",
+      "inputs": [
+        {
+          "name": "noise_seed",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "noise_seed"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "NOISE",
+          "type": "NOISE",
+          "links": [
+            9
+          ]
+        }
+      ],
+      "widgets_values": [
+        424242,
+        "randomize"
+      ]
+    },
+    {
+      "pos": [
+        1480,
+        650
+      ],
+      "size": [
+        200,
+        100
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "KSamplerSelect"
+      },
+      "id": 10,
+      "type": "KSamplerSelect",
+      "inputs": [
+        {
+          "name": "sampler_name",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "sampler_name"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "SAMPLER",
+          "type": "SAMPLER",
+          "links": [
+            11
+          ]
+        }
+      ],
+      "widgets_values": [
+        "res_multistep"
+      ]
+    },
+    {
+      "pos": [
+        1760,
+        100
+      ],
+      "size": [
+        280,
+        150
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "BasicScheduler"
+      },
+      "id": 11,
+      "type": "BasicScheduler",
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 6
+        },
+        {
+          "name": "scheduler",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "scheduler"
+          }
+        },
+        {
+          "name": "steps",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "steps"
+          }
+        },
+        {
+          "name": "denoise",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "denoise"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "SIGMAS",
+          "type": "SIGMAS",
+          "links": [
+            12
+          ]
+        }
+      ],
+      "widgets_values": [
+        "simple",
+        14,
+        1.0
+      ]
+    },
+    {
+      "pos": [
+        1760,
+        290
+      ],
+      "size": [
+        280,
+        120
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "BasicGuider"
+      },
+      "id": 12,
+      "type": "BasicGuider",
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 7
+        },
+        {
+          "name": "conditioning",
+          "type": "CONDITIONING",
+          "link": 8
+        }
+      ],
+      "outputs": [
+        {
+          "name": "GUIDER",
+          "type": "GUIDER",
+          "links": [
+            10
+          ]
+        }
+      ],
+      "widgets_values": []
+    },
+    {
+      "title": "Progressive H3 Sampling",
+      "pos": [
+        1760,
+        450
+      ],
+      "size": [
+        280,
+        200
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "SamplerCustomAdvanced"
+      },
+      "id": 13,
+      "type": "SamplerCustomAdvanced",
+      "inputs": [
+        {
+          "name": "noise",
+          "type": "NOISE",
+          "link": 9
+        },
+        {
+          "name": "guider",
+          "type": "GUIDER",
+          "link": 10
+        },
+        {
+          "name": "sampler",
+          "type": "SAMPLER",
+          "link": 11
+        },
+        {
+          "name": "sigmas",
+          "type": "SIGMAS",
+          "link": 12
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 13
+        }
+      ],
+      "outputs": [
+        {
+          "name": "output",
+          "type": "LATENT",
+          "links": [
+            14,
+            16
+          ]
+        },
+        {
+          "name": "denoised_output",
+          "type": "LATENT",
+          "links": []
+        }
+      ],
+      "widgets_values": []
+    },
+    {
+      "pos": [
+        2100,
+        100
+      ],
+      "size": [
+        240,
+        100
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "id": 14,
+      "type": "VAEDecode",
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 14
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 15
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            18
+          ]
+        }
+      ],
+      "widgets_values": []
+    },
+    {
+      "pos": [
+        2100,
+        240
+      ],
+      "size": [
+        240,
+        100
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "VAEDecodeAudio"
+      },
+      "id": 15,
+      "type": "VAEDecodeAudio",
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 16
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 17
+        }
+      ],
+      "outputs": [
+        {
+          "name": "AUDIO",
+          "type": "AUDIO",
+          "links": [
+            19
+          ]
+        }
+      ],
+      "widgets_values": []
+    },
+    {
+      "pos": [
+        2400,
+        100
+      ],
+      "size": [
+        250,
+        180
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "CreateVideo"
+      },
+      "id": 16,
+      "type": "CreateVideo",
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 18
+        },
+        {
+          "name": "fps",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "fps"
+          }
+        },
+        {
+          "name": "bit_depth",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "bit_depth"
+          }
+        },
+        {
+          "name": "color_space",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "color_space"
+          }
+        },
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 19
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": [
+            20
+          ]
+        }
+      ],
+      "widgets_values": [
+        24.0,
+        8,
+        "sRGB"
+      ]
+    },
+    {
+      "pos": [
+        2400,
+        300
+      ],
+      "size": [
+        250,
+        420
+      ],
+      "flags": {},
+      "order": 16,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "SaveVideo"
+      },
+      "id": 17,
+      "type": "SaveVideo",
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 20
+        },
+        {
+          "name": "filename_prefix",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "filename_prefix"
+          }
+        },
+        {
+          "name": "format",
+          "type": "COMFY_DYNAMICCOMBO_V3",
+          "link": null,
+          "widget": {
+            "name": "format"
+          }
+        },
+        {
+          "name": "format.codec",
+          "type": "COMFY_DYNAMICCOMBO_V3",
+          "link": null,
+          "widget": {
+            "name": "format.codec"
+          }
+        },
+        {
+          "name": "format.codec.encoding",
+          "type": "COMFY_DYNAMICCOMBO_V3",
+          "link": null,
+          "widget": {
+            "name": "format.codec.encoding"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": []
+        }
+      ],
+      "widgets_values": [
+        "video/MMH3_F07_progressive_handoff",
+        "mp4",
+        "h264",
+        "auto"
+      ]
+    },
+    {
+      "title": "Requirements / Validation",
+      "pos": [
+        2100,
+        400
+      ],
+      "size": [
+        260,
+        320
+      ],
+      "flags": {},
+      "order": 17,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "MarkdownNote"
+      },
+      "id": 18,
+      "type": "MarkdownNote",
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "text"
+          }
+        }
+      ],
+      "outputs": [],
+      "widgets_values": [
+        "**Experimental Progressive Handoff**\n\nRequires `MiniMax-H3-Flow-Aligned-Regenerate` and `Comfyui_Minimax_h3_latent_Upscaler-Plus`. The target is 1152×640; early work runs at source scale 0.70, then learned 3D transfer hands off at coordinate 0.35. Direction-only guidance is the conservative default. Compare decoded video and audio against ordinary F01 → F07 before adopting it for production."
+      ]
+    }
+  ],
+  "links": [
+    [
+      1,
+      2,
+      0,
+      5,
+      0,
+      "CLIP"
+    ],
+    [
+      2,
+      3,
+      0,
+      5,
+      1,
+      "VAE"
+    ],
+    [
+      3,
+      1,
+      0,
+      8,
+      0,
+      "MODEL"
+    ],
+    [
+      4,
+      6,
+      0,
+      8,
+      1,
+      "H3_FLOW_TRAJECTORY"
+    ],
+    [
+      5,
+      7,
+      0,
+      8,
+      16,
+      "H3_LATENT_UPSCALER"
+    ],
+    [
+      6,
+      8,
+      0,
+      11,
+      0,
+      "MODEL"
+    ],
+    [
+      7,
+      8,
+      0,
+      12,
+      0,
+      "MODEL"
+    ],
+    [
+      8,
+      5,
+      0,
+      12,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      9,
+      9,
+      0,
+      13,
+      0,
+      "NOISE"
+    ],
+    [
+      10,
+      12,
+      0,
+      13,
+      1,
+      "GUIDER"
+    ],
+    [
+      11,
+      10,
+      0,
+      13,
+      2,
+      "SAMPLER"
+    ],
+    [
+      12,
+      11,
+      0,
+      13,
+      3,
+      "SIGMAS"
+    ],
+    [
+      13,
+      5,
+      1,
+      13,
+      4,
+      "LATENT"
+    ],
+    [
+      14,
+      13,
+      0,
+      14,
+      0,
+      "LATENT"
+    ],
+    [
+      15,
+      3,
+      0,
+      14,
+      1,
+      "VAE"
+    ],
+    [
+      16,
+      13,
+      0,
+      15,
+      0,
+      "LATENT"
+    ],
+    [
+      17,
+      4,
+      0,
+      15,
+      1,
+      "VAE"
+    ],
+    [
+      18,
+      14,
+      0,
+      16,
+      0,
+      "IMAGE"
+    ],
+    [
+      19,
+      15,
+      0,
+      16,
+      4,
+      "AUDIO"
+    ],
+    [
+      20,
+      16,
+      0,
+      17,
+      0,
+      "VIDEO"
+    ]
+  ],
+  "last_node_id": 18,
+  "last_link_id": 20,
+  "definitions": {
+    "subgraphs": []
+  }
+}

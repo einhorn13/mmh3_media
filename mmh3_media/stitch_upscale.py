@@ -9,8 +9,8 @@ from .latent_stitch import inspect_h3_latent_stitch_packets
 from .latent_upscale import build_latent_upscale_refine_sampling, _source_upscale_identity, prepare_packet_latent_upscale
 from .lora_provenance import get_generation_loras
 from .upscale_overrides import parse_upscale_sigmas
+from .upscaler_adapter import UPSCALER_NODE, build_upscaler_inputs
 
-UPSCALER_NODE = 'MinimaxH3LatentUpscaler3D'
 DEFAULT_UPSCALER = 'minimax_h3_latent_upscaler_3d_bf16.safetensors'
 UPSCALE_ASPECTS = ('Source', '16:9', '9:16', '1:1', '4:3', '3:4', '2:3', '3:2')
 
@@ -87,7 +87,8 @@ def validate_sources(packets, width, height, denoise):
 def build_stitch_upscale_expansion(packets, *, width, height, denoise, models, clip,
                                    video_vae, audio_vae, upscaler_model=DEFAULT_UPSCALER,
                                    graph_builder_factory=None, steps_override=0, manual_sigmas='', turbo_override='',
-                                   attention='Default', fp16_accumulation='Default', force_unload=True):
+                                   attention='Default', fp16_accumulation='Default', force_unload=True,
+                                   upscaler_api='legacy_v1'):
     if not 0 <= steps_override <= 100:
         raise MMH3ResourceError('Upscale steps must be within 0–100 (0 inherits source)')
     explicit_sigmas = parse_upscale_sigmas(manual_sigmas)
@@ -139,10 +140,10 @@ def build_stitch_upscale_expansion(packets, *, width, height, denoise, models, c
         prepare = graph.node('MMH3H3LatentUpscalePrepare', packet=packet, geometry_mode='target_dimensions',
                              scale=1.0, target_width=width, target_height=height, target_megapixels=0.0,
                              align=32, enable_chunking=True)
-        upscale = graph.node(UPSCALER_NODE, latent=prepare.out(1), model_name=upscaler_model,
-                             mode='target dimensions', **{'mode.width': width, 'mode.height': height},
-                             align=32, enable_temporal_chunking=True, force_unload=force_unload,
-                             device='cuda', precision='bf16')
+        upscale = graph.node(UPSCALER_NODE, **build_upscaler_inputs(
+            upscaler_api, latent=prepare.out(1), model_name=upscaler_model,
+            target_width=width, target_height=height, align=32, device='cuda', precision='bf16',
+            offload_after_upscale=force_unload, legacy_temporal_chunking=False))
         loras = graph.node('MMH3H3RefineLoRAs', packet=prepare.out(0), model=models[recipe.task_family],
                            clip=clip, unknown_policy='error', missing_policy='error', turbo_override=turbo_override)
         optimized = graph.node('MMH3H3ModelOptimizations', model=loras.out(0),

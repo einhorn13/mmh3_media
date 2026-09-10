@@ -1,6 +1,7 @@
 """Explicit settings, execution gate, sigma recording and PCM delivery for F07."""
 from .node_support import CATEGORY, MMH3, io, json, _packet, _parse_object
 from .upscale_execution import build_refine_sigmas, upscale_preflight, select_upscale_audio
+from .upscaler_adapter import UPSCALER_NODE, resolve_upscaler_api
 
 
 class MMH3H3UpscaleSettings(io.ComfyNode):
@@ -46,6 +47,7 @@ class MMH3H3UpscalePreflight(io.ComfyNode):
         report = upscale_preflight(_packet(packet), _parse_object(geometry_json, "geometry"),
             _parse_object(refine_sampling_json, "sampling"), _parse_object(settings_json, "settings"),
             _parse_object(optimization_profile_json, "optimizations"), nodes.NODE_CLASS_MAPPINGS)
+        report["upscaler_api"] = resolve_upscaler_api(nodes.NODE_CLASS_MAPPINGS[UPSCALER_NODE])
         return io.NodeOutput(video_latent, model, json.dumps(report))
 
 

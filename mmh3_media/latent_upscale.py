@@ -215,7 +215,8 @@ def prepare_packet_latent_upscale(
     info = validate_h3_av_latent(latent, strict_audio_length=True)
     if known_derived:
         recorded_content = process.get("output_content", {}).get("latent")
-        if recorded_content is not None and recorded_content != packet.ref(descriptor["id"]).descriptor["content"]:
+        current_content = packet.ref(descriptor["id"]).descriptor["content"]
+        if recorded_content is not None and not _same_recorded_resource_content(recorded_content, current_content):
             raise MMH3ResourceError("F07 source latent changed after its recorded upscale result")
         target = _last_process_info(packet)[1].get("geometry", {}).get("target")
         if target != {"width": info.width, "height": info.height, "frames": info.frames}:
@@ -239,6 +240,25 @@ def prepare_packet_latent_upscale(
     # protection mask from continuation lineage. Keep the source packet intact.
     video_latent, audio_latent = split_h3_av_latent({"samples": latent["samples"]})
     return PreparedLatentUpscale(packet, video_latent, audio_latent, plan, descriptor["id"])
+
+
+def _same_recorded_resource_content(recorded: Any, current: Any) -> bool:
+    """Compare immutable identity without treating archive storage facts as a mutation.
+
+    ``MMH3Save`` adds the serialized byte size and digest after ``last_process`` has
+    captured its output.  Those facts may consequently be absent from the recorded
+    snapshot even though the resource revision is unchanged.  A digest remains an
+    additional integrity proof when it was already known on both sides.
+    """
+    if not isinstance(recorded, dict) or not isinstance(current, dict):
+        return False
+    recorded_revision = str(recorded.get("revision") or "")
+    current_revision = str(current.get("revision") or "")
+    if not recorded_revision or recorded_revision != current_revision:
+        return False
+    recorded_digest = recorded.get("digest")
+    current_digest = current.get("digest")
+    return not (recorded_digest and current_digest and recorded_digest != current_digest)
 
 
 def prepare_decoded_packet_latent_upscale(
@@ -611,9 +631,9 @@ def build_latent_upscale_refine_sampling(
     if schedule_mode not in {"regenerated_tail", "source_tail"}:
         raise MMH3ResourceError("schedule_mode must be regenerated_tail or source_tail")
     if type(denoise_override) not in (int, float) or not math.isfinite(denoise_override):
-        raise MMH3ResourceError("denoise_override must be finite: 0 or 0.05..0.50")
-    if denoise_override != 0 and not 0.05 <= denoise_override <= 0.50:
-        raise MMH3ResourceError("denoise_override must be 0 (auto) or 0.05..0.50")
+        raise MMH3ResourceError("denoise_override must be finite")
+    if denoise_override < 0 or denoise_override > 1:
+        raise MMH3ResourceError("denoise_override must be within 0..1 (0 = auto)")
     family = _packet_task_family(packet)
     if family not in {"fl2va", "ref2va"}:
         raise MMH3ResourceError("F05/F07 refine sampling cannot resolve FL2VA/Ref2VA task family from the source packet")
@@ -698,8 +718,11 @@ def build_latent_upscale_refine_sampling(
     else:
         # Base/custom: approximately the final quarter of the source trajectory.
         denoise = 0.25
-    if not (0.05 <= denoise <= 0.50):
-        raise MMH3ResourceError("F05/F07 refine denoise must stay within 0.05–0.50 to protect upscale context")
+    if not 0.05 <= denoise <= 0.50:
+        warnings.append(
+            f"Refine denoise {denoise:.3g} is outside the recommended 0.05–0.50 upscale range; "
+            "strong refinement may replace source structure."
+        )
     source_sigmas = previous.get("executed_sigmas") if previous else sampling.get("executed_sigmas")
     if schedule_mode == "source_tail":
         if source_sigmas is None:
@@ -708,8 +731,8 @@ def build_latent_upscale_refine_sampling(
         validate_sigma_values(source_sigmas)
         source_steps = len(source_sigmas) - 1
         steps = steps_override or max(1, int(source_steps * denoise))
-        if steps > source_steps // 2:
-            raise MMH3ResourceError("source_tail may retain at most half of the source intervals; reduce steps_override")
+        if steps > source_steps:
+            raise MMH3ResourceError("source_tail cannot retain more intervals than the recorded trajectory")
     if steps_override and steps_override != source_steps:
         change = "sigma grid changes" if schedule_mode == "regenerated_tail" else "recorded tail length changes"
         warnings.append(f"Refine steps overridden: source={source_steps}, effective={steps}; {change}.")
@@ -736,7 +759,8 @@ def build_latent_upscale_refine_sampling(
             "scheduler": scheduler,
             "denoise": denoise,
             "policy": "basic_scheduler_low_sigma_tail" if schedule_mode == "regenerated_tail" else "exact_recorded_sigma_tail",
-            "max_denoise": 0.50,
+            "max_denoise": 1.0,
+            "recommended_denoise": [0.05, 0.50],
         },
         "warnings": warnings,
     }

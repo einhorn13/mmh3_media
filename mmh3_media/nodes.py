@@ -8,7 +8,7 @@ from .nodes_conditioning import MMH3Inspect, MMH3Preflight, MMH3ReferenceConfigu
 from .nodes_editing import MMH3AVEditPolicy, MMH3AVProtectionRestore, MMH3TwoClipAVBridge, MMH3ReferenceSchedule, MMH3SceneReferences, MMH3ReferenceAlias, MMH3AVEditAudio, MMH3BridgeMiddle
 from .nodes_chain import MMH3ChainStart, MMH3ChainCommit, MMH3ChainValidate, MMH3ChainValidateRerollSource, MMH3VideoStitch, MMH3H3LatentStitch, MMH3Unpack
 from .nodes_upscale_pipeline import MMH3H3UpscaleSettings, MMH3H3UpscalePreflight, MMH3H3RefineScheduler, MMH3H3UpscaleAudio
-from .nodes_upscale import MMH3H3LatentUpscalePrepare, MMH3H3LatentUpscaleTarget, MMH3H3LatentStitchUpscaleTarget, MMH3H3UpscaleRefineSampling, MMH3H3DecodedUpscalePrepare, MMH3H3LatentUpscaleReport, MMH3H3ExternalTileFinalize, MMH3H3NativeTileRefine
+from .nodes_upscale import MMH3H3LearnedUpscale, MMH3H3LatentUpscalePrepare, MMH3H3LatentUpscaleTarget, MMH3H3LatentStitchUpscaleTarget, MMH3H3UpscaleRefineSampling, MMH3H3DecodedUpscalePrepare, MMH3H3LatentUpscaleReport, MMH3H3ExternalTileFinalize, MMH3H3NativeTileRefine
 from .nodes_h3 import MMH3H3AVSeparate, MMH3H3AVCombine, MMH3H3Provenance, MMH3H3Compatibility, MMH3H3ContinuationHandover, MMH3H3DecodedContinuation, MMH3H3ContinuationGuide
 from .nodes_utility import MMH3Compare, MMH3Export, MMH3Preview, _MMH3GetBase, MMH3GetLatent, MMH3GetImage, MMH3GetVideo, MMH3GetAudio, MMH3GetMask, MMH3GetJSON
 from .nodes_control import MMH3ControlConfigure, MMH3ControlPreflight, MMH3ControlVideo, MMH3MaskedEditCondition, MMH3H3ControlApply, MMH3H3FunControl
@@ -97,6 +97,7 @@ class MMH3Extension(ComfyExtension):
             MMH3Export,
             MMH3Compare,
             MMH3Preview,
+            MMH3H3LearnedUpscale,
             MMH3H3LatentUpscalePrepare,
             MMH3H3DecodedUpscalePrepare,
             MMH3H3LatentUpscaleTarget,
