@@ -8,20 +8,14 @@
     }
   },
   "2": {
-    "class_type": "MMH3LongVideoChunkPlan",
+    "class_type": "MMH3InteractiveAudioTimelinePlan",
     "inputs": {
       "packet": [
         "1",
         0
       ],
-      "chunk_duration_seconds": 8.0,
-      "overlap_seconds": 1.0,
-      "boundary_mode": "fixed",
-      "scene_cuts_json": "[]",
-      "scene_search_seconds": 1.5,
-      "min_tail_seconds": 2.0,
-      "min_tail_policy": "merge_previous",
-      "audio_sample_rate": 32000
+      "first_shot_duration_seconds": 5.0,
+      "context_seconds": 0.5
     }
   },
   "3": {
@@ -35,10 +29,10 @@
         "2",
         1
       ],
-      "mode": "audio_driven",
+      "mode": "lipsync",
+      "source_mode": "image_reference",
+      "require_candidate_review": true,
       "tracks_json": "[]",
-      "source_mode": "video_reference",
-      "require_candidate_review": false,
       "audio_output_mode": "master_only",
       "master_gain_db": 0.0,
       "generated_gain_db": -18.0,
@@ -56,7 +50,7 @@
       "action": "initialize",
       "job_id": "",
       "lease_id": "",
-      "operation": "long_video_audio_driven",
+      "operation": "long_video_lipsync",
       "error_policy": "stop_on_error",
       "effective_settings_json": [
         "3",
@@ -65,11 +59,11 @@
       "artifact_json": "{}",
       "packet_path": "",
       "packet_id": "",
-      "error": "",
-      "resume_mode": "pending_and_failed",
       "candidate_id": "",
       "candidate_label": "",
       "candidate_notes": "",
+      "error": "",
+      "resume_mode": "pending_and_failed",
       "next_shot_duration_seconds": 5.0,
       "next_context_seconds": 0.5,
       "audio_output_mode": "master_only",
@@ -85,7 +79,7 @@
         "4",
         0
       ],
-      "filename_prefix": "mmh3_automation/audio_driven/ledger"
+      "filename_prefix": "mmh3_automation/image_lipsync/ledger"
     }
   }
 }

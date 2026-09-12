@@ -8,7 +8,7 @@
     }
   },
   "2": {
-    "class_type": "MMH3AutomationVideoChunk",
+    "class_type": "MMH3AutomationAudioChunk",
     "inputs": {
       "packet": [
         "1",
@@ -33,35 +33,13 @@
       ],
       "role": "reference",
       "mode": "upsert",
-      "order": 0,
+      "order": -1,
       "primary": false,
       "resource_id": "",
-      "name": "",
-      "tags": "",
+      "name": "master audio slice",
+      "tags": "f18,lipsync,master_audio_slice",
       "descriptor_json": "{}",
-      "extensions_json": "{\"minimax_h3\":{\"reference\":{\"contract_version\":1,\"enabled\":true,\"purposes\":[\"unknown\"]}}}"
-    }
-  },
-  "4": {
-    "class_type": "MMH3Put",
-    "inputs": {
-      "packet": [
-        "3",
-        0
-      ],
-      "resource": [
-        "2",
-        2
-      ],
-      "role": "reference",
-      "mode": "upsert",
-      "order": 1,
-      "primary": false,
-      "resource_id": "",
-      "name": "",
-      "tags": "",
-      "descriptor_json": "{}",
-      "extensions_json": "{\"minimax_h3\":{\"reference\":{\"contract_version\":1,\"enabled\":true,\"purposes\":[\"unknown\"]}}}"
+      "extensions_json": "{\"minimax_h3\":{\"reference\":{\"contract_version\":1,\"enabled\":true,\"purposes\":[\"voice\"]}}}"
     }
   },
   "6": {
@@ -88,7 +66,7 @@
     "class_type": "MMH3H3AutoCondition",
     "inputs": {
       "packet": [
-        "4",
+        "3",
         0
       ],
       "clip": [
@@ -103,11 +81,14 @@
         "8",
         0
       ],
-      "prompt_override": "Use <Video 1> for visual continuity. Use <Audio 1> only as a musical timing reference: follow beat, tempo, accents, phrase boundaries and energy with body motion, cuts and camera rhythm. Do not invent dialogue or force mouth articulation from vocals.",
+      "prompt_override": "Use <Picture 1> as the character identity and appearance reference. Follow <Audio 1> exactly for singing timing and visible mouth articulation. Keep facial identity stable, natural jaw/cheek motion, realistic blinking and head motion. Do not invent extra spoken words during instrumental passages.",
       "seed_override": "__MMH3_ATTEMPT_SEED__",
-      "width_override": 0,
-      "height_override": 0,
-      "frames_override": 0
+      "width_override": 768,
+      "height_override": 448,
+      "frames_override": [
+        "2",
+        3
+      ]
     }
   },
   "10": {
@@ -126,6 +107,19 @@
       ],
       "shift_video": 12.0,
       "shift_audio": 3.0
+    }
+  },
+  "12": {
+    "class_type": "BasicGuider",
+    "inputs": {
+      "model": [
+        "11",
+        0
+      ],
+      "conditioning": [
+        "9g",
+        0
+      ]
     }
   },
   "13": {
@@ -202,7 +196,7 @@
       ],
       "audio": [
         "2",
-        2
+        1
       ],
       "fps": 24.0,
       "bit_depth": 8
@@ -214,7 +208,7 @@
       "settings_json": "__MMH3_EFFECTIVE_SETTINGS_JSON__",
       "job_json": [
         "2",
-        3
+        2
       ]
     }
   },
@@ -237,8 +231,8 @@
         "17a",
         0
       ],
-      "operation": "long_video_audio_driven",
-      "mode": "audio_driven",
+      "operation": "long_video_lipsync",
+      "mode": "lipsync",
       "status": [
         "18",
         1
@@ -273,18 +267,31 @@
       "format": "mp4"
     }
   },
-  "12": {
-    "class_type": "BasicGuider",
+  "9g": {
+    "class_type": "MiniMaxH3AddGuide",
     "inputs": {
-      "model": [
-        "11",
-        0
-      ],
-      "conditioning": [
+      "positive": [
         "9",
         0
-      ]
+      ],
+      "latent": [
+        "9",
+        1
+      ],
+      "audio_vae": [
+        "8safe",
+        0
+      ],
+      "audio": [
+        "2",
+        1
+      ],
+      "frame_idx": 0
     }
+  },
+  "8safe": {
+    "class_type": "MMH3H3AudioVAE",
+    "inputs": {"audio_vae": ["8", 0]}
   },
   "17a": {
     "class_type": "VAEDecodeAudio",

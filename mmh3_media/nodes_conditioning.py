@@ -920,6 +920,8 @@ class MMH3H3ContinuationCondition(io.ComfyNode):
         reference_size_mode, reference_short_edge = reference_image_sizing_from_manifest(packet.manifest)
         native_ref_image_size = native_reference_image_size(reference_size_mode)
         handover_info = _parse_object(handover_info_json, "handover_info_json")
+        from .scheduled_references import validate_scene_compilation
+        validate_scene_compilation(packet, prompt_override or packet.manifest.get("generation", {}).get("prompt", ""))
         if handover_info.get("contract") != "minimax_h3_joint_av_continuation_v1":
             raise MMH3ResourceError(
                 "Prepare H3 Continuation requires info_json from MMH3 H3 Continuation Handover"

@@ -1685,7 +1685,12 @@
         "Node name for S&R": "MMH3H3LatentUpscaleReport"
       },
       "widgets_values": [
+        "",
+        "",
         "[]",
+        "",
+        "",
+        "",
         "",
         "",
         "minimax_h3_latent_upscaler_3d_bf16.safetensors",

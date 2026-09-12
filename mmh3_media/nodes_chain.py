@@ -288,8 +288,10 @@ class MMH3VideoStitch(io.ComfyNode):
             "Seam-local exposure/white-balance/contrast correction is evaluated during streaming decode. Auto "
             "mode suppresses correction for detected scene changes; actual decisions are stored in save stats."
         )
+        from .process_result import prepare_assembly_packet
+        base, report["source_controls"] = prepare_assembly_packet(packets)
         packed = pack_h3_result(
-            packets[-1], video=video, audio=result.audio, operation="video_stitch",
+            base, video=video, audio=result.audio, operation="video_stitch",
             mode=f"{video_mode}+{audio_mode}", status=result.plan.summary(), process_info=report)
         out = packed.packet.set_extension_value("mmh3_media", "assembly", report)
         return io.NodeOutput(out, video, result.audio, result.plan.summary(),
@@ -336,8 +338,10 @@ class MMH3H3LatentStitch(io.ComfyNode):
         report["compatibility"] = compatibility.to_dict()
         report["decode_required"] = True
         report["decode_hint"] = "Connect latent to stock VAEDecode + VAEDecodeAudio, then CreateVideo."
+        from .process_result import prepare_assembly_packet
+        base, report["source_controls"] = prepare_assembly_packet(packets)
         packed = pack_h3_result(
-            packets[-1], latent=result.latent, operation="latent_stitch", mode="h3_continuation",
+            base, latent=result.latent, operation="latent_stitch", mode="h3_continuation",
             status=result.plan.summary(), process_info=report, latent_origin="derived")
         out = packed.packet.set_extension_value("mmh3_media", "assembly", report)
         return io.NodeOutput(out, result.latent, result.plan.summary(),

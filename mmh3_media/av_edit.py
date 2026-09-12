@@ -115,19 +115,8 @@ def select_edit_delivery_audio(packet, decoded_audio, *, delivery_policy="origin
         raise MMH3ResourceError("Packet has no AV edit policy")
     if delivery_policy == "decoded_latent" or policy["audio_policy"] != "preserve":
         return decoded_audio
-    descriptor = packet.get_primary("audio")
-    original = packet.ref(descriptor["id"]).materialize() if descriptor else None
-    if original is None:
-        video = packet.get_primary("video")
-        if video:
-            original = getattr(packet.ref(video["id"]).materialize().get_components(), "audio", None)
-    if not isinstance(original, dict) or not isinstance(original.get("waveform"), torch.Tensor):
+    if packet.get_primary("audio") is None and packet.get_primary("video") is None:
         raise MMH3ResourceError("No original PCM: connect source audio or explicitly choose decoded_latent delivery")
-    rate = original.get("sample_rate")
-    waveform = original["waveform"]
-    if type(rate) is not int or rate <= 0 or waveform.ndim != 3:
-        raise MMH3ResourceError("Original PCM has invalid sample rate or waveform")
-    expected = round(policy["frames"] * rate / 24)
-    if abs(waveform.shape[-1] - expected) > 1:
-        raise MMH3ResourceError("Original PCM duration differs from the edited target; align explicitly")
-    return original
+    # Reuse the source-PCM contract, including the native 40 Hz audio boundary.
+    from .upscale_execution import select_upscale_audio
+    return select_upscale_audio(packet, decoded_audio, "source_pcm", policy["frames"])[0]

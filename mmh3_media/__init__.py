@@ -69,10 +69,10 @@ from .model_optimizations import (
     build_model_optimization_plan,
 )
 from .generation_settings import GenerationSettings, adapt_h3_canvas, build_generation_settings
-from .automation import ChunkExecutionSelection, ChunkPlan, VIDEO_SUFFIXES, plan_batch_inputs, plan_long_video_chunks, resolve_chunk_execution
+from .automation import ChunkExecutionSelection, ChunkPlan, VIDEO_SUFFIXES, append_h3_audio_interactive_try, finalize_h3_audio_interactive_plan, plan_batch_inputs, plan_h3_audio_interactive_sequence, plan_h3_audio_timeline_chunks, plan_long_video_chunks, resolve_chunk_execution
 from .automation_batch_stitch import BATCH_STITCH_CONTRACT, BatchStitchPreparation, inspect_batch_stitch_plan, prepare_batch_stitch
 from .raw_video_import import ConformSettings, RawImportResult, RawVideoProbe, import_raw_video, normalize_batch_plan, probe_raw_video
-from .automation_adapters import VideoChunkExpansion, build_video_chunk_expansion, trim_audio_samples
+from .automation_adapters import AudioTimelineChunkExpansion, VideoChunkExpansion, build_audio_timeline_chunk_expansion, build_video_chunk_expansion, trim_audio_samples, trim_audio_samples_padded
 from .automation_estimate import PREQUEUE_ESTIMATE_CONTRACT, build_prequeue_estimate, prequeue_summary
 from .automation_assembly import ChunkAssemblyResult, assemble_chunk_packets, load_immutable_lipsync_audio
 from .automation_upscale import build_long_video_upscale_settings, validate_upscale_chunk_artifact
@@ -81,9 +81,11 @@ from .automation_lipsync import (
     SETTINGS_CONTRACT as LIPSYNC_SETTINGS_CONTRACT,
     build_h3_audio_sync_chunk_proof,
     build_long_video_audio_sync_settings,
+    extend_long_video_audio_sync_settings,
+    update_audio_delivery_policy,
     validate_lipsync_chunk_proof,
 )
-from .automation_execution import EXECUTION_CONTRACT, JOB_STATES, acquire_next_execution_job, build_chunk_assembly_map, commit_execution_artifact, create_execution_ledger, deterministic_artifact_prefix, load_execution_ledger, save_execution_ledger, select_resume_jobs, transition_execution_job
+from .automation_execution import EXECUTION_CONTRACT, JOB_STATES, accept_execution_candidate, acquire_next_execution_job, append_interactive_audio_try, build_chunk_assembly_map, commit_execution_artifact, commit_execution_candidate, create_execution_ledger, deterministic_artifact_prefix, finalize_interactive_audio_sequence, load_execution_ledger, save_execution_ledger, set_execution_audio_delivery_policy, select_resume_jobs, transition_execution_job
 
 __all__ = [
     "MMH3Media",
@@ -280,6 +282,7 @@ __all__ = [
     "build_generation_settings",
     "ChunkPlan",
     "ChunkExecutionSelection",
+    "AudioTimelineChunkExpansion",
     "VideoChunkExpansion",
     "ChunkAssemblyResult",
     "VIDEO_SUFFIXES",
@@ -293,14 +296,20 @@ __all__ = [
     "BatchStitchPreparation",
     "prepare_batch_stitch",
     "plan_batch_inputs",
+    "plan_h3_audio_timeline_chunks",
+    "plan_h3_audio_interactive_sequence",
+    "append_h3_audio_interactive_try",
+    "finalize_h3_audio_interactive_plan",
     "plan_long_video_chunks",
     "PREQUEUE_ESTIMATE_CONTRACT",
     "build_prequeue_estimate",
     "prequeue_summary",
     "inspect_batch_stitch_plan",
     "resolve_chunk_execution",
+    "build_audio_timeline_chunk_expansion",
     "build_video_chunk_expansion",
     "trim_audio_samples",
+    "trim_audio_samples_padded",
     "assemble_chunk_packets",
     "load_immutable_lipsync_audio",
     "build_long_video_upscale_settings",
@@ -308,15 +317,22 @@ __all__ = [
     "LIPSYNC_PROOF_CONTRACT",
     "LIPSYNC_SETTINGS_CONTRACT",
     "validate_lipsync_chunk_proof",
+    "extend_long_video_audio_sync_settings",
+    "update_audio_delivery_policy",
     "EXECUTION_CONTRACT",
     "JOB_STATES",
     "build_chunk_assembly_map",
     "acquire_next_execution_job",
+    "accept_execution_candidate",
+    "append_interactive_audio_try",
     "commit_execution_artifact",
+    "commit_execution_candidate",
     "create_execution_ledger",
     "deterministic_artifact_prefix",
+    "finalize_interactive_audio_sequence",
     "load_execution_ledger",
     "save_execution_ledger",
+    "set_execution_audio_delivery_policy",
     "select_resume_jobs",
     "transition_execution_job",
 ]

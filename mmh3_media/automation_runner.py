@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import time
 import urllib.error
 import urllib.request
@@ -13,6 +14,7 @@ from .automation_execution import (
     acquire_next_execution_job,
     build_execution_summary,
     commit_execution_artifact,
+    commit_execution_candidate,
     save_execution_ledger,
     transition_execution_job,
 )
@@ -26,6 +28,7 @@ PLACEHOLDERS = {
     "__MMH3_LEASE_ID__": "lease_id",
     "__MMH3_FILENAME_PREFIX__": "filename_prefix",
     "__MMH3_EFFECTIVE_SETTINGS_JSON__": "effective_settings_json",
+    "__MMH3_ATTEMPT_SEED__": "attempt_seed",
 }
 
 
@@ -36,6 +39,9 @@ def materialize_job_workflow(template: Mapping[str, Any], ledger: Mapping[str, A
         "lease_id": str(lease["lease_id"]),
         "filename_prefix": str(lease["filename_prefix"]),
         "effective_settings_json": json.dumps(ledger.get("effective_settings", {}), ensure_ascii=False),
+        "attempt_seed": int.from_bytes(hashlib.sha256(
+            f"{lease['job_id']}:{int(lease.get('attempt', 1))}".encode("utf-8")
+        ).digest()[:8], "big"),
     }
     replaced: set[str] = set()
 
@@ -204,9 +210,14 @@ def run_execution_ledger(
             prompt_id = client.queue(workflow)
             history = client.wait(prompt_id, poll_seconds=poll_seconds, timeout_seconds=timeout_seconds)
             packet_path = find_saved_mmh3(history, save_node_id)
-            current = commit_execution_artifact(
-                current, job_id, lease_id=lease["lease_id"], packet_path=packet_path
-            )
+            if (current.get("effective_settings") or {}).get("review_policy") == "candidate_required":
+                current = commit_execution_candidate(
+                    current, job_id, lease_id=lease["lease_id"], packet_path=packet_path
+                )
+            else:
+                current = commit_execution_artifact(
+                    current, job_id, lease_id=lease["lease_id"], packet_path=packet_path
+                )
         except (Exception, KeyboardInterrupt) as exc:
             current = transition_execution_job(
                 current, job_id, "fail", error=f"{type(exc).__name__}: {exc}", lease_id=lease["lease_id"]
@@ -231,6 +242,7 @@ def format_execution_summary(summary: Mapping[str, Any]) -> str:
     success = float(aggregates.get("success_rate") or 0.0) * 100.0
     parts = [
         f"completed={counts.get('completed', 0)}",
+        f"review={counts.get('review', 0)}",
         f"failed={counts.get('failed', 0)}",
         f"cancelled={counts.get('cancelled', 0)}",
         f"pending={counts.get('pending', 0)}",

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+from fractions import Fraction
 
 from .control_contract import (
     H3_CONTROL_ALGORITHMS,
@@ -34,11 +35,22 @@ from .h3_fun_model_patch import (
     load_current_h3_fun_patch,
     current_patch_preflight_info,
 )
-from .node_support import CATEGORY, MMH3, MMH3ResourceError, _packet, _parse_object, folder_paths, hashlib, io, json, ui
+from .node_support import CATEGORY, MMH3, MMH3ResourceError, InputImpl, Types, _packet, _parse_object, folder_paths, hashlib, io, json, ui
 from .util import json_dumps_canonical
+
+from .h3_resource_semantics import find_control_resource
+from .inpaint_prepare import (
+    MASK_MODE_AUTO,
+    MASK_MODE_EXISTING,
+    MASK_MODE_MANUAL,
+    TARGET_FPS,
+    build_inpaint_packet,
+    prepare_inpaint_inputs,
+)
 
 
 _CONCRETE_ALGORITHMS = tuple(item for item in H3_CONTROL_ALGORITHMS if item != "auto")
+INPAINT_MASK_MODE_OPTIONS = ("Auto Object — SAM 3.1", "Manual Mask", "Existing MMH3 Mask")
 
 
 def _runtime_node_info(node_class: Any) -> dict[str, Any]:
@@ -198,6 +210,176 @@ class MMH3ControlConfigure(io.ComfyNode):
             f"strength={config.strength:g} temporal={config.temporal_policy}"
         )
         return io.NodeOutput(out, summary, json.dumps(config.to_dict(), ensure_ascii=False, indent=2))
+
+
+class MMH3InpaintPrepare(io.ComfyNode):
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="MMH3InpaintPrepare",
+            display_name="MMH3 Prepare Masked Inpaint",
+            category=CATEGORY,
+            description=(
+                "User-facing F16/F10 inpaint preparation. Conforms source video and the selected mask to "
+                "MiniMax H3's 24fps / 32px / 17n+5 contract, creates canonical inpaint_source and mask "
+                "resources, and hides resource-ID plumbing from the workflow."
+            ),
+            inputs=[
+                io.Image.Input("source_frames", tooltip="Frames from Get Video Components."),
+                io.Float.Input("source_fps", default=24.0, min=0.001, max=1000.0, force_input=True),
+                io.String.Input(
+                    "prompt",
+                    default="",
+                    multiline=True,
+                    dynamic_prompts=True,
+                    placeholder="Describe the desired edited result...",
+                    tooltip="The generation instruction. MMH3 does not rewrite or classify this prompt.",
+                ),
+                io.Int.Input(
+                    "seed",
+                    default=0,
+                    min=0,
+                    max=0xFFFFFFFFFFFFFFFF,
+                    control_after_generate=True,
+                ),
+                io.Combo.Input("mask_mode", options=list(INPAINT_MASK_MODE_OPTIONS), default="Auto Object — SAM 3.1"),
+                io.String.Input(
+                    "existing_mask_resource_id",
+                    default="",
+                    optional=True,
+                    advanced=True,
+                    tooltip="Existing MMH3 Mask only. Blank auto-selects the packet's canonical/primary/first mask.",
+                ),
+                io.Mask.Input("auto_mask", optional=True, lazy=True, tooltip="SAM 3.1 temporal mask."),
+                io.Mask.Input("manual_mask", optional=True, lazy=True),
+                MMH3.Input("existing_packet", optional=True, lazy=True),
+            ],
+            outputs=[
+                MMH3.Output("packet"),
+                io.Image.Output("source_video"),
+                io.Mask.Output("mask"),
+                io.String.Output("source_resource_id"),
+                io.String.Output("mask_resource_id"),
+                io.Int.Output("width"),
+                io.Int.Output("height"),
+                io.Int.Output("frames"),
+                io.String.Output("generation_settings_json"),
+                io.String.Output("summary"),
+            ],
+        )
+
+    @classmethod
+    def check_lazy_status(
+        cls,
+        source_frames=None,
+        source_fps: float = 24.0,
+        prompt: str = "",
+        seed: int = 0,
+        mask_mode: str = MASK_MODE_AUTO,
+        existing_mask_resource_id: str = "",
+        auto_mask=None,
+        manual_mask=None,
+        existing_packet=None,
+    ) -> list[str]:
+        if mask_mode == MASK_MODE_AUTO and auto_mask is None:
+            return ["auto_mask"]
+        if mask_mode == MASK_MODE_MANUAL and manual_mask is None:
+            return ["manual_mask"]
+        if mask_mode == MASK_MODE_EXISTING and existing_packet is None:
+            return ["existing_packet"]
+        return []
+
+    @staticmethod
+    def _existing_mask(packet, resource_id: str):
+        packet = _packet(packet)
+        selected = None
+        resource_id = str(resource_id or "").strip()
+        if resource_id:
+            selected = packet.get_resource(resource_id)
+            if selected is None:
+                raise MMH3ResourceError(f"Existing MMH3 mask resource {resource_id!r} does not exist")
+            if selected.get("kind") != "mask":
+                raise MMH3ResourceError(f"Existing MMH3 resource {resource_id!r} is not a mask")
+        else:
+            selected = find_control_resource(packet, "mask")
+            if selected is None:
+                selected = packet.get_primary("mask")
+            if selected is None:
+                refs = packet.filter_resource_refs(kind="mask")
+                selected = refs[0].descriptor if refs else None
+            if selected is None:
+                raise MMH3ResourceError(
+                    "Existing MMH3 Mask mode requires a packet containing a mask resource"
+                )
+        return packet.ref(str(selected["id"])).materialize()
+
+    @classmethod
+    def execute(
+        cls,
+        source_frames,
+        source_fps: float,
+        prompt: str,
+        seed: int,
+        mask_mode: str,
+        existing_mask_resource_id: str = "",
+        auto_mask=None,
+        manual_mask=None,
+        existing_packet=None,
+    ) -> io.NodeOutput:
+        prompt = str(prompt or "").strip()
+        if not prompt:
+            raise MMH3ResourceError("Masked inpaint requires a generation prompt")
+        if mask_mode == MASK_MODE_AUTO:
+            if auto_mask is None:
+                raise MMH3ResourceError("Auto Object — SAM 3.1 requires the connected SAM 3.1 mask")
+            selected_mask = auto_mask
+        elif mask_mode == MASK_MODE_MANUAL:
+            if manual_mask is None:
+                raise MMH3ResourceError("Manual Mask mode requires manual_mask")
+            selected_mask = manual_mask
+        elif mask_mode == MASK_MODE_EXISTING:
+            if existing_packet is None:
+                raise MMH3ResourceError("Existing MMH3 Mask mode requires existing_packet")
+            selected_mask = cls._existing_mask(existing_packet, existing_mask_resource_id)
+        else:
+            raise MMH3ResourceError(f"Unsupported inpaint mask mode {mask_mode!r}")
+
+        prepared = prepare_inpaint_inputs(
+            source_frames,
+            source_fps,
+            selected_mask,
+            mask_mode=mask_mode,
+        )
+
+        source_video = InputImpl.VideoFromComponents(
+            Types.VideoComponents(
+                images=prepared.source_video,
+                audio=None,
+                frame_rate=Fraction(int(TARGET_FPS), 1),
+            )
+        )
+        # This workflow-level node owns the routine F16 plumbing so the user only
+        # selects a mask source and writes the generation prompt.
+        packet, source_id, mask_id, settings = build_inpaint_packet(
+            source_video,
+            prepared,
+            prompt=prompt,
+            seed=int(seed),
+        )
+        summary = prepared.summary()
+        return io.NodeOutput(
+            packet,
+            prepared.source_video,
+            prepared.mask,
+            source_id,
+            mask_id,
+            prepared.width,
+            prepared.height,
+            prepared.frames,
+            json.dumps(settings, ensure_ascii=False, indent=2),
+            summary,
+            ui=ui.PreviewText(summary),
+        )
 
 
 class MMH3ControlPreflight(io.ComfyNode):
@@ -536,7 +718,7 @@ class MMH3H3FunControl(io.ComfyNode):
     ) -> list[str]:
         """Request the expensive control-video branch only when the configured contract needs it."""
         config = get_control_configuration(_packet(packet))
-        if config is None:
+        if config is None or config.strength == 0.0:
             return []
         if h3_fun_control_video_required(config) and control_video is None:
             return ["control_video"]

@@ -332,7 +332,8 @@ def prepare_decoded_packet_latent_upscale(
     if audio_vae_rate != AUDIO_SAMPLE_RATE:
         raise MMH3ResourceError(f"F07 decoded upscale requires a 32 kHz audio VAE; got {audio_vae_rate}")
     video_latent = {"samples": video_vae.encode(normalized_frames)}
-    audio_latent = {"samples": audio_vae.encode(waveform.movedim(1, -1))}
+    from .audio_vae import preserve_h3_audio_onset
+    audio_latent = {"samples": preserve_h3_audio_onset(audio_vae).encode(waveform.movedim(1, -1))}
     joint = concat_h3_av_latent(video_latent, audio_latent)
     info = validate_h3_av_latent(joint, strict_audio_length=True)
     plan = plan_latent_upscale_geometry(

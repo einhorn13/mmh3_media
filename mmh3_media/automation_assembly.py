@@ -45,8 +45,99 @@ def load_immutable_lipsync_audio(settings: Mapping[str, Any], output_samples: in
     if revision != str(expected_audio.get("revision") or "unknown"):
         raise MMH3ResourceError("Lipsync immutable source audio revision changed")
     source_audio = get_resource_payload(source_packet, source_audio_desc)
-    return trim_audio_samples(source_audio, 0, int(output_samples))
+    if int(source_audio.get("sample_rate", 0)) != AUDIO_SAMPLE_RATE:
+        raise MMH3ResourceError(f"Immutable master audio must be {AUDIO_SAMPLE_RATE} Hz")
+    waveform = _normalize_audio_tensor(source_audio.get("waveform"), name="Immutable master audio")
+    expected_channels = int(expected_audio.get("channels") or 0)
+    if expected_channels and int(waveform.shape[-2]) != expected_channels:
+        raise MMH3ResourceError("Immutable master audio channel count changed")
+    expected_source_samples = int(expected_audio.get("samples") or 0)
+    if expected_source_samples and int(waveform.shape[-1]) != expected_source_samples:
+        raise MMH3ResourceError("Immutable master audio sample count changed")
+    normalized = {"waveform": waveform, "sample_rate": AUDIO_SAMPLE_RATE}
+    return trim_audio_samples(normalized, 0, int(output_samples))
 
+
+
+def _db_gain(db: float) -> float:
+    value = float(db)
+    if value <= -120.0:
+        return 0.0
+    return 10.0 ** (value / 20.0)
+
+
+def _audio_channels(waveform: torch.Tensor) -> int:
+    if waveform.ndim < 2:
+        return 1
+    return int(waveform.shape[-2])
+
+
+def _normalize_audio_tensor(waveform: torch.Tensor, *, name: str) -> torch.Tensor:
+    if not isinstance(waveform, torch.Tensor) or waveform.ndim not in {2, 3}:
+        raise MMH3ResourceError(f"{name} waveform must be [channels,samples] or [batch,channels,samples]")
+    value = waveform.unsqueeze(0) if waveform.ndim == 2 else waveform
+    if int(value.shape[0]) != 1:
+        raise MMH3ResourceError(f"{name} waveform batch size must be 1; got {int(value.shape[0])}")
+    if int(value.shape[-2]) not in {1, 2}:
+        raise MMH3ResourceError(f"{name} waveform must be mono/stereo; got {int(value.shape[-2])} channels")
+    if not torch.isfinite(value).all().item():
+        raise MMH3ResourceError(f"{name} waveform contains NaN or Inf")
+    return value
+
+
+def _match_audio_channels(waveform: torch.Tensor, target_channels: int) -> torch.Tensor:
+    value = _normalize_audio_tensor(waveform, name="Generated H3 audio")
+    channels = _audio_channels(value)
+    target = int(target_channels)
+    if target not in {1, 2}:
+        raise MMH3ResourceError(f"F18 output requires mono/stereo master audio; got {target}")
+    if channels == target:
+        return value
+    if channels == 1 and target == 2:
+        return value.repeat_interleave(2, dim=-2)
+    if channels == 2 and target == 1:
+        return value.mean(dim=-2, keepdim=True)
+    raise MMH3ResourceError(f"Cannot map generated H3 audio channels {channels} -> {target}")
+
+
+def _trim_generated_audio(audio: Mapping[str, Any], start: int, end: int) -> tuple[torch.Tensor, int]:
+    if int(audio.get("sample_rate", 0)) != AUDIO_SAMPLE_RATE:
+        raise MMH3ResourceError(f"Generated H3 audio must be {AUDIO_SAMPLE_RATE} Hz")
+    waveform = _normalize_audio_tensor(audio.get("waveform"), name="Generated H3 audio")
+    start_i, end_i = int(start), int(end)
+    if start_i < 0 or end_i <= start_i:
+        raise MMH3ResourceError("Generated H3 audio ownership is invalid")
+    length = int(waveform.shape[-1])
+    available_end = min(end_i, length)
+    trimmed = waveform[..., start_i:available_end] if start_i < length else waveform[..., 0:0]
+    missing = max(0, end_i - max(start_i, available_end))
+    # H3 audio decode can differ by a small codec/grid tail. Larger gaps are a
+    # broken candidate and must not be hidden under silence.
+    max_padding = AUDIO_SAMPLE_RATE // 4
+    if missing > max_padding:
+        raise MMH3ResourceError(
+            f"Generated H3 audio is {missing} samples short for owned timeline (>250 ms)"
+        )
+    if missing:
+        shape = list(trimmed.shape)
+        shape[-1] = missing
+        trimmed = torch.cat([trimmed, torch.zeros(shape, dtype=trimmed.dtype, device=trimmed.device)], dim=-1)
+    expected = end_i - start_i
+    if int(trimmed.shape[-1]) != expected:
+        raise MMH3ResourceError("Generated H3 audio trim did not match owned PCM length")
+    return trimmed, missing
+
+
+def _apply_peak_limit(waveform: torch.Tensor, enabled: bool) -> tuple[torch.Tensor, float]:
+    if not enabled or waveform.numel() == 0:
+        return waveform, 1.0
+    if not torch.isfinite(waveform).all().item():
+        raise MMH3ResourceError("F18 delivery audio contains NaN or Inf")
+    peak = float(waveform.detach().abs().max().item())
+    if peak <= 0.98 or peak <= 0.0:
+        return waveform, 1.0
+    scale = 0.98 / peak
+    return waveform * scale, scale
 
 def _verify_artifact(segment: Mapping[str, Any]) -> Path:
     path = Path(str(segment.get("packet_path") or "")).resolve()
@@ -78,10 +169,22 @@ def assemble_chunk_packets(assembly_map: Mapping[str, Any]) -> ChunkAssemblyResu
         and effective_settings.get("contract") == "mmh3_long_video_audio_sync_settings_v2"
         else None
     )
+    expected_samples = int(assembly_map.get("output_audio_samples") or 0)
+    delivery = (lipsync_settings or {}).get("delivery_policy") or {}
+    audio_output_mode = str(delivery.get("audio_output_mode") or "master_only")
+    if audio_output_mode not in {"master_only", "master_plus_generated", "generated_only"}:
+        raise MMH3ResourceError(f"Unsupported F18 audio output mode {audio_output_mode!r}")
+    if audio_output_mode != "master_only" and not bool((lipsync_settings or {}).get("generated_audio_capture")):
+        raise MMH3ResourceError("Selected F18 audio mode requires candidates that captured generated H3 audio")
+
+    master_audio = load_immutable_lipsync_audio(lipsync_settings, expected_samples) if lipsync_settings is not None else None
+    target_channels = _audio_channels(master_audio["waveform"]) if master_audio is not None else 0
 
     videos: list[Any] = []
     frame_counts: list[int] = []
     audio_parts: list[torch.Tensor] = []
+    generated_parts: list[torch.Tensor] = []
+    generated_padding_samples = 0
     packets = []
     dimensions: tuple[int, int] | None = None
     report_segments = []
@@ -122,18 +225,48 @@ def assemble_chunk_packets(assembly_map: Mapping[str, Any]) -> ChunkAssemblyResu
             audio_parts.append(owned_audio["waveform"])
         elif lipsync_settings is None and audio_parts:
             raise MMH3ResourceError("Assembly cannot mix chunks with and without audio")
+        elif lipsync_settings is not None and audio_output_mode != "master_only":
+            if audio_desc is None:
+                raise MMH3ResourceError(f"F18 candidate chunk {index} has no captured generated audio")
+            generated = get_resource_payload(packet, audio_desc)
+            owned_generated, padded = _trim_generated_audio(
+                generated, int(raw["audio_trim_start"]), int(raw["audio_trim_end"])
+            )
+            generated_padding_samples += padded
+            generated_parts.append(_match_audio_channels(owned_generated, target_channels))
+
         packets.append(packet)
         report_segments.append(deep_copy_json(dict(raw)))
 
     output_audio = None
+    limiter_scale = 1.0
     if lipsync_settings is not None:
-        expected_samples = int(assembly_map["output_audio_samples"])
-        output_audio = load_immutable_lipsync_audio(lipsync_settings, expected_samples)
+        assert master_audio is not None
+        master_waveform = _normalize_audio_tensor(master_audio["waveform"], name="Immutable master audio")
+        if int(master_waveform.shape[-1]) != expected_samples:
+            raise MMH3ResourceError("Immutable master audio length differs from assembly ownership")
+        master_gain = _db_gain(float(delivery.get("master_gain_db", 0.0)))
+        generated_gain = _db_gain(float(delivery.get("generated_gain_db", -18.0)))
+        if audio_output_mode == "master_only":
+            waveform = master_waveform if master_gain == 1.0 else master_waveform * master_gain
+        else:
+            if len(generated_parts) != len(packets):
+                raise MMH3ResourceError("Every selected F18 candidate must contain generated audio for this output mode")
+            generated_parts = [part.to(device=master_waveform.device, dtype=master_waveform.dtype) for part in generated_parts]
+            generated_waveform = torch.cat(generated_parts, dim=-1)
+            if int(generated_waveform.shape[-1]) != expected_samples:
+                raise MMH3ResourceError("Generated H3 PCM length differs from exact assembly ownership")
+            if audio_output_mode == "generated_only":
+                waveform = generated_waveform * generated_gain
+            else:
+                waveform = master_waveform * master_gain + generated_waveform * generated_gain
+        if audio_output_mode != "master_only" or master_gain != 1.0:
+            waveform, limiter_scale = _apply_peak_limit(waveform, bool(delivery.get("peak_limit", True)))
+        output_audio = {"waveform": waveform, "sample_rate": AUDIO_SAMPLE_RATE}
     elif audio_parts:
         if len(audio_parts) != len(packets):
             raise MMH3ResourceError("Assembly cannot mix chunks with and without audio")
         waveform = torch.cat(audio_parts, dim=-1)
-        expected_samples = int(assembly_map["output_audio_samples"])
         if int(waveform.shape[-1]) != expected_samples:
             raise MMH3ResourceError("Assembled PCM length differs from exact ownership map")
         output_audio = {"waveform": waveform, "sample_rate": AUDIO_SAMPLE_RATE}
@@ -141,15 +274,27 @@ def assemble_chunk_packets(assembly_map: Mapping[str, Any]) -> ChunkAssemblyResu
     total_frames = sum(frame_counts)
     if total_frames != int(assembly_map["output_frames"]):
         raise MMH3ResourceError("Assembled frame ownership differs from the declared output")
-    plan = StitchPlan("cut", "cut", 0, total_frames, int(assembly_map["output_audio_samples"]), tuple(report_segments))
+    plan = StitchPlan("cut", "cut", 0, total_frames, expected_samples, tuple(report_segments))
     output_video = StreamingStitchedVideo(tuple(videos), tuple(frame_counts), dimensions, output_audio, plan)
     report = deep_copy_json(dict(assembly_map))
     report.update({
         "assembly_mode": "bounded_streaming_ownership",
         "verified_artifacts": len(packets),
-        "audio_source": "immutable_original_packet" if lipsync_settings is not None else "chunk_ownership",
+        "audio_source": (
+            audio_output_mode if lipsync_settings is not None else "chunk_ownership"
+        ),
+        "audio_mix": {
+            "mode": audio_output_mode if lipsync_settings is not None else "chunk_ownership",
+            "master_gain_db": float(delivery.get("master_gain_db", 0.0)) if lipsync_settings is not None else None,
+            "generated_gain_db": float(delivery.get("generated_gain_db", -18.0)) if lipsync_settings is not None else None,
+            "peak_limit": bool(delivery.get("peak_limit", True)) if lipsync_settings is not None else None,
+            "limiter_scale": limiter_scale,
+            "generated_padding_samples": generated_padding_samples,
+            "generated_audio_semantics": delivery.get("generated_audio_semantics") if lipsync_settings is not None else None,
+        },
     })
-    base_packet = packets[-1]
+    from .process_result import prepare_assembly_packet
+    base_packet, report["source_controls"] = prepare_assembly_packet(packets)
     primary_latent = base_packet.get_primary("latent")
     if primary_latent is not None:
         base_packet = base_packet.remove(resource_id=primary_latent["id"], missing="ignore", record_history=False)

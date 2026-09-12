@@ -85,7 +85,8 @@ def encode_av_bridge(prepared, *, video_vae, audio_vae):
     pixels, waveform, report = prepared
     if int(getattr(audio_vae, "audio_sample_rate", AUDIO_SAMPLE_RATE)) != AUDIO_SAMPLE_RATE:
         raise MMH3ResourceError("Bridge requires the H3 32 kHz audio VAE")
-    latent = {"samples": make_nested_tensor([video_vae.encode(pixels), audio_vae.encode(waveform.movedim(1, -1))])}
+    from .audio_vae import preserve_h3_audio_onset
+    latent = {"samples": make_nested_tensor([video_vae.encode(pixels), preserve_h3_audio_onset(audio_vae).encode(waveform.movedim(1, -1))])}
     info = validate_h3_av_latent(latent, strict_audio_length=True)
     if info.batch != 1 or info.frames != report["frames"] or info.height != pixels.shape[1] or info.width != pixels.shape[2]:
         raise MMH3ResourceError("VAE returned an incompatible bridge target")

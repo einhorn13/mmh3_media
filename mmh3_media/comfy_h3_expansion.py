@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 from .core import MMH3Media
+from .audio_vae import preserve_h3_audio_onset
 from .errors import MMH3ResourceError
 from .resolution import ResolvedMMH3Inputs
 from .runtime_contract import NativeH3Contract, require_native_h3_contract
@@ -116,7 +117,7 @@ def build_h3_expansion(
     native = graph.node(
         contract.node_id,
         **common,
-        audio_vae=audio_vae,
+        audio_vae=preserve_h3_audio_onset(audio_vae),
         ref_image_size=ref_image_size,
         **dynamic,
     )

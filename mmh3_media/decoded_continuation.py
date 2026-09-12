@@ -183,14 +183,14 @@ def prepare_decoded_prefix(
             waveform = resampler(waveform, source_audio_rate, AUDIO_SAMPLE_RATE)
         video_end_sample = round(int(normalized.shape[0]) * AUDIO_SAMPLE_RATE / FPS)
         available_end = min(video_end_sample, int(waveform.shape[-1]))
-        start = available_end - required_samples
-        if start < 0:
+        start = video_end_sample - required_samples
+        if available_end < video_end_sample:
             if missing_audio_policy == "error":
                 raise MMH3ResourceError(
                     f"Decoded audio is too short for the {prefix_frames}-frame synchronized tail"
                 )
-            pad = waveform.new_zeros((1, 2, -start))
-            waveform = torch.cat((pad, waveform[..., :available_end]), dim=-1)
+            waveform = waveform[..., start:available_end]
+            waveform = F.pad(waveform, (0, required_samples - waveform.shape[-1]))
             used_silence = True
         else:
             waveform = waveform[..., start:available_end]
@@ -230,7 +230,8 @@ def encode_decoded_prefix(
             f"F03 requires the MiniMax H3 32 kHz audio VAE; got audio_sample_rate={audio_vae_rate}"
         )
     video_samples = video_vae.encode(prepared.frames)
-    audio_samples = audio_vae.encode(prepared.waveform.movedim(1, -1))
+    from .audio_vae import preserve_h3_audio_onset
+    audio_samples = preserve_h3_audio_onset(audio_vae).encode(prepared.waveform.movedim(1, -1))
     prefix_latent = {"samples": make_nested_tensor([video_samples, audio_samples])}
     validate_h3_av_latent(prefix_latent, strict_audio_length=True)
     continuation = build_h3_target_from_prefix(

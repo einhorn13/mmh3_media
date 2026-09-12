@@ -88,6 +88,24 @@ def _resolved_generation_provenance(process_info: Mapping[str, Any]) -> dict[str
     return generation
 
 
+def prepare_assembly_packet(packets):
+    """Archive per-source control provenance without applying it to an assembly."""
+    if not packets:
+        raise MMH3ResourceError("Assembly requires source packets")
+    sources = []
+    for packet in packets:
+        config = get_control_configuration(packet)
+        if config is None:
+            continue
+        namespace = packet.manifest.get("extensions", {}).get("mmh3_media", {})
+        proof = (namespace.get("last_process") or {}).get("info", {}).get("control")
+        sources.append({"packet_id": packet.manifest["id"], "configuration": config.to_dict(),
+                        "process_control": deep_copy_json(proof)})
+    # A source's control stream has source-local geometry/time. It is historical
+    # provenance, not an instruction to reapply control to the stitched timeline.
+    return packets[-1].set_extension_value("mmh3_media", "control", None), sources
+
+
 def pack_h3_result(
     packet: MMH3Media,
     *,
@@ -172,7 +190,7 @@ def pack_h3_result(
         )
         out = out.set_primary(kind, resource_ids[key])
 
-    if video is not None:
+    if video is not None or audio is not None:
         from .decoded_upscale import discard_stale_delivery
         out = discard_stale_delivery(out)
 

@@ -1,22 +1,125 @@
 {
   "id": "fa7cee3e-fe22-5f55-92e9-b26ebb60c3b1",
-  "revision": 0,
-  "last_node_id": 110,
-  "last_link_id": 84,
+  "revision": 1,
+  "last_node_id": 120,
+  "last_link_id": 54,
   "nodes": [
     {
-      "id": 1,
-      "type": "MMH3Load",
+      "id": 111,
+      "type": "LoadVideo",
       "pos": [
         90,
         110
       ],
       "size": [
         380,
-        470
+        120
       ],
       "flags": {},
       "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "file",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "file"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": [
+            1
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadVideo"
+      },
+      "widgets_values": [
+        "source_video.mp4"
+      ],
+      "title": "1 · Source Video"
+    },
+    {
+      "id": 113,
+      "type": "CheckpointLoaderSimple",
+      "pos": [
+        590,
+        110
+      ],
+      "size": [
+        380,
+        160
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "ckpt_name",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "ckpt_name"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            4
+          ]
+        },
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            2
+          ]
+        },
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CheckpointLoaderSimple",
+        "cnr_id": "comfy-core",
+        "ver": "0.35.0",
+        "models": [
+          {
+            "name": "sam3.1_multiplex_fp16.safetensors",
+            "url": "https://huggingface.co/Comfy-Org/sam3.1/resolve/main/checkpoints/sam3.1_multiplex_fp16.safetensors",
+            "directory": "checkpoints"
+          }
+        ]
+      },
+      "widgets_values": [
+        "sam3.1_multiplex_fp16.safetensors"
+      ],
+      "title": "SAM 3.1"
+    },
+    {
+      "id": 117,
+      "type": "MMH3Load",
+      "pos": [
+        90,
+        1000
+      ],
+      "size": [
+        380,
+        470
+      ],
+      "flags": {},
+      "order": 2,
       "mode": 0,
       "inputs": [
         {
@@ -49,7 +152,7 @@
           "name": "packet",
           "type": "MMH3_MEDIA",
           "links": [
-            1
+            10
           ]
         }
       ],
@@ -60,14 +163,15 @@
         "(none)",
         "on_access",
         ""
-      ]
+      ],
+      "title": "Optional · Existing MMH3 Mask"
     },
     {
       "id": 3,
       "type": "CLIPLoader",
       "title": "Text Encoder",
       "pos": [
-        590,
+        1090,
         110
       ],
       "size": [
@@ -75,7 +179,7 @@
         160
       ],
       "flags": {},
-      "order": 1,
+      "order": 3,
       "mode": 0,
       "inputs": [
         {
@@ -108,7 +212,7 @@
           "name": "CLIP",
           "type": "CLIP",
           "links": [
-            3
+            13
           ]
         }
       ],
@@ -125,51 +229,8 @@
       "id": 4,
       "type": "VAELoader",
       "pos": [
-        590,
+        1090,
         340
-      ],
-      "size": [
-        360,
-        120
-      ],
-      "flags": {},
-      "order": 3,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "vae_name",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "vae_name"
-          }
-        }
-      ],
-      "outputs": [
-        {
-          "name": "VAE",
-          "type": "VAE",
-          "links": [
-            4,
-            25,
-            74
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "VAELoader"
-      },
-      "widgets_values": [
-        "minimax_h3_video_vae_int8_convrot.safetensors"
-      ],
-      "title": "Video VAE"
-    },
-    {
-      "id": 5,
-      "type": "VAELoader",
-      "pos": [
-        590,
-        530
       ],
       "size": [
         360,
@@ -193,8 +254,51 @@
           "name": "VAE",
           "type": "VAE",
           "links": [
-            8,
-            27
+            14,
+            24,
+            39
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAELoader"
+      },
+      "widgets_values": [
+        "minimax_h3_video_vae_int8_convrot.safetensors"
+      ],
+      "title": "Video VAE"
+    },
+    {
+      "id": 5,
+      "type": "VAELoader",
+      "pos": [
+        1090,
+        530
+      ],
+      "size": [
+        360,
+        120
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "vae_name",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "vae_name"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            15,
+            40
           ]
         }
       ],
@@ -211,7 +315,7 @@
       "type": "UNETLoader",
       "title": "Diffusion Model",
       "pos": [
-        590,
+        1090,
         720
       ],
       "size": [
@@ -219,7 +323,7 @@
         136
       ],
       "flags": {},
-      "order": 5,
+      "order": 6,
       "mode": 0,
       "inputs": [
         {
@@ -244,7 +348,7 @@
           "name": "MODEL",
           "type": "MODEL",
           "links": [
-            64
+            19
           ]
         }
       ],
@@ -257,425 +361,307 @@
       ]
     },
     {
-      "id": 2,
-      "type": "MMH3Metadata",
+      "id": 112,
+      "type": "GetVideoComponents",
       "pos": [
         90,
-        650.0
+        300
       ],
       "size": [
-        360,
-        260
+        380,
+        166
       ],
       "flags": {},
       "order": 7,
       "mode": 0,
       "inputs": [
         {
-          "name": "packet",
-          "type": "MMH3_MEDIA",
+          "name": "video",
+          "type": "VIDEO",
           "link": 1
-        },
-        {
-          "name": "name",
-          "type": "STRING",
-          "link": null,
-          "widget": {
-            "name": "name"
-          }
-        },
-        {
-          "name": "tags_action",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "tags_action"
-          }
-        },
-        {
-          "name": "tags",
-          "type": "STRING",
-          "link": null,
-          "widget": {
-            "name": "tags"
-          }
-        },
-        {
-          "name": "notes_action",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "notes_action"
-          }
-        },
-        {
-          "name": "notes",
-          "type": "STRING",
-          "link": null,
-          "widget": {
-            "name": "notes"
-          }
-        },
-        {
-          "name": "custom_json_merge_patch",
-          "type": "STRING",
-          "link": null,
-          "widget": {
-            "name": "custom_json_merge_patch"
-          }
         }
       ],
       "outputs": [
         {
-          "name": "packet",
-          "type": "MMH3_MEDIA",
+          "name": "images",
+          "type": "IMAGE",
           "links": [
-            50
+            3,
+            7
           ]
+        },
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": null
+        },
+        {
+          "name": "fps",
+          "type": "FLOAT",
+          "links": [
+            8
+          ]
+        },
+        {
+          "name": "bit_depth",
+          "type": "INT",
+          "links": null
         }
       ],
       "properties": {
-        "Node name for S&R": "MMH3Metadata"
+        "Node name for S&R": "GetVideoComponents"
       },
-      "widgets_values": [
-        "F16 F10 masked video inpaint",
-        "keep",
-        "",
-        "keep",
-        "",
-        ""
-      ]
+      "widgets_values": [],
+      "title": "Decode once · shared by SAM + MMH3"
     },
     {
-      "id": 30,
-      "type": "MMH3H3SamplingPreset",
-      "title": "Sampling",
+      "id": 114,
+      "type": "CLIPTextEncode",
       "pos": [
         590,
-        1236
+        340
       ],
       "size": [
-        360,
-        260
+        380,
+        200
       ],
       "flags": {},
       "order": 8,
       "mode": 0,
       "inputs": [
         {
-          "name": "profile",
-          "type": "COMFY_DYNAMICCOMBO_V3",
+          "name": "clip",
+          "type": "CLIP",
+          "link": 2
+        },
+        {
+          "name": "text",
+          "type": "STRING",
           "link": null,
           "widget": {
-            "name": "profile"
-          },
-          "label": "Preset"
-        },
-        {
-          "name": "task_family",
-          "type": "COMBO",
-          "link": 66,
-          "label": "Task family"
-        },
-        {
-          "name": "model",
-          "type": "MODEL",
-          "link": 64
+            "name": "text"
+          }
         }
       ],
       "outputs": [
         {
-          "name": "sampling_profile_json",
-          "type": "STRING",
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
           "links": [
-            68
-          ]
-        },
-        {
-          "name": "steps",
-          "type": "INT",
-          "links": [
-            18
-          ]
-        },
-        {
-          "name": "video_shift",
-          "type": "FLOAT",
-          "links": [
-            67
-          ]
-        },
-        {
-          "name": "audio_shift",
-          "type": "FLOAT",
-          "links": [
-            11
-          ]
-        },
-        {
-          "name": "sampler_name",
-          "type": "COMBO",
-          "links": [
-            15
-          ]
-        },
-        {
-          "name": "scheduler",
-          "type": "COMBO",
-          "links": [
-            17
-          ]
-        },
-        {
-          "name": "model",
-          "type": "MODEL",
-          "links": [
-            45
-          ]
-        },
-        {
-          "name": "applied_loras_json",
-          "type": "STRING",
-          "links": [
-            40
+            5
           ]
         }
       ],
       "properties": {
-        "Node name for S&R": "MMH3H3SamplingPreset"
+        "Node name for S&R": "CLIPTextEncode",
+        "cnr_id": "comfy-core",
+        "ver": "0.35.0"
       },
       "widgets_values": [
-        "Turbo - 4 steps",
-        "fl2va"
-      ]
+        ""
+      ],
+      "title": "2 · Target Object · SAM only"
     },
     {
-      "id": 100,
-      "type": "MMH3ControlConfigure",
+      "id": 115,
+      "type": "SAM3_VideoTrack",
       "pos": [
-        1090,
-        714
+        590,
+        610
       ],
       "size": [
-        360,
-        772
+        380,
+        300
       ],
       "flags": {},
-      "order": 14,
+      "order": 9,
       "mode": 0,
       "inputs": [
         {
-          "name": "packet",
+          "name": "images",
+          "type": "IMAGE",
+          "link": 3
+        },
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 4
+        },
+        {
+          "name": "initial_mask",
+          "type": "MASK",
+          "link": null
+        },
+        {
+          "name": "conditioning",
+          "type": "CONDITIONING",
+          "link": 5
+        },
+        {
+          "name": "detection_threshold",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "detection_threshold"
+          }
+        },
+        {
+          "name": "max_objects",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "max_objects"
+          }
+        },
+        {
+          "name": "detect_interval",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "detect_interval"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "track_data",
+          "type": "SAM3_TRACK_DATA",
+          "links": [
+            6
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SAM3_VideoTrack",
+        "cnr_id": "comfy-core",
+        "ver": "0.35.0"
+      },
+      "widgets_values": [
+        0.5,
+        4,
+        1
+      ],
+      "title": "Auto Object · SAM 3.1 Video Track"
+    },
+    {
+      "id": 116,
+      "type": "SAM3_TrackToMask",
+      "pos": [
+        590,
+        980
+      ],
+      "size": [
+        380,
+        110
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "track_data",
+          "type": "SAM3_TRACK_DATA",
+          "link": 6
+        },
+        {
+          "name": "object_indices",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "object_indices"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "masks",
+          "type": "MASK",
+          "links": [
+            9
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SAM3_TrackToMask",
+        "cnr_id": "comfy-core",
+        "ver": "0.35.0"
+      },
+      "widgets_values": [
+        ""
+      ],
+      "title": "SAM 3.1 · tracked objects → mask"
+    },
+    {
+      "id": 118,
+      "type": "MMH3InpaintPrepare",
+      "pos": [
+        90,
+        540
+      ],
+      "size": [
+        430,
+        390
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source_frames",
+          "type": "IMAGE",
+          "link": 7
+        },
+        {
+          "name": "source_fps",
+          "type": "FLOAT",
+          "link": 8
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "prompt"
+          }
+        },
+        {
+          "name": "seed",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "seed"
+          }
+        },
+        {
+          "name": "mask_mode",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "mask_mode"
+          }
+        },
+        {
+          "name": "existing_mask_resource_id",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "existing_mask_resource_id"
+          }
+        },
+        {
+          "name": "auto_mask",
+          "type": "MASK",
+          "link": 9
+        },
+        {
+          "name": "manual_mask",
+          "type": "MASK",
+          "link": null
+        },
+        {
+          "name": "existing_packet",
           "type": "MMH3_MEDIA",
-          "link": 50
-        },
-        {
-          "name": "requested_algorithm",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "requested_algorithm"
-          }
-        },
-        {
-          "name": "effective_algorithm",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "effective_algorithm"
-          }
-        },
-        {
-          "name": "algorithm_context",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "algorithm_context"
-          }
-        },
-        {
-          "name": "auto_preference",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "auto_preference"
-          }
-        },
-        {
-          "name": "auto_capabilities_json",
-          "type": "STRING",
-          "link": null,
-          "widget": {
-            "name": "auto_capabilities_json"
-          }
-        },
-        {
-          "name": "control_kind",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "control_kind"
-          }
-        },
-        {
-          "name": "strength",
-          "type": "FLOAT",
-          "link": null,
-          "widget": {
-            "name": "strength"
-          }
-        },
-        {
-          "name": "start_percent",
-          "type": "FLOAT",
-          "link": null,
-          "widget": {
-            "name": "start_percent"
-          }
-        },
-        {
-          "name": "end_percent",
-          "type": "FLOAT",
-          "link": null,
-          "widget": {
-            "name": "end_percent"
-          }
-        },
-        {
-          "name": "temporal_policy",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "temporal_policy"
-          }
-        },
-        {
-          "name": "reference_composition",
-          "type": "BOOLEAN",
-          "link": null,
-          "widget": {
-            "name": "reference_composition"
-          }
-        },
-        {
-          "name": "composition_order",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "composition_order"
-          }
-        },
-        {
-          "name": "preprocessor_settings_json",
-          "type": "STRING",
-          "link": null,
-          "widget": {
-            "name": "preprocessor_settings_json"
-          }
-        },
-        {
-          "name": "control_video_resource_id",
-          "type": "STRING",
-          "link": null,
-          "widget": {
-            "name": "control_video_resource_id"
-          }
-        },
-        {
-          "name": "inpaint_source_resource_id",
-          "type": "STRING",
-          "link": null,
-          "widget": {
-            "name": "inpaint_source_resource_id"
-          }
-        },
-        {
-          "name": "mask_resource_id",
-          "type": "STRING",
-          "link": null,
-          "widget": {
-            "name": "mask_resource_id"
-          }
-        },
-        {
-          "name": "selection_reason",
-          "type": "STRING",
-          "link": null,
-          "widget": {
-            "name": "selection_reason"
-          }
-        },
-        {
-          "name": "preprocessor_name",
-          "type": "STRING",
-          "link": null,
-          "widget": {
-            "name": "preprocessor_name"
-          }
-        },
-        {
-          "name": "preprocessor_version",
-          "type": "STRING",
-          "link": null,
-          "widget": {
-            "name": "preprocessor_version"
-          }
-        },
-        {
-          "name": "checkpoint_sha256",
-          "type": "STRING",
-          "link": null,
-          "widget": {
-            "name": "checkpoint_sha256"
-          }
-        },
-        {
-          "name": "capability_fingerprint",
-          "type": "STRING",
-          "link": null,
-          "widget": {
-            "name": "capability_fingerprint"
-          }
-        },
-        {
-          "name": "quantization",
-          "type": "STRING",
-          "link": null,
-          "widget": {
-            "name": "quantization"
-          }
-        },
-        {
-          "name": "dtype",
-          "type": "STRING",
-          "link": null,
-          "widget": {
-            "name": "dtype"
-          }
-        },
-        {
-          "name": "base_family",
-          "type": "STRING",
-          "link": null,
-          "widget": {
-            "name": "base_family"
-          }
-        },
-        {
-          "name": "adaln_form",
-          "type": "STRING",
-          "link": null,
-          "widget": {
-            "name": "adaln_form"
-          }
-        },
-        {
-          "name": "vae_fingerprint",
-          "type": "STRING",
-          "link": null,
-          "widget": {
-            "name": "vae_fingerprint"
-          }
+          "link": 10
         }
       ],
       "outputs": [
@@ -683,438 +669,133 @@
           "name": "packet",
           "type": "MMH3_MEDIA",
           "links": [
-            47,
-            51,
-            52,
-            63
+            12
+          ]
+        },
+        {
+          "name": "source_video",
+          "type": "IMAGE",
+          "links": [
+            29
+          ]
+        },
+        {
+          "name": "mask",
+          "type": "MASK",
+          "links": [
+            11,
+            28
+          ]
+        },
+        {
+          "name": "source_resource_id",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "mask_resource_id",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "width",
+          "type": "INT",
+          "links": [
+            16,
+            25
+          ]
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "links": [
+            17,
+            26
+          ]
+        },
+        {
+          "name": "frames",
+          "type": "INT",
+          "links": [
+            18,
+            27
+          ]
+        },
+        {
+          "name": "generation_settings_json",
+          "type": "STRING",
+          "links": [
+            49
           ]
         },
         {
           "name": "summary",
           "type": "STRING",
           "links": null
-        },
-        {
-          "name": "control_json",
-          "type": "STRING",
-          "links": null
         }
       ],
       "properties": {
-        "Node name for S&R": "MMH3ControlConfigure"
+        "Node name for S&R": "MMH3InpaintPrepare"
       },
       "widgets_values": [
-        "fun_controlnet_union_int8_convrot",
-        "same_as_requested",
-        "generation",
-        "int8_first",
-        "{}",
-        "inpaint",
-        1.0,
-        0.0,
-        1.0,
-        "strict",
-        false,
-        "reference_then_control",
-        "{}",
         "",
-        "replace_with_inpaint_source_video_id",
-        "replace_with_mask_resource_id",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
+        0,
+        "fixed",
+        "Auto Object — SAM 3.1",
         ""
       ],
-      "title": "Inpaint Control · Optional Pose"
+      "title": "3 · Prompt + Mask Mode · workflow handles the rest"
     },
     {
-      "id": 31,
-      "type": "MMH3H3GenerationSettings",
-      "title": "Video Settings",
+      "id": 119,
+      "type": "MaskPreview",
       "pos": [
-        1090,
-        1556
+        590,
+        1160
       ],
       "size": [
-        360,
-        210
+        380,
+        180
       ],
       "flags": {},
-      "order": 15,
+      "order": 12,
       "mode": 0,
       "inputs": [
         {
-          "name": "packet",
-          "type": "MMH3_MEDIA",
-          "link": 47
-        },
-        {
-          "name": "resolution",
-          "type": "COMFY_DYNAMICCOMBO_V3",
-          "link": null,
-          "widget": {
-            "name": "resolution"
-          },
-          "label": "Aspect ratio"
-        },
-        {
-          "name": "resolution.megapixels",
-          "type": "FLOAT",
-          "link": null,
-          "widget": {
-            "name": "resolution.megapixels"
-          },
-          "label": "Resolution (MP)"
-        },
-        {
-          "name": "duration_seconds",
-          "type": "FLOAT",
-          "link": null,
-          "widget": {
-            "name": "duration_seconds"
-          },
-          "label": "Video length (seconds)"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "packet",
-          "type": "MMH3_MEDIA",
-          "links": [
-            2
-          ]
-        },
-        {
-          "name": "width",
-          "type": "INT",
-          "links": [
-            69,
-            75
-          ]
-        },
-        {
-          "name": "height",
-          "type": "INT",
-          "links": [
-            70,
-            76
-          ]
-        },
-        {
-          "name": "frames",
-          "type": "INT",
-          "links": [
-            71,
-            77
-          ]
-        },
-        {
-          "name": "settings_json",
-          "type": "STRING",
-          "links": [
-            35
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "MMH3H3GenerationSettings"
-      },
-      "widgets_values": [
-        "16:9",
-        0.98,
-        3.042
-      ]
-    },
-    {
-      "id": 101,
-      "type": "MMH3ControlVideo",
-      "pos": [
-        1090,
-        1990
-      ],
-      "size": [
-        360,
-        274
-      ],
-      "flags": {},
-      "order": 16,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "packet",
-          "type": "MMH3_MEDIA",
-          "link": 51
-        },
-        {
-          "name": "usage",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "usage"
-          }
-        },
-        {
-          "name": "target_fps",
-          "type": "FLOAT",
-          "link": null,
-          "widget": {
-            "name": "target_fps"
-          }
-        },
-        {
-          "name": "resource_id",
-          "type": "STRING",
-          "link": null,
-          "widget": {
-            "name": "resource_id"
-          }
-        }
-      ],
-      "outputs": [
-        {
-          "name": "frames",
-          "type": "IMAGE",
-          "links": [
-            80
-          ]
-        },
-        {
-          "name": "resource_id",
-          "type": "STRING",
-          "links": null
-        },
-        {
-          "name": "info_json",
-          "type": "STRING",
-          "links": null
-        },
-        {
-          "name": "frame_count",
-          "type": "INT",
-          "links": []
-        },
-        {
-          "name": "width",
-          "type": "INT",
-          "links": null
-        },
-        {
-          "name": "height",
-          "type": "INT",
-          "links": null
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "MMH3ControlVideo"
-      },
-      "widgets_values": [
-        "inpaint_source",
-        24.0,
-        ""
-      ]
-    },
-    {
-      "id": 102,
-      "type": "MMH3GetMask",
-      "pos": [
-        1090,
-        2334
-      ],
-      "size": [
-        360,
-        286
-      ],
-      "flags": {},
-      "order": 17,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "packet",
-          "type": "MMH3_MEDIA",
-          "link": 52
-        },
-        {
-          "name": "role",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "role"
-          }
-        },
-        {
-          "name": "order",
-          "type": "INT",
-          "link": null,
-          "widget": {
-            "name": "order"
-          }
-        },
-        {
-          "name": "resource_id",
-          "type": "STRING",
-          "link": null,
-          "widget": {
-            "name": "resource_id"
-          }
-        },
-        {
-          "name": "missing",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "missing"
-          }
-        }
-      ],
-      "outputs": [
-        {
-          "name": "resource",
+          "name": "mask",
           "type": "MASK",
-          "links": [
-            79
-          ]
-        },
-        {
-          "name": "exists",
-          "type": "BOOLEAN",
-          "links": null
-        },
-        {
-          "name": "resource_id",
-          "type": "STRING",
-          "links": null
-        },
-        {
-          "name": "descriptor_json",
-          "type": "STRING",
-          "links": null
+          "link": 11
         }
       ],
+      "outputs": [],
       "properties": {
-        "Node name for S&R": "MMH3GetMask"
+        "Node name for S&R": "MaskPreview",
+        "cnr_id": "comfy-core",
+        "ver": "0.35.0"
       },
-      "widgets_values": [
-        "control",
-        -1,
-        "replace_with_mask_resource_id",
-        "error"
-      ]
-    },
-    {
-      "id": 106,
-      "type": "MMH3ControlVideo",
-      "pos": [
-        1090,
-        2690
-      ],
-      "size": [
-        360,
-        274
-      ],
-      "flags": {},
-      "order": 18,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "packet",
-          "type": "MMH3_MEDIA",
-          "link": 63
-        },
-        {
-          "name": "usage",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "usage"
-          }
-        },
-        {
-          "name": "target_fps",
-          "type": "FLOAT",
-          "link": null,
-          "widget": {
-            "name": "target_fps"
-          }
-        },
-        {
-          "name": "resource_id",
-          "type": "STRING",
-          "link": null,
-          "widget": {
-            "name": "resource_id"
-          }
-        }
-      ],
-      "outputs": [
-        {
-          "name": "frames",
-          "type": "IMAGE",
-          "links": [
-            78
-          ]
-        },
-        {
-          "name": "resource_id",
-          "type": "STRING",
-          "links": null
-        },
-        {
-          "name": "info_json",
-          "type": "STRING",
-          "links": null
-        },
-        {
-          "name": "frame_count",
-          "type": "INT",
-          "links": null
-        },
-        {
-          "name": "width",
-          "type": "INT",
-          "links": null
-        },
-        {
-          "name": "height",
-          "type": "INT",
-          "links": null
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "MMH3ControlVideo"
-      },
-      "widgets_values": [
-        "control_video",
-        24.0,
-        ""
-      ],
-      "title": "Optional Pose Control Video · lazy"
+      "widgets_values": [],
+      "title": "Final Regenerate Mask Preview · white = edit"
     },
     {
       "id": 6,
       "type": "MMH3H3AutoCondition",
-      "title": "Prepare H3 Generation",
+      "title": "Prepare H3 Generation · prompt from Inpaint Prepare",
       "pos": [
-        1090,
-        3034
+        1590,
+        950
       ],
       "size": [
         360,
         330
       ],
       "flags": {},
-      "order": 19,
+      "order": 13,
       "mode": 0,
       "inputs": [
         {
           "name": "packet",
           "type": "MMH3_MEDIA",
-          "link": 2
+          "link": 12
         },
         {
           "name": "prompt_override",
@@ -1137,36 +818,36 @@
         {
           "name": "clip",
           "type": "CLIP",
-          "link": 3
+          "link": 13
         },
         {
           "name": "video_vae",
           "type": "VAE",
-          "link": 4,
+          "link": 14,
           "label": "Video VAE"
         },
         {
           "name": "audio_vae",
           "type": "VAE",
-          "link": 8,
+          "link": 15,
           "label": "Audio VAE"
         },
         {
           "name": "width_override",
           "type": "INT",
-          "link": 69,
+          "link": 16,
           "label": "Width"
         },
         {
           "name": "height_override",
           "type": "INT",
-          "link": 70,
+          "link": 17,
           "label": "Height"
         },
         {
           "name": "frames_override",
           "type": "INT",
-          "link": 71,
+          "link": 18,
           "label": "Frames"
         }
       ],
@@ -1175,56 +856,56 @@
           "name": "positive",
           "type": "CONDITIONING",
           "links": [
-            82
+            33
           ]
         },
         {
           "name": "latent",
           "type": "LATENT",
           "links": [
-            23
+            38
           ]
         },
         {
           "name": "seed",
           "type": "INT",
           "links": [
-            14
+            34
           ]
         },
         {
           "name": "packet",
           "type": "MMH3_MEDIA",
           "links": [
-            72
+            23
           ]
         },
         {
           "name": "mode",
           "type": "STRING",
           "links": [
-            32
+            43
           ]
         },
         {
           "name": "status",
           "type": "STRING",
           "links": [
-            33
+            44
           ]
         },
         {
           "name": "info_json",
           "type": "STRING",
           "links": [
-            34
+            45
           ]
         },
         {
           "name": "task_family",
           "type": "COMBO",
           "links": [
-            66
+            20
           ]
         }
       ],
@@ -1232,39 +913,206 @@
         "Node name for S&R": "MMH3H3AutoCondition"
       },
       "widgets_values": [
-        "Regenerate only the white mask region while preserving the source scene and synchronized audio.",
+        "",
         -1
+      ]
+    },
+    {
+      "id": 30,
+      "type": "MMH3H3SamplingPreset",
+      "title": "Sampling",
+      "pos": [
+        1590,
+        1510
+      ],
+      "size": [
+        360,
+        260
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "profile",
+          "type": "COMFY_DYNAMICCOMBO_V3",
+          "link": null,
+          "widget": {
+            "name": "profile"
+          },
+          "label": "Preset"
+        },
+        {
+          "name": "task_family",
+          "type": "COMBO",
+          "link": 20,
+          "label": "Task family"
+        },
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 19
+        }
+      ],
+      "outputs": [
+        {
+          "name": "sampling_profile_json",
+          "type": "STRING",
+          "links": [
+            50
+          ]
+        },
+        {
+          "name": "steps",
+          "type": "INT",
+          "links": [
+            37
+          ]
+        },
+        {
+          "name": "video_shift",
+          "type": "FLOAT",
+          "links": [
+            31
+          ]
+        },
+        {
+          "name": "audio_shift",
+          "type": "FLOAT",
+          "links": [
+            32
+          ]
+        },
+        {
+          "name": "sampler_name",
+          "type": "COMBO",
+          "links": [
+            35
+          ]
+        },
+        {
+          "name": "scheduler",
+          "type": "COMBO",
+          "links": [
+            36
+          ]
+        },
+        {
+          "name": "model",
+          "type": "MODEL",
+          "links": [
+            21
+          ]
+        },
+        {
+          "name": "applied_loras_json",
+          "type": "STRING",
+          "links": [
+            52
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MMH3H3SamplingPreset"
+      },
+      "widgets_values": [
+        "Turbo - 4 steps",
+        "fl2va"
+      ]
+    },
+    {
+      "id": 110,
+      "type": "MMH3H3ModelOptimizations",
+      "title": "Optimizations",
+      "pos": [
+        1590,
+        1840
+      ],
+      "size": [
+        360,
+        150
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 21
+        },
+        {
+          "name": "attention",
+          "type": "COMFY_DYNAMICCOMBO_V3",
+          "link": null,
+          "widget": {
+            "name": "attention"
+          },
+          "label": "Attention"
+        },
+        {
+          "name": "fp16_accumulation",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "fp16_accumulation"
+          },
+          "label": "FP16 accumulation"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "links": [
+            22
+          ]
+        },
+        {
+          "name": "optimization_profile_json",
+          "type": "STRING",
+          "links": [
+            51
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MMH3H3ModelOptimizations"
+      },
+      "widgets_values": [
+        "Default",
+        "Default"
       ]
     },
     {
       "id": 105,
       "type": "MMH3H3FunControl",
       "pos": [
-        1090,
-        4112
+        1590,
+        2070
       ],
       "size": [
         390,
         360
       ],
       "flags": {},
-      "order": 22,
+      "order": 16,
       "mode": 0,
       "inputs": [
         {
           "name": "packet",
           "type": "MMH3_MEDIA",
-          "link": 72
+          "link": 23
         },
         {
           "name": "model",
           "type": "MODEL",
-          "link": 73
+          "link": 22
         },
         {
           "name": "vae",
           "type": "VAE",
-          "link": 74
+          "link": 24
         },
         {
           "name": "control_checkpoint",
@@ -1277,7 +1125,7 @@
         {
           "name": "width",
           "type": "INT",
-          "link": 75,
+          "link": 25,
           "widget": {
             "name": "width"
           }
@@ -1285,7 +1133,7 @@
         {
           "name": "height",
           "type": "INT",
-          "link": 76,
+          "link": 26,
           "widget": {
             "name": "height"
           }
@@ -1293,7 +1141,7 @@
         {
           "name": "target_frames",
           "type": "INT",
-          "link": 77,
+          "link": 27,
           "widget": {
             "name": "target_frames"
           }
@@ -1301,17 +1149,17 @@
         {
           "name": "control_video",
           "type": "IMAGE",
-          "link": 78
+          "link": null
         },
         {
           "name": "mask",
           "type": "MASK",
-          "link": 79
+          "link": 28
         },
         {
           "name": "source_video",
           "type": "IMAGE",
-          "link": 80
+          "link": 29
         }
       ],
       "outputs": [
@@ -1319,14 +1167,14 @@
           "name": "model",
           "type": "MODEL",
           "links": [
-            81
+            30
           ]
         },
         {
           "name": "packet",
           "type": "MMH3_MEDIA",
           "links": [
-            83
+            42
           ]
         },
         {
@@ -1338,7 +1186,7 @@
           "name": "process_info_json",
           "type": "STRING",
           "links": [
-            84
+            53
           ]
         }
       ],
@@ -1351,7 +1199,108 @@
         768,
         124
       ],
-      "title": "H3 Fun Control · MODEL_PATCH"
+      "title": "H3 Fun Masked Inpaint · MODEL_PATCH"
+    },
+    {
+      "id": 107,
+      "type": "2dc1591d-c793-5b5b-8434-df7ac8740504",
+      "pos": [
+        2090,
+        110
+      ],
+      "size": [
+        360,
+        426
+      ],
+      "flags": {},
+      "order": 17,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 30
+        },
+        {
+          "name": "shift_video",
+          "type": "FLOAT",
+          "link": 31
+        },
+        {
+          "name": "shift_audio",
+          "type": "FLOAT",
+          "link": 32
+        },
+        {
+          "name": "conditioning",
+          "type": "CONDITIONING",
+          "link": 33
+        },
+        {
+          "name": "seed",
+          "type": "INT",
+          "link": 34
+        },
+        {
+          "name": "sampler_name",
+          "type": "COMBO",
+          "link": 35
+        },
+        {
+          "name": "scheduler",
+          "type": "COMBO",
+          "link": 36
+        },
+        {
+          "name": "steps",
+          "type": "INT",
+          "link": 37
+        },
+        {
+          "name": "latent",
+          "type": "LATENT",
+          "link": 38
+        },
+        {
+          "name": "video_vae",
+          "type": "VAE",
+          "link": 39
+        },
+        {
+          "name": "audio_vae",
+          "type": "VAE",
+          "link": 40
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": [
+            41,
+            47
+          ]
+        },
+        {
+          "name": "latent",
+          "type": "LATENT",
+          "links": [
+            46
+          ]
+        },
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            48
+          ]
+        }
+      ],
+      "title": "Generate H3 Video",
+      "properties": {
+        "previewExposures": []
+      },
+      "widgets_values": []
     },
     {
       "id": 17,
@@ -1366,13 +1315,13 @@
         420
       ],
       "flags": {},
-      "order": 28,
+      "order": 18,
       "mode": 0,
       "inputs": [
         {
           "name": "video",
           "type": "VIDEO",
-          "link": 30
+          "link": 41
         },
         {
           "name": "filename_prefix",
@@ -1421,7 +1370,7 @@
       "title": "Build MMH3 Result",
       "pos": [
         3090,
-        600.0
+        600
       ],
       "size": [
         360,
@@ -1430,13 +1379,13 @@
       "flags": {
         "collapsed": true
       },
-      "order": 29,
+      "order": 19,
       "mode": 0,
       "inputs": [
         {
           "name": "packet",
           "type": "MMH3_MEDIA",
-          "link": 83
+          "link": 42
         },
         {
           "name": "operation",
@@ -1449,7 +1398,7 @@
         {
           "name": "mode",
           "type": "STRING",
-          "link": 32,
+          "link": 43,
           "widget": {
             "name": "mode"
           }
@@ -1457,7 +1406,7 @@
         {
           "name": "status",
           "type": "STRING",
-          "link": 33,
+          "link": 44,
           "widget": {
             "name": "status"
           }
@@ -1465,7 +1414,7 @@
         {
           "name": "process_info_json",
           "type": "STRING",
-          "link": 34,
+          "link": 45,
           "widget": {
             "name": "process_info_json"
           }
@@ -1481,17 +1430,17 @@
         {
           "name": "latent",
           "type": "LATENT",
-          "link": 37
+          "link": 46
         },
         {
           "name": "video",
           "type": "VIDEO",
-          "link": 38
+          "link": 47
         },
         {
           "name": "audio",
           "type": "AUDIO",
-          "link": 39
+          "link": 48
         },
         {
           "name": "first_frame",
@@ -1506,7 +1455,7 @@
         {
           "name": "generation_settings_json",
           "type": "STRING",
-          "link": 35,
+          "link": 49,
           "widget": {
             "name": "generation_settings_json"
           }
@@ -1514,7 +1463,7 @@
         {
           "name": "sampling_profile_json",
           "type": "STRING",
-          "link": 68,
+          "link": 50,
           "widget": {
             "name": "sampling_profile_json"
           }
@@ -1522,7 +1471,7 @@
         {
           "name": "optimization_profile_json",
           "type": "STRING",
-          "link": 36,
+          "link": 51,
           "widget": {
             "name": "optimization_profile_json"
           }
@@ -1530,7 +1479,7 @@
         {
           "name": "applied_loras_json",
           "type": "STRING",
-          "link": 40,
+          "link": 52,
           "widget": {
             "name": "applied_loras_json"
           }
@@ -1538,7 +1487,7 @@
         {
           "name": "control_process_info_json",
           "type": "STRING",
-          "link": 84,
+          "link": 53,
           "widget": {
             "name": "control_process_info_json"
           }
@@ -1549,7 +1498,7 @@
           "name": "packet",
           "type": "MMH3_MEDIA",
           "links": [
-            42
+            54
           ]
         },
         {
@@ -1585,20 +1534,20 @@
       "title": "Save MMH3",
       "pos": [
         3090,
-        1154.0
+        1154
       ],
       "size": [
         380,
         470
       ],
       "flags": {},
-      "order": 30,
+      "order": 20,
       "mode": 0,
       "inputs": [
         {
           "name": "packet",
           "type": "MMH3_MEDIA",
-          "link": 42
+          "link": 54
         },
         {
           "name": "filename_prefix",
@@ -1647,121 +1596,18 @@
       ]
     },
     {
-      "id": 107,
-      "type": "2dc1591d-c793-5b5b-8434-df7ac8740504",
-      "pos": [
-        2090,
-        110
-      ],
-      "size": [
-        360,
-        426
-      ],
-      "flags": {},
-      "order": 9,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "model",
-          "type": "MODEL",
-          "link": 81
-        },
-        {
-          "name": "shift_video",
-          "type": "FLOAT",
-          "link": 67
-        },
-        {
-          "name": "shift_audio",
-          "type": "FLOAT",
-          "link": 11
-        },
-        {
-          "name": "conditioning",
-          "type": "CONDITIONING",
-          "link": 82
-        },
-        {
-          "name": "seed",
-          "type": "INT",
-          "link": 14
-        },
-        {
-          "name": "sampler_name",
-          "type": "COMBO",
-          "link": 15
-        },
-        {
-          "name": "scheduler",
-          "type": "COMBO",
-          "link": 17
-        },
-        {
-          "name": "steps",
-          "type": "INT",
-          "link": 18
-        },
-        {
-          "name": "latent",
-          "type": "LATENT",
-          "link": 23
-        },
-        {
-          "name": "video_vae",
-          "type": "VAE",
-          "link": 25
-        },
-        {
-          "name": "audio_vae",
-          "type": "VAE",
-          "link": 27
-        }
-      ],
-      "outputs": [
-        {
-          "name": "video",
-          "type": "VIDEO",
-          "links": [
-            30,
-            38
-          ]
-        },
-        {
-          "name": "latent",
-          "type": "LATENT",
-          "links": [
-            37
-          ]
-        },
-        {
-          "name": "audio",
-          "type": "AUDIO",
-          "links": [
-            39
-          ]
-        }
-      ],
-      "title": "Generate H3 Video",
-      "properties": {
-        "previewExposures": []
-      },
-      "widgets_values": []
-    },
-    {
-      "id": 109,
+      "id": 120,
       "type": "MarkdownNote",
       "pos": [
-        590,
-        2206.0
+        90,
+        1540
       ],
       "size": [
-        360,
-        40
+        880,
+        500
       ],
-      "flags": {
-        "collapsed": true
-      },
-      "order": 32,
+      "flags": {},
+      "order": 21,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -1769,94 +1615,112 @@
         "Node name for S&R": "MarkdownNote"
       },
       "widgets_values": [
-        "Normal inpaint: keep control_video_resource_id and Pose preprocessor fields empty. The white mask region is regenerated; source_video remains the preservation source. The connected Pose branch is lazy and is not requested in this state.\n\nOptional Pose: set MMH3 Control Configure → control_video_resource_id to a control/video resource whose extensions.minimax_h3.control.control_kind is pose. If provenance is recorded, use preprocessor_name=external_pose and its exact version. The same H3 Fun Union checkpoint is used for inpaint; Pose adds a structural control stream and does not replace the mask/source-video contract.\n\nH3 Sampling owns the acceleration adapter and records the actual LoRA hash. Select Standard - 20 steps for stock sampling. H3 Fun Control uses the upstream MODEL_PATCH contract (#15975); put the checkpoint in models/model_patches (preferred) or models/controlnet."
+        "## F16 / F10 Masked Inpaint — simple path\n\n**1. Load Video**\n\n**2. Target Object** is used only by SAM 3.1 to find/track the area. It is separate from the H3 generation prompt.\n\n**3. In MMH3 Prepare Masked Inpaint:**\n- write the final H3 prompt yourself; MMH3 does not rewrite it\n- choose **Mask Mode**\n\n`Auto Object — SAM 3.1` — default. SAM tracking runs lazily and supplies the mask.\n\n`Manual Mask` — connect your MASK to `manual_mask`; the SAM branch is skipped.\n\n`Existing MMH3 Mask` — choose an optional MMH3 file below. Blank resource ID auto-selects its canonical / primary / first mask; the SAM branch is skipped.\n\nThe prepare node automatically conforms video + mask together to 24 fps, the H3 32px canvas and the nearest legal `17n+5` timeline, then creates the F16 source/mask resources.\n\nCheck **Final Regenerate Mask Preview** before rendering: **white = regenerate**, black = preserve."
       ],
-      "title": "F16 Inpaint · optional Pose"
-    },
-    {
-      "id": 110,
-      "type": "MMH3H3ModelOptimizations",
-      "title": "Optimizations",
-      "pos": [
-        590,
-        1646.0
-      ],
-      "size": [
-        360,
-        150
-      ],
-      "flags": {},
-      "order": 33,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "model",
-          "type": "MODEL",
-          "link": 45
-        },
-        {
-          "name": "attention",
-          "type": "COMFY_DYNAMICCOMBO_V3",
-          "link": null,
-          "widget": {
-            "name": "attention"
-          },
-          "label": "Attention"
-        },
-        {
-          "name": "fp16_accumulation",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "fp16_accumulation"
-          },
-          "label": "FP16 accumulation"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "model",
-          "type": "MODEL",
-          "links": [
-            73
-          ]
-        },
-        {
-          "name": "optimization_profile_json",
-          "type": "STRING",
-          "links": [
-            36
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "MMH3H3ModelOptimizations"
-      },
-      "widgets_values": [
-        "Default",
-        "Default"
-      ]
+      "title": "How to use",
+      "color": "#253248",
+      "bgcolor": "#344760"
     }
   ],
   "links": [
     [
       1,
-      1,
+      111,
       0,
-      2,
+      112,
       0,
-      "MMH3_MEDIA"
+      "VIDEO"
     ],
     [
       2,
-      31,
+      113,
+      1,
+      114,
+      0,
+      "CLIP"
+    ],
+    [
+      3,
+      112,
+      0,
+      115,
+      0,
+      "IMAGE"
+    ],
+    [
+      4,
+      113,
+      0,
+      115,
+      1,
+      "MODEL"
+    ],
+    [
+      5,
+      114,
+      0,
+      115,
+      3,
+      "CONDITIONING"
+    ],
+    [
+      6,
+      115,
+      0,
+      116,
+      0,
+      "SAM3_TRACK_DATA"
+    ],
+    [
+      7,
+      112,
+      0,
+      118,
+      0,
+      "IMAGE"
+    ],
+    [
+      8,
+      112,
+      2,
+      118,
+      1,
+      "FLOAT"
+    ],
+    [
+      9,
+      116,
+      0,
+      118,
+      6,
+      "MASK"
+    ],
+    [
+      10,
+      117,
+      0,
+      118,
+      8,
+      "MMH3_MEDIA"
+    ],
+    [
+      11,
+      118,
+      2,
+      119,
+      0,
+      "MASK"
+    ],
+    [
+      12,
+      118,
       0,
       6,
       0,
       "MMH3_MEDIA"
     ],
     [
-      3,
+      13,
       3,
       0,
       6,
@@ -1864,351 +1728,135 @@
       "CLIP"
     ],
     [
-      4,
-      4,
-      0,
-      6,
-      4,
-      "VAE"
-    ],
-    [
-      8,
-      5,
-      0,
-      6,
-      5,
-      "VAE"
-    ],
-    [
-      11,
-      30,
-      3,
-      107,
-      2,
-      "FLOAT"
-    ],
-    [
       14,
-      6,
-      2,
-      107,
       4,
-      "INT"
+      0,
+      6,
+      4,
+      "VAE"
     ],
     [
       15,
-      30,
-      4,
-      107,
       5,
-      "COMBO"
+      0,
+      6,
+      5,
+      "VAE"
+    ],
+    [
+      16,
+      118,
+      5,
+      6,
+      6,
+      "INT"
     ],
     [
       17,
-      30,
-      5,
-      107,
+      118,
       6,
-      "COMBO"
+      6,
+      7,
+      "INT"
     ],
     [
       18,
+      118,
+      7,
+      6,
+      8,
+      "INT"
+    ],
+    [
+      19,
+      7,
+      0,
+      30,
+      2,
+      "MODEL"
+    ],
+    [
+      20,
+      6,
+      7,
       30,
       1,
-      107,
-      7,
-      "INT"
+      "COMBO"
+    ],
+    [
+      21,
+      30,
+      6,
+      110,
+      0,
+      "MODEL"
+    ],
+    [
+      22,
+      110,
+      0,
+      105,
+      1,
+      "MODEL"
     ],
     [
       23,
       6,
-      1,
-      107,
-      8,
-      "LATENT"
+      3,
+      105,
+      0,
+      "MMH3_MEDIA"
+    ],
+    [
+      24,
+      4,
+      0,
+      105,
+      2,
+      "VAE"
     ],
     [
       25,
+      118,
+      5,
+      105,
       4,
-      0,
-      107,
-      9,
-      "VAE"
+      "INT"
+    ],
+    [
+      26,
+      118,
+      6,
+      105,
+      5,
+      "INT"
     ],
     [
       27,
-      5,
-      0,
-      107,
-      10,
-      "VAE"
-    ],
-    [
-      30,
-      107,
-      0,
-      17,
-      0,
-      "VIDEO"
-    ],
-    [
-      32,
-      6,
-      4,
-      18,
-      2,
-      "STRING"
-    ],
-    [
-      33,
-      6,
-      5,
-      18,
-      3,
-      "STRING"
-    ],
-    [
-      34,
-      6,
-      6,
-      18,
-      4,
-      "STRING"
-    ],
-    [
-      35,
-      31,
-      4,
-      18,
-      11,
-      "STRING"
-    ],
-    [
-      36,
-      110,
-      1,
-      18,
-      13,
-      "STRING"
-    ],
-    [
-      37,
-      107,
-      1,
-      18,
-      6,
-      "LATENT"
-    ],
-    [
-      38,
-      107,
-      0,
-      18,
+      118,
       7,
-      "VIDEO"
-    ],
-    [
-      39,
-      107,
-      2,
-      18,
-      8,
-      "AUDIO"
-    ],
-    [
-      40,
-      30,
-      7,
-      18,
-      14,
-      "STRING"
-    ],
-    [
-      42,
-      18,
-      0,
-      19,
-      0,
-      "MMH3_MEDIA"
-    ],
-    [
-      45,
-      30,
-      6,
-      110,
-      0,
-      "MODEL"
-    ],
-    [
-      47,
-      100,
-      0,
-      31,
-      0,
-      "MMH3_MEDIA"
-    ],
-    [
-      50,
-      2,
-      0,
-      100,
-      0,
-      "MMH3_MEDIA"
-    ],
-    [
-      51,
-      100,
-      0,
-      101,
-      0,
-      "MMH3_MEDIA"
-    ],
-    [
-      52,
-      100,
-      0,
-      102,
-      0,
-      "MMH3_MEDIA"
-    ],
-    [
-      63,
-      100,
-      0,
-      106,
-      0,
-      "MMH3_MEDIA"
-    ],
-    [
-      64,
-      7,
-      0,
-      30,
-      2,
-      "MODEL"
-    ],
-    [
-      66,
-      6,
-      7,
-      30,
-      1,
-      "COMBO"
-    ],
-    [
-      67,
-      30,
-      2,
-      107,
-      1,
-      "FLOAT"
-    ],
-    [
-      68,
-      30,
-      0,
-      18,
-      12,
-      "STRING"
-    ],
-    [
-      69,
-      31,
-      1,
-      6,
-      6,
-      "INT"
-    ],
-    [
-      70,
-      31,
-      2,
-      6,
-      7,
-      "INT"
-    ],
-    [
-      71,
-      31,
-      3,
-      6,
-      8,
-      "INT"
-    ],
-    [
-      72,
-      6,
-      3,
-      105,
-      0,
-      "MMH3_MEDIA"
-    ],
-    [
-      73,
-      110,
-      0,
-      105,
-      1,
-      "MODEL"
-    ],
-    [
-      74,
-      4,
-      0,
-      105,
-      2,
-      "VAE"
-    ],
-    [
-      75,
-      31,
-      1,
-      105,
-      4,
-      "INT"
-    ],
-    [
-      76,
-      31,
-      2,
-      105,
-      5,
-      "INT"
-    ],
-    [
-      77,
-      31,
-      3,
       105,
       6,
       "INT"
     ],
     [
-      78,
-      106,
-      0,
-      105,
-      7,
-      "IMAGE"
-    ],
-    [
-      79,
-      102,
-      0,
+      28,
+      118,
+      2,
       105,
       8,
       "MASK"
     ],
     [
-      80,
-      101,
-      0,
+      29,
+      118,
+      1,
       105,
       9,
       "IMAGE"
     ],
     [
-      81,
+      30,
       105,
       0,
       107,
@@ -2216,7 +1864,23 @@
       "MODEL"
     ],
     [
-      82,
+      31,
+      30,
+      2,
+      107,
+      1,
+      "FLOAT"
+    ],
+    [
+      32,
+      30,
+      3,
+      107,
+      2,
+      "FLOAT"
+    ],
+    [
+      33,
       6,
       0,
       107,
@@ -2224,7 +1888,71 @@
       "CONDITIONING"
     ],
     [
-      83,
+      34,
+      6,
+      2,
+      107,
+      4,
+      "INT"
+    ],
+    [
+      35,
+      30,
+      4,
+      107,
+      5,
+      "COMBO"
+    ],
+    [
+      36,
+      30,
+      5,
+      107,
+      6,
+      "COMBO"
+    ],
+    [
+      37,
+      30,
+      1,
+      107,
+      7,
+      "INT"
+    ],
+    [
+      38,
+      6,
+      1,
+      107,
+      8,
+      "LATENT"
+    ],
+    [
+      39,
+      4,
+      0,
+      107,
+      9,
+      "VAE"
+    ],
+    [
+      40,
+      5,
+      0,
+      107,
+      10,
+      "VAE"
+    ],
+    [
+      41,
+      107,
+      0,
+      17,
+      0,
+      "VIDEO"
+    ],
+    [
+      42,
       105,
       1,
       18,
@@ -2232,23 +1960,111 @@
       "MMH3_MEDIA"
     ],
     [
-      84,
+      43,
+      6,
+      4,
+      18,
+      2,
+      "STRING"
+    ],
+    [
+      44,
+      6,
+      5,
+      18,
+      3,
+      "STRING"
+    ],
+    [
+      45,
+      6,
+      6,
+      18,
+      4,
+      "STRING"
+    ],
+    [
+      46,
+      107,
+      1,
+      18,
+      6,
+      "LATENT"
+    ],
+    [
+      47,
+      107,
+      0,
+      18,
+      7,
+      "VIDEO"
+    ],
+    [
+      48,
+      107,
+      2,
+      18,
+      8,
+      "AUDIO"
+    ],
+    [
+      49,
+      118,
+      8,
+      18,
+      11,
+      "STRING"
+    ],
+    [
+      50,
+      30,
+      0,
+      18,
+      12,
+      "STRING"
+    ],
+    [
+      51,
+      110,
+      1,
+      18,
+      13,
+      "STRING"
+    ],
+    [
+      52,
+      30,
+      7,
+      18,
+      14,
+      "STRING"
+    ],
+    [
+      53,
       105,
       3,
       18,
       15,
       "STRING"
+    ],
+    [
+      54,
+      18,
+      0,
+      19,
+      0,
+      "MMH3_MEDIA"
     ]
   ],
   "groups": [
     {
       "id": 1,
-      "title": "01 · INPUTS / ASSETS",
+      "title": "01 · VIDEO / MASK INPUT",
       "bounding": [
         55,
         55,
-        430,
-        1302.0
+        930,
+        2020
       ],
       "color": "#355070",
       "font_size": 24,
@@ -2256,12 +2072,12 @@
     },
     {
       "id": 2,
-      "title": "02 · MODEL / ENCODERS / OPTIMIZATION",
+      "title": "02 · H3 MODEL / ENCODERS",
       "bounding": [
-        555,
+        1055,
         55,
         430,
-        2388.0
+        920
       ],
       "color": "#4f5d75",
       "font_size": 24,
@@ -2269,12 +2085,12 @@
     },
     {
       "id": 3,
-      "title": "03 · SETTINGS / CONDITIONING / CONTROL",
+      "title": "03 · CONDITION / CONTROL",
       "bounding": [
-        1055,
+        1555,
         55,
         430,
-        4426
+        2395
       ],
       "color": "#6d597a",
       "font_size": 24,
@@ -2287,7 +2103,7 @@
         2055,
         55,
         430,
-        1156
+        520
       ],
       "color": "#9c6644",
       "font_size": 24,
@@ -2300,7 +2116,7 @@
         3055,
         55,
         430,
-        1604.0
+        1604
       ],
       "color": "#2a9d8f",
       "font_size": 24,

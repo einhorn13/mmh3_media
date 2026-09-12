@@ -1,8 +1,8 @@
 {
   "id": "ac45126f-f5bc-55b4-a1af-94a83e71a26b",
   "revision": 0,
-  "last_node_id": 37,
-  "last_link_id": 69,
+  "last_node_id": 38,
+  "last_link_id": 70,
   "nodes": [
     {
       "id": 1,
@@ -307,8 +307,8 @@
           "type": "VAE",
           "links": [
             25,
-            27,
-            48
+            48,
+            70
           ]
         }
       ],
@@ -1934,6 +1934,41 @@
         "Default",
         "Default"
       ]
+    },
+    {
+      "id": 38,
+      "type": "MMH3H3AudioVAE",
+      "pos": [
+        590,
+        1600
+      ],
+      "size": [
+        360,
+        90
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio_vae",
+          "type": "VAE",
+          "link": 70
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio_vae",
+          "type": "VAE",
+          "links": [
+            27
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MMH3H3AudioVAE"
+      },
+      "widgets_values": []
     }
   ],
   "links": [
@@ -2083,7 +2118,7 @@
     ],
     [
       27,
-      12,
+      38,
       0,
       20,
       2,
@@ -2344,6 +2379,14 @@
       18,
       2,
       "MODEL"
+    ],
+    [
+      70,
+      12,
+      0,
+      38,
+      0,
+      "VAE"
     ]
   ],
   "groups": [

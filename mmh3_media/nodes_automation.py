@@ -3,28 +3,35 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from .automation import plan_batch_inputs, plan_long_video_chunks, resolve_chunk_execution
+from .automation import H3_AUDIO_TIMELINE_PLANNERS, plan_batch_inputs, plan_h3_audio_interactive_sequence, plan_h3_audio_timeline_chunks, plan_long_video_chunks, resolve_chunk_execution
 from .automation_batch_stitch import inspect_batch_stitch_plan, prepare_batch_stitch
 from .raw_video_import import normalize_batch_plan
 from .resource_model import resource_facts
-from .automation_adapters import build_video_chunk_expansion, trim_audio_samples
+from .automation_adapters import build_audio_timeline_chunk_expansion, build_video_chunk_expansion, trim_audio_samples, trim_audio_samples_padded
 from .automation_estimate import build_prequeue_estimate, prequeue_summary
 from .automation_assembly import assemble_chunk_packets
 from .automation_upscale import build_long_video_upscale_settings
 from .automation_lipsync import (
     MODES as AUDIO_SYNC_MODES,
+    AUDIO_OUTPUT_MODES,
     build_h3_audio_sync_chunk_proof,
     build_long_video_audio_sync_settings,
     validate_lipsync_chunk_proof,
+    validate_audio_sync_source,
 )
 from .automation_execution import (
     acquire_next_execution_job,
+    append_interactive_audio_try,
     build_chunk_assembly_map,
+    accept_execution_candidate,
     build_execution_summary,
     commit_execution_artifact,
+    commit_execution_candidate,
     create_execution_ledger,
     deterministic_artifact_prefix,
+    finalize_interactive_audio_sequence,
     save_execution_ledger,
+    set_execution_audio_delivery_policy,
     select_resume_jobs,
     transition_execution_job,
 )
@@ -385,6 +392,109 @@ class MMH3LongVideoChunkPlan(io.ComfyNode):
         )
 
 
+class MMH3LongAudioTimelinePlan(io.ComfyNode):
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="MMH3LongAudioTimelinePlan",
+            display_name="MMH3 H3 Audio Master Timeline",
+            category=CATEGORY,
+            description=(
+                "Plan legal 17n+5 H3 generation windows directly from the immutable master audio. "
+                "Use this for image-reference singing/performance generation without a source video."
+            ),
+            inputs=[
+                MMH3.Input("packet"),
+                io.Float.Input("generation_duration_seconds", default=8.0, min=5.0, max=15.1, step=0.1),
+                io.Float.Input("context_seconds", default=0.5, min=0.0, max=4.0, step=0.1),
+            ],
+            outputs=[MMH3.Output("packet"), io.String.Output("plan_json"), io.Int.Output("chunks"), io.String.Output("status"), io.String.Output("estimate_json")],
+        )
+
+    @classmethod
+    def execute(cls, packet, generation_duration_seconds: float, context_seconds: float) -> io.NodeOutput:
+        value = _packet(packet)
+        info = inspect_packet(value)
+        audio = value.get_primary("audio")
+        if audio is None:
+            raise MMH3ResourceError("Audio-master timeline requires an explicit primary audio resource")
+        facts = resource_facts(audio)
+        sample_rate = int(facts.get("sample_rate") or 0)
+        samples = int(facts.get("samples") or 0)
+        if sample_rate != 32000:
+            raise MMH3ResourceError(f"H3 audio-master timeline requires 32000 Hz source audio; got {sample_rate or 'unknown'}")
+        if samples < 1:
+            raise MMH3ResourceError("Audio-master timeline requires exact source audio sample-count metadata")
+        plan = plan_h3_audio_timeline_chunks(
+            source_id=str(info.get("id") or "unknown"),
+            total_audio_samples=samples,
+            audio_sample_rate=sample_rate,
+            generation_duration_seconds=float(generation_duration_seconds),
+            context_seconds=float(context_seconds),
+        )
+        plan_dict = plan.to_dict()
+        estimate = build_prequeue_estimate(plan_dict, operation="long_video_lipsync", effective_settings=plan.settings)
+        return io.NodeOutput(
+            value,
+            json.dumps(plan_dict, ensure_ascii=False, indent=2),
+            len(plan.chunks),
+            f"READY · H3 audio master · chunks={len(plan.chunks)} · window={plan.settings['generation_frames']}f · master={samples/sample_rate:.3f}s",
+            json.dumps(estimate, ensure_ascii=False, indent=2),
+        )
+
+
+class MMH3InteractiveAudioTimelinePlan(io.ComfyNode):
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="MMH3InteractiveAudioTimelinePlan",
+            display_name="MMH3 F18 Interactive Music Timeline",
+            category=CATEGORY,
+            description=(
+                "Start a human-in-the-loop F18 music-video timeline. The first delivered shot can use any "
+                "duration; its larger H3 17n+5 generation window and exact master-audio slice are derived automatically."
+            ),
+            inputs=[
+                MMH3.Input("packet"),
+                io.Float.Input("first_shot_duration_seconds", default=5.0, min=0.1, max=15.0, step=0.1),
+                io.Float.Input("context_seconds", default=0.5, min=0.0, max=4.0, step=0.1),
+            ],
+            outputs=[MMH3.Output("packet"), io.String.Output("plan_json"), io.String.Output("status"), io.String.Output("estimate_json")],
+        )
+
+    @classmethod
+    def execute(cls, packet, first_shot_duration_seconds: float, context_seconds: float) -> io.NodeOutput:
+        value = _packet(packet)
+        info = inspect_packet(value)
+        audio = value.get_primary("audio")
+        if audio is None:
+            raise MMH3ResourceError("Interactive F18 timeline requires an explicit primary master audio resource")
+        facts = resource_facts(audio)
+        sample_rate = int(facts.get("sample_rate") or 0)
+        samples = int(facts.get("samples") or 0)
+        if sample_rate != 32000 or samples < 1:
+            raise MMH3ResourceError("Interactive F18 timeline requires exact 32000 Hz master-audio sample metadata")
+        plan = plan_h3_audio_interactive_sequence(
+            source_id=str(info.get("id") or "unknown"),
+            total_audio_samples=samples,
+            audio_sample_rate=sample_rate,
+            first_shot_duration_seconds=float(first_shot_duration_seconds),
+            context_seconds=float(context_seconds),
+        )
+        plan_dict = plan.to_dict()
+        first = plan_dict["chunks"][0]
+        estimate = build_prequeue_estimate(plan_dict, operation="long_video_lipsync", effective_settings=plan.settings)
+        return io.NodeOutput(
+            value,
+            json.dumps(plan_dict, ensure_ascii=False, indent=2),
+            (
+                f"READY · F18 interactive · shot={first['actual_shot_duration_seconds']:.3f}s "
+                f"H3={first['generation_frames']}f · cursor={first['audio_write_end']/sample_rate:.3f}s"
+            ),
+            json.dumps(estimate, ensure_ascii=False, indent=2),
+        )
+
+
 class MMH3LongVideoUpscaleSettings(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
@@ -442,13 +552,19 @@ class MMH3LongVideoAudioSyncSettings(io.ComfyNode):
                 MMH3.Input("packet"),
                 io.String.Input("chunk_plan_json", default="{}", multiline=True),
                 io.Combo.Input("mode", options=list(AUDIO_SYNC_MODES), default="lipsync"),
+                io.Combo.Input("source_mode", options=["auto", "video_reference", "image_reference"], default="auto", optional=True),
+                io.Boolean.Input("require_candidate_review", default=True, optional=True),
+                io.Combo.Input("audio_output_mode", options=list(AUDIO_OUTPUT_MODES), default="master_only", optional=True),
+                io.Float.Input("master_gain_db", default=0.0, min=-120.0, max=24.0, step=0.5, advanced=True, optional=True),
+                io.Float.Input("generated_gain_db", default=-18.0, min=-120.0, max=24.0, step=0.5, advanced=True, optional=True),
+                io.Boolean.Input("peak_limit", default=True, advanced=True, optional=True),
                 io.String.Input("tracks_json", default="[]", multiline=True),
             ],
             outputs=[io.String.Output("settings_json"), io.Int.Output("tracks"), io.String.Output("status")],
         )
 
     @classmethod
-    def execute(cls, packet, chunk_plan_json: str, mode: str, tracks_json: str) -> io.NodeOutput:
+    def execute(cls, packet, chunk_plan_json: str, mode: str, tracks_json: str, source_mode: str = "auto", require_candidate_review: bool = False, audio_output_mode: str = "master_only", master_gain_db: float = 0.0, generated_gain_db: float = -18.0, peak_limit: bool = True) -> io.NodeOutput:
         value = _packet(packet)
         info = inspect_packet(value)
         chunk_plan = _json_object(chunk_plan_json, "chunk_plan_json")
@@ -475,11 +591,18 @@ class MMH3LongVideoAudioSyncSettings(io.ComfyNode):
             tracks=tracks,
             mode=mode,
             source_channels=int(audio_facts.get("channels") or audio_facts.get("channel_count") or 0),
+            source_audio_samples=int(audio_facts.get("samples") or 0),
+            source_mode=source_mode,
+            require_candidate_review=bool(require_candidate_review),
+            audio_output_mode=audio_output_mode,
+            master_gain_db=float(master_gain_db),
+            generated_gain_db=float(generated_gain_db),
+            peak_limit=bool(peak_limit),
         )
         return io.NodeOutput(
             json.dumps(settings, ensure_ascii=False, indent=2),
             len(settings["tracks"]),
-            f"READY · H3 {mode} · tracks={len(settings['tracks'])} · channels={settings['source_audio']['channels'] or 'unknown'}",
+            f"READY · H3 {mode} · audio={settings['delivery_policy']['audio_output_mode']} · tracks={len(settings['tracks'])} · channels={settings['source_audio']['channels'] or 'unknown'}",
         )
 
 
@@ -511,6 +634,47 @@ class MMH3H3AudioSyncProof(io.ComfyNode):
         )
 
 
+class MMH3AutomationAudioChunk(io.ComfyNode):
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="MMH3AutomationAudioChunk",
+            display_name="MMH3 Automation Audio-Master Chunk",
+            category=CATEGORY,
+            description=(
+                "Trim one immutable master-audio slice for an H3 generation job, right-pad only the legal "
+                "conditioning tail when required, and preserve packet image/reference resources."
+            ),
+            inputs=[
+                MMH3.Input("packet"),
+                io.String.Input("plan_json", default="{}", multiline=True),
+                io.Int.Input("chunk_index", default=0, min=0, max=999999),
+                io.String.Input("job_id", default="", advanced=True),
+                io.String.Input("settings_json", default="{}", multiline=True, optional=True, advanced=True),
+            ],
+            outputs=[MMH3.Output("packet"), io.Audio.Output("audio"), io.String.Output("context_json"), io.Int.Output("generation_frames"), io.String.Output("status")],
+            enable_expand=True,
+        )
+
+    @classmethod
+    def execute(cls, packet, plan_json: str, chunk_index: int, job_id: str, settings_json: str = "{}") -> io.NodeOutput:
+        value = _packet(packet)
+        plan = _json_object(plan_json, "plan_json")
+        settings = _json_object(settings_json, "settings_json")
+        if settings:
+            validate_audio_sync_source(value, settings)
+        if str(plan.get("source_id")) != str(value.manifest.get("id")):
+            raise MMH3ResourceError("Chunk plan source_id does not match the input packet")
+        if value.get_primary("audio") is None:
+            raise MMH3ResourceError("Audio-master chunk requires an explicit primary audio resource")
+        planner = str((plan.get("settings") or {}).get("planner") or "")
+        if planner not in H3_AUDIO_TIMELINE_PLANNERS:
+            raise MMH3ResourceError("Audio-master chunk requires an H3 audio timeline or interactive plan")
+        selection = resolve_chunk_execution(plan, chunk_index=int(chunk_index), job_id=job_id)
+        expansion = build_audio_timeline_chunk_expansion(selection, packet=value)
+        return io.NodeOutput(expansion.packet, expansion.audio, expansion.context_json, expansion.generation_frames, expansion.status, expand=expansion.graph)
+
+
 class MMH3AutomationVideoChunk(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
@@ -524,6 +688,7 @@ class MMH3AutomationVideoChunk(io.ComfyNode):
                 io.String.Input("plan_json", default="{}", multiline=True),
                 io.Int.Input("chunk_index", default=0, min=0, max=999999),
                 io.String.Input("job_id", default="", advanced=True, tooltip="Stable selector; when set, overrides chunk_index."),
+                io.String.Input("settings_json", default="{}", multiline=True, optional=True, advanced=True),
             ],
             outputs=[
                 MMH3.Output("packet"),
@@ -536,9 +701,12 @@ class MMH3AutomationVideoChunk(io.ComfyNode):
         )
 
     @classmethod
-    def execute(cls, packet, plan_json: str, chunk_index: int, job_id: str) -> io.NodeOutput:
+    def execute(cls, packet, plan_json: str, chunk_index: int, job_id: str, settings_json: str = "{}") -> io.NodeOutput:
         value = _packet(packet)
         plan = _json_object(plan_json, "plan_json")
+        settings = _json_object(settings_json, "settings_json")
+        if settings:
+            validate_audio_sync_source(value, settings)
         if str(plan.get("source_id")) != str(value.manifest.get("id")):
             raise MMH3ResourceError("Chunk plan source_id does not match the input packet")
         if value.get_primary("video") is None:
@@ -584,6 +752,31 @@ class MMH3TrimAudioSamples(io.ComfyNode):
         return io.NodeOutput(trimmed)
 
 
+class MMH3TrimAudioSamplesPadded(io.ComfyNode):
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="MMH3TrimAudioSamplesPadded",
+            display_name="MMH3 Trim Audio Samples + EOF Pad",
+            category=CATEGORY,
+            description="Sample-exact audio trim that right-pads only beyond EOF; intended for legal H3 conditioning windows.",
+            inputs=[
+                io.Audio.Input("audio"),
+                io.Int.Input("start_sample", default=0, min=0, max=0x7FFFFFFFFFFFFFFF),
+                io.Int.Input("end_sample", default=1, min=1, max=0x7FFFFFFFFFFFFFFF),
+            ],
+            outputs=[io.Audio.Output("audio")],
+        )
+
+    @classmethod
+    def execute(cls, audio, start_sample: int, end_sample: int) -> io.NodeOutput:
+        try:
+            trimmed = trim_audio_samples_padded(audio, start_sample, end_sample)
+        except ValueError as exc:
+            raise MMH3ResourceError(str(exc)) from exc
+        return io.NodeOutput(trimmed)
+
+
 def _json_object(value: str, label: str) -> dict:
     try:
         parsed = json.loads(value or "{}")
@@ -605,7 +798,7 @@ class MMH3AutomationLedger(io.ComfyNode):
             inputs=[
                 io.String.Input("plan_json", default="{}", multiline=True),
                 io.String.Input("ledger_json", default="{}", multiline=True, advanced=True),
-                io.Combo.Input("action", options=["initialize", "inspect", "acquire_next", "start", "commit_artifact", "complete", "fail", "cancel", "reset"], default="initialize"),
+                io.Combo.Input("action", options=["initialize", "inspect", "acquire_next", "append_next", "finalize_sequence", "set_audio_delivery", "start", "commit_artifact", "commit_candidate", "accept_candidate", "reroll", "complete", "fail", "cancel", "reset"], default="initialize"),
                 io.String.Input("job_id", default="", advanced=True),
                 io.String.Input("lease_id", default="", advanced=True),
                 io.String.Input("operation", default="process"),
@@ -614,6 +807,15 @@ class MMH3AutomationLedger(io.ComfyNode):
                 io.String.Input("artifact_json", default="{}", multiline=True, advanced=True),
                 io.String.Input("packet_path", default="", advanced=True, tooltip="Existing .mmh3 path returned by MMH3 Save for commit_artifact."),
                 io.String.Input("packet_id", default="", advanced=True),
+                io.String.Input("candidate_id", default="", advanced=True, optional=True, tooltip="Candidate to accept when action=accept_candidate."),
+                io.String.Input("candidate_label", default="", advanced=True, optional=True),
+                io.String.Input("candidate_notes", default="", multiline=True, advanced=True, optional=True),
+                io.Combo.Input("audio_output_mode", options=list(AUDIO_OUTPUT_MODES), default="master_only", advanced=True, optional=True),
+                io.Float.Input("master_gain_db", default=0.0, min=-120.0, max=24.0, step=0.5, advanced=True, optional=True),
+                io.Float.Input("generated_gain_db", default=-18.0, min=-120.0, max=24.0, step=0.5, advanced=True, optional=True),
+                io.Boolean.Input("peak_limit", default=True, advanced=True, optional=True),
+                io.Float.Input("next_shot_duration_seconds", default=5.0, min=0.1, max=15.0, step=0.1, advanced=True, optional=True),
+                io.Float.Input("next_context_seconds", default=0.5, min=0.0, max=4.0, step=0.1, advanced=True, optional=True),
                 io.String.Input("error", default="", multiline=True, advanced=True),
                 io.Combo.Input("resume_mode", options=["pending_and_failed", "failed_only", "include_cancelled"], default="pending_and_failed"),
             ],
@@ -647,6 +849,15 @@ class MMH3AutomationLedger(io.ComfyNode):
         packet_id: str,
         error: str,
         resume_mode: str,
+        candidate_id: str = "",
+        candidate_label: str = "",
+        candidate_notes: str = "",
+        audio_output_mode: str = "master_only",
+        master_gain_db: float = 0.0,
+        generated_gain_db: float = -18.0,
+        peak_limit: bool = True,
+        next_shot_duration_seconds: float = 5.0,
+        next_context_seconds: float = 0.5,
     ) -> io.NodeOutput:
         active: dict = {}
         if action == "initialize":
@@ -661,6 +872,19 @@ class MMH3AutomationLedger(io.ComfyNode):
             if action == "acquire_next":
                 ledger, lease = acquire_next_execution_job(ledger, mode=resume_mode)
                 active = lease or {}
+            elif action == "append_next":
+                ledger = append_interactive_audio_try(
+                    ledger,
+                    shot_duration_seconds=float(next_shot_duration_seconds),
+                    context_seconds=float(next_context_seconds),
+                )
+            elif action == "finalize_sequence":
+                ledger = finalize_interactive_audio_sequence(ledger)
+            elif action == "set_audio_delivery":
+                ledger = set_execution_audio_delivery_policy(
+                    ledger, audio_output_mode=audio_output_mode, master_gain_db=float(master_gain_db),
+                    generated_gain_db=float(generated_gain_db), peak_limit=bool(peak_limit),
+                )
             elif action == "commit_artifact":
                 ledger = commit_execution_artifact(
                     ledger,
@@ -669,6 +893,18 @@ class MMH3AutomationLedger(io.ComfyNode):
                     packet_path=packet_path.strip(),
                     packet_id=packet_id.strip(),
                 )
+            elif action == "commit_candidate":
+                ledger = commit_execution_candidate(
+                    ledger,
+                    job_id.strip(),
+                    lease_id=lease_id.strip(),
+                    packet_path=packet_path.strip(),
+                    packet_id=packet_id.strip(),
+                    label=candidate_label,
+                    notes=candidate_notes,
+                )
+            elif action == "accept_candidate":
+                ledger = accept_execution_candidate(ledger, job_id.strip(), candidate_id.strip())
             elif action != "inspect":
                 artifact = _json_object(artifact_json, "artifact_json") if action == "complete" else None
                 ledger = transition_execution_job(
@@ -742,7 +978,7 @@ class MMH3AutomationReport(io.ComfyNode):
         counts = summary["counts"]
         status = (
             "REPORT · "
-            f"completed={counts['completed']} failed={counts['failed']} cancelled={counts['cancelled']} "
+            f"completed={counts['completed']} review={counts.get('review', 0)} failed={counts['failed']} cancelled={counts['cancelled']} "
             f"pending={counts['pending']} running={counts['running']} "
             f"assembly={'ready' if summary['assembly']['ready'] else 'blocked'} "
             f"next={summary['recommendation']}"
@@ -848,14 +1084,18 @@ __all__ = [
     "MMH3AutomationAssembleChunks",
     "MMH3AutomationCheckpoint",
     "MMH3AutomationLedger",
+    "MMH3AutomationAudioChunk",
     "MMH3AutomationVideoChunk",
     "MMH3BatchInputPlan",
     "MMH3BatchPreQueueEstimate",
     "MMH3BatchNormalizeImport",
     "MMH3BatchStitch",
+    "MMH3LongAudioTimelinePlan",
+    "MMH3InteractiveAudioTimelinePlan",
     "MMH3LongVideoChunkPlan",
     "MMH3LongVideoUpscaleSettings",
     "MMH3LongVideoAudioSyncSettings",
     "MMH3H3AudioSyncProof",
     "MMH3TrimAudioSamples",
+    "MMH3TrimAudioSamplesPadded",
 ]

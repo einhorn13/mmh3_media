@@ -171,6 +171,7 @@
         "Node name for S&R": "MMH3BatchNormalizeImport"
       },
       "widgets_values": [
+        "",
         0,
         0,
         24,
@@ -271,6 +272,7 @@
         "Node name for S&R": "MMH3BatchStitch"
       },
       "widgets_values": [
+        "",
         "cut",
         "cut",
         0,

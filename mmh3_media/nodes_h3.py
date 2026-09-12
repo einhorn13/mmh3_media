@@ -19,6 +19,21 @@ from .node_support import (
     split_h3_av_latent,
 )
 
+class MMH3H3AudioVAE(io.ComfyNode):
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="MMH3H3AudioVAE", display_name="H3 Audio VAE · Preserve Onset", category=CATEGORY,
+            description="Prevent generic center cropping before H3 audio encoding. Uses a private VAE wrapper; source PCM and shared loader state are unchanged.",
+            inputs=[io.Vae.Input("audio_vae")], outputs=[io.Vae.Output("audio_vae")],
+        )
+
+    @classmethod
+    def execute(cls, audio_vae) -> io.NodeOutput:
+        from .audio_vae import preserve_h3_audio_onset
+        return io.NodeOutput(preserve_h3_audio_onset(audio_vae))
+
+
 class MMH3H3ContinuationGuide(io.ComfyNode):
     """Optional endpoint conditioning, independent of the preserved AV prefix."""
 

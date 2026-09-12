@@ -11,14 +11,15 @@ from .nodes_upscale_pipeline import MMH3H3UpscaleSettings, MMH3H3UpscalePrefligh
 from .nodes_upscale import MMH3H3LearnedUpscale, MMH3H3LatentUpscalePrepare, MMH3H3LatentUpscaleTarget, MMH3H3LatentStitchUpscaleTarget, MMH3H3UpscaleRefineSampling, MMH3H3DecodedUpscalePrepare, MMH3H3LatentUpscaleReport, MMH3H3ExternalTileFinalize, MMH3H3NativeTileRefine
 from .nodes_h3 import MMH3H3AVSeparate, MMH3H3AVCombine, MMH3H3Provenance, MMH3H3Compatibility, MMH3H3ContinuationHandover, MMH3H3DecodedContinuation, MMH3H3ContinuationGuide
 from .nodes_utility import MMH3Compare, MMH3Export, MMH3Preview, _MMH3GetBase, MMH3GetLatent, MMH3GetImage, MMH3GetVideo, MMH3GetAudio, MMH3GetMask, MMH3GetJSON
-from .nodes_control import MMH3ControlConfigure, MMH3ControlPreflight, MMH3ControlVideo, MMH3MaskedEditCondition, MMH3H3ControlApply, MMH3H3FunControl
+from .nodes_control import MMH3ControlConfigure, MMH3InpaintPrepare, MMH3ControlPreflight, MMH3ControlVideo, MMH3MaskedEditCondition, MMH3H3ControlApply, MMH3H3FunControl
 from .nodes_optimization import MMH3H3OptimizationRecord, MMH3H3FP16AccumulationPatch, MMH3H3ModelOptimizations, MMH3H3SamplingPreset, MMH3H3SLAApply, MMH3H3VDNApply
 from .nodes_settings import MMH3H3GenerationSettings, MMH3H3ReferenceImageSettings
 from .nodes_segments import MMH3H3SegmentPrepare, MMH3SegmentReview
 from .nodes_stitch_upscale import MMH3H3StitchUpscale, MMH3H3UpscaleAVRestore
 from .nodes_delivery import MMH3VideoUpscale
-from .nodes_automation import MMH3AutomationAssembleChunks, MMH3AutomationAssemblyGate, MMH3AutomationCheckpoint, MMH3AutomationLedger, MMH3AutomationReport, MMH3AutomationVideoChunk, MMH3BatchInputPlan, MMH3BatchNormalizeImport, MMH3BatchPreQueueEstimate, MMH3BatchStitch, MMH3H3AudioSyncProof, MMH3LongVideoAudioSyncSettings, MMH3LongVideoChunkPlan, MMH3LongVideoUpscaleSettings, MMH3TrimAudioSamples
+from .nodes_automation import MMH3AutomationAssembleChunks, MMH3AutomationAssemblyGate, MMH3AutomationAudioChunk, MMH3AutomationCheckpoint, MMH3AutomationLedger, MMH3AutomationReport, MMH3AutomationVideoChunk, MMH3BatchInputPlan, MMH3BatchNormalizeImport, MMH3BatchPreQueueEstimate, MMH3BatchStitch, MMH3H3AudioSyncProof, MMH3InteractiveAudioTimelinePlan, MMH3LongAudioTimelinePlan, MMH3LongVideoAudioSyncSettings, MMH3LongVideoChunkPlan, MMH3LongVideoUpscaleSettings, MMH3TrimAudioSamples, MMH3TrimAudioSamplesPadded
 from .upstream_backports.minimax_h3_forward_patch import BackportCompatibilityError
+from .nodes_h3 import MMH3H3AudioVAE
 from .upstream_backports.minimax_h3_fun_pr15860 import ensure_minimax_h3_fun_backport
 
 
@@ -29,6 +30,7 @@ class MMH3Extension(ComfyExtension):
     @override
     async def get_node_list(self) -> list[type[io.ComfyNode]]:
         node_list = [
+            MMH3H3AudioVAE,
             MMH3AVEditPolicy,
             MMH3AVProtectionRestore,
             MMH3TwoClipAVBridge,
@@ -54,12 +56,16 @@ class MMH3Extension(ComfyExtension):
             MMH3BatchPreQueueEstimate,
             MMH3BatchNormalizeImport,
             MMH3BatchStitch,
+            MMH3LongAudioTimelinePlan,
+            MMH3InteractiveAudioTimelinePlan,
             MMH3LongVideoChunkPlan,
             MMH3LongVideoUpscaleSettings,
             MMH3LongVideoAudioSyncSettings,
             MMH3H3AudioSyncProof,
+            MMH3AutomationAudioChunk,
             MMH3AutomationVideoChunk,
             MMH3TrimAudioSamples,
+            MMH3TrimAudioSamplesPadded,
             MMH3AutomationLedger,
             MMH3AutomationCheckpoint,
             MMH3AutomationReport,
@@ -77,6 +83,7 @@ class MMH3Extension(ComfyExtension):
             MMH3H3ContinuationCondition,
             MMH3PackH3Result,
             MMH3ControlConfigure,
+            MMH3InpaintPrepare,
             MMH3ControlPreflight,
             MMH3ControlVideo,
             MMH3MaskedEditCondition,

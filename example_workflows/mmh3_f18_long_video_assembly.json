@@ -113,7 +113,9 @@
       "properties": {
         "Node name for S&R": "MMH3AutomationAssembleChunks"
       },
-      "widgets_values": []
+      "widgets_values": [
+        ""
+      ]
     },
     {
       "id": 3,

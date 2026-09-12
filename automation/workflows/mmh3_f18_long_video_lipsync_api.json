@@ -16,7 +16,8 @@
       ],
       "plan_json": "__MMH3_PLAN_JSON__",
       "chunk_index": 0,
-      "job_id": "__MMH3_JOB_ID__"
+      "job_id": "__MMH3_JOB_ID__",
+      "settings_json": "__MMH3_EFFECTIVE_SETTINGS_JSON__"
     }
   },
   "3": {
@@ -103,7 +104,7 @@
         0
       ],
       "prompt_override": "Use <Video 1> for the same people, scene, framing and body motion. Follow the exact synchronized speech or singing content and timing of <Audio 1>; visible speakers must articulate the words/lyrics in time. Preserve natural expressions and head motion.",
-      "seed_override": 1247,
+      "seed_override": "__MMH3_ATTEMPT_SEED__",
       "width_override": 0,
       "height_override": 0,
       "frames_override": 0
@@ -233,8 +234,8 @@
         0
       ],
       "audio": [
-        "2",
-        2
+        "17a",
+        0
       ],
       "operation": "long_video_lipsync",
       "mode": "lipsync",
@@ -305,7 +306,7 @@
         1
       ],
       "audio_vae": [
-        "8",
+        "8safe",
         0
       ],
       "audio": [
@@ -324,6 +325,23 @@
       ],
       "conditioning": [
         "9g",
+        0
+      ]
+    }
+  },
+  "8safe": {
+    "class_type": "MMH3H3AudioVAE",
+    "inputs": {"audio_vae": ["8", 0]}
+  },
+  "17a": {
+    "class_type": "VAEDecodeAudio",
+    "inputs": {
+      "samples": [
+        "16",
+        0
+      ],
+      "vae": [
+        "8",
         0
       ]
     }
