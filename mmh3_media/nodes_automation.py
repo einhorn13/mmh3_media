@@ -733,7 +733,7 @@ class MMH3TrimAudioSamples(io.ComfyNode):
         return io.Schema(
             node_id="MMH3TrimAudioSamples",
             display_name="MMH3 Trim Audio Samples",
-            category=CATEGORY,
+            category=f"{CATEGORY}/Internal",
             description="Trim AUDIO by exact absolute PCM sample boundaries; avoids independent time-rounding drift.",
             inputs=[
                 io.Audio.Input("audio"),
@@ -758,7 +758,7 @@ class MMH3TrimAudioSamplesPadded(io.ComfyNode):
         return io.Schema(
             node_id="MMH3TrimAudioSamplesPadded",
             display_name="MMH3 Trim Audio Samples + EOF Pad",
-            category=CATEGORY,
+            category=f"{CATEGORY}/Internal",
             description="Sample-exact audio trim that right-pads only beyond EOF; intended for legal H3 conditioning windows.",
             inputs=[
                 io.Audio.Input("audio"),

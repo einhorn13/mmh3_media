@@ -13,6 +13,15 @@ TURBO_4_PROFILE = "turbo (4 steps)"
 TURBO_8_PROFILE = "turbo (8 steps)"
 VDN_DMD_PROFILE = "vdn-h3 dmd (8 steps)"
 VDN_STAGE_B_PROFILE = "vdn-h3 stage-b (50 steps)"
+TAOMATE_3_PROFILE = "Taomate - 3 steps (experimental)"
+TAOMATE_6_PROFILE = "Taomate - 6 steps (experimental)"
+TAOMATE_8_PROFILE = "Taomate Ref2VA - 8 steps (experimental)"
+TAOMATE_LORA = "taomate_3step_lora_avg_rank_19_bf16.safetensors"
+TAOMATE_RECIPES = {
+    TAOMATE_3_PROFILE: (3, [1.0, 0.961165, 0.853333, 0.0], 1.0, ["fl2va"]),
+    TAOMATE_6_PROFILE: (6, [1.0, 0.9806, 0.9612, 0.9072, 0.8533, 0.64, 0.0], 1.0, ["fl2va"]),
+    TAOMATE_8_PROFILE: (8, None, 0.7, ["ref2va"]),
+}
 CUSTOM_PROFILE = "custom"
 SAMPLING_PRESET_CONTRACT = "mmh3_h3_sampling_preset_v2"
 SAMPLING_PROFILE_ATTACHMENT = "mmh3_sampling_profile"
@@ -24,6 +33,7 @@ SAMPLING_PROFILES = (
     FASTH3_PROFILE,
     VDN_DMD_PROFILE,
     VDN_STAGE_B_PROFILE,
+    *TAOMATE_RECIPES,
     CUSTOM_PROFILE,
 )
 PROFILE_PRESETS: dict[str, dict[str, Any]] = {
@@ -102,6 +112,17 @@ TURBO_RECIPES: dict[str, dict[str, Any]] = {
     },
 }
 
+for _profile, (_steps, _sigmas, _strength, _tasks) in TAOMATE_RECIPES.items():
+    PROFILE_PRESETS[_profile] = {
+        "steps": _steps, "video_shift": 12.0, "audio_shift": 3.0,
+        "sampler": "euler", "scheduler": "simple",
+        "sigma_preset": "explicit" if _sigmas else "scheduler_generated",
+        "sigmas": _sigmas, "lora_strength": _strength,
+        "supported_task_families": _tasks, "recommended_lora": TAOMATE_LORA,
+        "runtime_validated": False, "trajectory": f"taomate_experimental_{_steps}",
+        "extra_loras": [{"name": "Motion_BoosterV2.safetensors", "strength": 0.6}] if _steps == 6 else [],
+    }
+
 
 @dataclass(frozen=True)
 class SamplingPreset:
@@ -117,6 +138,9 @@ class SamplingPreset:
     runtime_validated: bool
     trajectory: str
     vdn_required: bool = False
+    sigmas: tuple[float, ...] | None = None
+    lora_strength: float = 1.0
+    extra_loras: tuple = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -134,6 +158,9 @@ class SamplingPreset:
             "runtime_validated": self.runtime_validated,
             "trajectory": self.trajectory,
             "vdn_required": self.vdn_required,
+            **({"sigmas": list(self.sigmas)} if self.sigmas else {}),
+            "lora_strength": self.lora_strength,
+            "extra_loras": deep_copy_json(list(self.extra_loras)),
         }
 
     def summary(self) -> str:
@@ -194,6 +221,9 @@ def build_sampling_preset(
         runtime_validated=bool(recipe.get("runtime_validated", False)),
         trajectory=str(recipe.get("trajectory") or "unknown"),
         vdn_required=bool(recipe.get("vdn_required", False)),
+        sigmas=tuple(recipe["sigmas"]) if recipe.get("sigmas") else None,
+        lora_strength=float(recipe.get("lora_strength", 1.0)),
+        extra_loras=tuple(recipe.get("extra_loras", [])),
     )
 
 
@@ -213,3 +243,17 @@ __all__ = [
     "VDN_STAGE_B_PROFILE",
     "build_sampling_preset",
 ]
+
+
+def explicit_preset_sigmas(profile, steps, denoise=1.0):
+    """Do not silently resample or truncate a distilled trajectory."""
+    if not profile or profile.get("sigma_preset") != "explicit":
+        return None
+    import math
+    sigmas = profile.get("sigmas", [])
+    if (len(sigmas) != steps + 1 or profile.get("steps") != steps or denoise != 1.0
+            or not all(isinstance(s, (int, float)) and math.isfinite(s) for s in sigmas)
+            or sigmas[0] != 1.0 or sigmas[-1] != 0.0
+            or any(a <= b for a, b in zip(sigmas, sigmas[1:]))):
+        raise MMH3ResourceError("Explicit H3 sigmas require the preset step count and denoise=1, with a descending 1-to-0 trajectory")
+    return list(sigmas)

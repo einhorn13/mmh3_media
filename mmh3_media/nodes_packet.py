@@ -277,6 +277,11 @@ class MMH3Load(io.ComfyNode):
     def fingerprint_inputs(cls, file: str, verify: str, path_override: str):
         try:
             path = _resolve_load_path(file, path_override)
+            if path.name == "current.mmh3" and path.parent.parent.name == "mmh3_projects":
+                from .project_review import build_project_review_state
+                stat = path.stat()
+                return (str(path), stat.st_mtime_ns, stat.st_size,
+                        build_project_review_state(load_archive(path, verify="manifest")).state_digest, verify)
             stat = path.stat()
             return (str(path), stat.st_mtime_ns, stat.st_size, verify)
         except Exception:
@@ -386,6 +391,7 @@ class MMH3Remove(io.ComfyNode):
     def define_schema(cls) -> io.Schema:
         return io.Schema(
             node_id="MMH3Remove", display_name="MMH3 Remove", category=CATEGORY,
+            description="Remove one resource and its derived caches. Numbered resources in the same role are compacted from zero; unordered resources and other roles keep their order. Save to write a clean archive.",
             inputs=[
                 MMH3.Input("packet"),
                 io.Combo.Input("role", options=list(CORE_RESOURCE_ROLES), default="auxiliary"),
@@ -603,6 +609,7 @@ class MMH3H3RefineLoRAs(io.ComfyNode):
                                 tooltip="Replace only source acceleration LoRAs with this model-only LoRA at strength 1."),
                 io.Combo.Input("acceleration_policy", options=["preserve", "drop"], default="preserve", optional=True, advanced=True,
                                tooltip="drop removes source Turbo/PDD/FastH3 acceleration adapters but preserves creative/style/content LoRAs. Required when changing to a trajectory-owning architecture such as VDN."),
+                io.String.Input("turbo_loras_json", default="", optional=True, force_input=True),
             ],
             outputs=[
                 io.Model.Output("model"),
@@ -625,6 +632,7 @@ class MMH3H3RefineLoRAs(io.ComfyNode):
         missing_policy: str,
         turbo_override: str = "",
         acceleration_policy: str = "preserve",
+        turbo_loras_json: str = "",
     ) -> io.NodeOutput:
         packet = _packet(packet)
         from .upscale_overrides import drop_upscale_acceleration_loras, replace_upscale_turbo
@@ -637,6 +645,13 @@ class MMH3H3RefineLoRAs(io.ComfyNode):
             packet = drop_upscale_acceleration_loras(packet)
         elif turbo_override:
             packet = replace_upscale_turbo(packet, turbo_override)
+        from .turbo_loras import parse_turbo_loras, replace_source_turbo_loras, turbo_lora_mode
+        selection = parse_turbo_loras(turbo_loras_json)
+        if selection is not None:
+            if turbo_override or acceleration_policy != "preserve":
+                raise MMH3ResourceError("Use either Turbo LoRAs block or the legacy acceleration override, not both")
+            packet = replace_source_turbo_loras(packet, selection, extension=turbo_lora_mode(turbo_loras_json) == "extension")
+        selected_names = {e["name"] for e in selection or []}
         recorded = get_generation_loras(packet) or ()
         wanted_hash_names = {
             entry["name"]
@@ -647,7 +662,7 @@ class MMH3H3RefineLoRAs(io.ComfyNode):
         for catalog_name in folder_paths.get_filename_list("loras"):
             normalized = str(catalog_name).replace("\\", "/")
             digest = None
-            if normalized in wanted_hash_names or normalized == turbo_override:
+            if normalized in wanted_hash_names or normalized == turbo_override or normalized in selected_names:
                 full = folder_paths.get_full_path("loras", catalog_name)
                 if full:
                     hasher = hashlib.sha256()
@@ -660,6 +675,13 @@ class MMH3H3RefineLoRAs(io.ComfyNode):
             if not inventory.get(turbo_override):
                 raise MMH3ResourceError(f'Upscale Turbo LoRA is unavailable: {turbo_override}')
             packet = replace_upscale_turbo(packet, turbo_override, inventory[turbo_override])
+        if selection is not None:
+            unavailable = [name for name in selected_names if not inventory.get(name)]
+            if unavailable:
+                raise MMH3ResourceError("Selected Turbo LoRA files are unavailable: " + ", ".join(unavailable))
+            packet = set_generation_loras(packet, [
+                {**entry, "sha256": inventory[entry["name"]]} if entry["name"] in selected_names and not entry.get("sha256") else entry
+                for entry in get_generation_loras(packet) or ()])
         plan = build_high_sigma_lora_plan(
             packet,
             lora_inventory=inventory,
@@ -672,6 +694,8 @@ class MMH3H3RefineLoRAs(io.ComfyNode):
         expansion = build_lora_reapply_expansion(plan, model=model, clip=clip)
         info = plan.to_dict()
         info["operation"] = "high_sigma_refine_lora_reapply"
+        if selection is not None:
+            info["turbo_loras_override"] = json.loads(turbo_loras_json)
         if turbo_override:
             info['turbo_override'] = turbo_override
         info['acceleration_policy'] = acceleration_policy

@@ -69,6 +69,9 @@ from .representations import representation_is_fresh
 MMH3 = io.Custom("MMH3_MEDIA")
 CATEGORY = "MiniMax H3/MMH3 Media"
 
+from .routes_project import register_project_routes
+register_project_routes(PromptServer.instance.routes, folder_paths.get_input_directory(), folder_paths.get_output_directory())
+
 _ROLE_OPTIONS = ["auxiliary", "reference", "context", "control", "intermediate"]
 
 

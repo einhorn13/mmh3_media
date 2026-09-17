@@ -49,7 +49,7 @@ class MMH3H3ReferenceImageResize(io.ComfyNode):
         return io.Schema(
             node_id="MMH3H3ReferenceImageResize",
             display_name="H3 Reference Image Resize",
-            category=CATEGORY,
+            category=f"{CATEGORY}/Internal",
             description="Internal aspect-preserving short-edge downscale used by Ref2VA custom sizing.",
             inputs=[
                 io.Image.Input("image"),
@@ -674,7 +674,7 @@ class MMH3H3VideoReference(io.ComfyNode):
         return io.Schema(
             node_id="MMH3H3VideoReference",
             display_name="MMH3 H3 Video Reference",
-            category=CATEGORY,
+            category=f"{CATEGORY}/Internal",
             description="Lazy canonical reference/video adapter for native H3 Ref2VA. Returns an IMAGE frame batch and an explicitly selected soundtrack.",
             inputs=[
                 MMH3.Input("packet"),

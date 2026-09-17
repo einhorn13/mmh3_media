@@ -1,8 +1,8 @@
 {
   "id": "6f70dbf9-6e6a-5f70-b19f-8e6b53430bf4",
   "revision": 0,
-  "last_node_id": 500,
-  "last_link_id": 9,
+  "last_node_id": 501,
+  "last_link_id": 11,
   "nodes": [
     {
       "id": 1,
@@ -381,7 +381,7 @@
       ],
       "size": [
         520,
-        690
+        738
       ],
       "flags": {},
       "order": 7,
@@ -512,12 +512,50 @@
           "label": "FP16 accumulation"
         },
         {
+          "name": "sage_attention",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "sage_attention"
+          }
+        },
+        {
+          "name": "sage_allow_compile",
+          "type": "BOOLEAN",
+          "link": null,
+          "widget": {
+            "name": "sage_allow_compile"
+          }
+        },
+        {
+          "name": "decode_mode",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "decode_mode"
+          }
+        },
+        {
+          "name": "trt_decoder",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "trt_decoder"
+          }
+        },
+        {
           "name": "force_unload",
           "type": "BOOLEAN",
           "link": null,
           "widget": {
             "name": "force_unload"
           }
+        },
+        {
+          "name": "turbo_loras_json",
+          "type": "STRING",
+          "link": 11,
+          "shape": 7
         }
       ],
       "outputs": [
@@ -525,7 +563,7 @@
           "name": "packet",
           "type": "MMH3_MEDIA",
           "links": [
-            8
+            10
           ]
         },
         {
@@ -559,13 +597,17 @@
         "Source",
         "Default",
         "Default",
+        "disabled",
+        false,
+        "vae",
+        "auto",
         true
       ]
     },
     {
       "id": 311,
-      "type": "SaveVideo",
-      "title": "Save Preview Video",
+      "type": "MMH3SaveVideo",
+      "title": "Save Video · encode once",
       "pos": [
         1750,
         40
@@ -593,30 +635,42 @@
         },
         {
           "name": "format",
-          "type": "COMFY_DYNAMICCOMBO_V3",
+          "type": "COMBO",
           "link": null,
           "widget": {
             "name": "format"
           }
         },
         {
-          "name": "format.codec",
-          "type": "COMFY_DYNAMICCOMBO_V3",
+          "name": "codec",
+          "type": "COMBO",
           "link": null,
           "widget": {
-            "name": "format.codec"
+            "name": "codec"
           }
+        },
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "link": 10
         }
       ],
       "outputs": [
         {
           "name": "video",
           "type": "VIDEO",
-          "links": null
+          "links": []
+        },
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "links": [
+            8
+          ]
         }
       ],
       "properties": {
-        "Node name for S&R": "SaveVideo"
+        "Node name for S&R": "MMH3SaveVideo"
       },
       "widgets_values": [
         "video/MMH3_F05_upscale_stitch",
@@ -696,7 +750,7 @@
       "type": "MarkdownNote",
       "pos": [
         1100,
-        850
+        960
       ],
       "size": [
         650,
@@ -712,6 +766,102 @@
       },
       "widgets_values": [
         "# Upscale + Stitch · 3 or more parts\n\n1. Select the original low-res MMH3 parts in chronological order. Each next part must continue the previous one.\n2. Choose resolution: Scale (default 2×) reads MMH3 dimensions; Megapixels sets area and Source/16:9/9:16/1:1/4:3/3:4/2:3/3:2 proportions; Dimensions sets exact width/height. Source proportions are preserved unless you choose another ratio (stretch, not crop). 1 MP = 1024² pixels; sizes align to 32. No downscaling; maximum 4× per axis and 4096 pixels. Source LoRAs and sampling settings are restored automatically.\n3. For part 4+, duplicate a Load node and connect it to the next segments input. Inputs grow automatically (up to 66). Disconnect unused Load nodes.\n4. For Ref2VA parts, connect an unpatched Ref2VA model to ref2va_model. Mixed chains require both base models.\n\nOnly the assembled video is decoded. Audio and protected HR seams are retained. Independent clips, missing parents and unknown LoRA provenance are rejected before expansion.\n\nRequires the current Minimax H3 Latent Upscaler 3D. More parts still require memory for their latents and the final decoded video.\n\nOptional upscale overrides: steps_override (0 = inherit), manual_sigmas (descending list ending in 0; overrides steps/denoise), turbo_override (Source = inherit). Selected Turbo replaces only acceleration adapters at strength 1; creative LoRAs keep recorded order/strengths. Match Turbo to the model family; sampler and AV shifts stay from source. Overrides are recorded in the result."
+      ]
+    },
+    {
+      "id": 501,
+      "type": "MMH3H3TurboLoRAs",
+      "title": "Turbo LoRAs",
+      "pos": [
+        1120,
+        -320
+      ],
+      "size": [
+        400,
+        270
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "mode",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "mode"
+          }
+        },
+        {
+          "name": "lora_1",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "lora_1"
+          }
+        },
+        {
+          "name": "strength_1",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "strength_1"
+          }
+        },
+        {
+          "name": "lora_2",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "lora_2"
+          }
+        },
+        {
+          "name": "strength_2",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "strength_2"
+          }
+        },
+        {
+          "name": "lora_3",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "lora_3"
+          }
+        },
+        {
+          "name": "strength_3",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "strength_3"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "turbo_loras_json",
+          "type": "STRING",
+          "links": [
+            11
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MMH3H3TurboLoRAs"
+      },
+      "widgets_values": [
+        "auto",
+        "None",
+        1.0,
+        "None",
+        1.0,
+        "None",
+        1.0
       ]
     }
   ],
@@ -774,8 +924,8 @@
     ],
     [
       8,
-      400,
-      0,
+      311,
+      1,
       312,
       0,
       "MMH3_MEDIA"
@@ -787,6 +937,22 @@
       311,
       0,
       "VIDEO"
+    ],
+    [
+      10,
+      400,
+      0,
+      311,
+      4,
+      "MMH3_MEDIA"
+    ],
+    [
+      11,
+      501,
+      0,
+      400,
+      23,
+      "STRING"
     ]
   ],
   "groups": [],

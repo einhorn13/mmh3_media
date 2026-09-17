@@ -741,10 +741,10 @@
       "order": 10,
       "mode": 0,
       "properties": {
-        "Node name for S&R": "BasicScheduler"
+        "Node name for S&R": "MMH3H3Scheduler"
       },
       "id": 11,
-      "type": "BasicScheduler",
+      "type": "MMH3H3Scheduler",
       "inputs": [
         {
           "name": "model",
@@ -900,16 +900,16 @@
       ],
       "size": [
         240,
-        100
+        150
       ],
       "flags": {},
       "order": 13,
       "mode": 0,
       "properties": {
-        "Node name for S&R": "VAEDecode"
+        "Node name for S&R": "MMH3H3VideoDecode"
       },
       "id": 14,
-      "type": "VAEDecode",
+      "type": "MMH3H3VideoDecode",
       "inputs": [
         {
           "name": "samples",
@@ -920,6 +920,22 @@
           "name": "vae",
           "type": "VAE",
           "link": 15
+        },
+        {
+          "name": "decode_mode",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "decode_mode"
+          }
+        },
+        {
+          "name": "trt_decoder",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "trt_decoder"
+          }
         }
       ],
       "outputs": [
@@ -929,14 +945,24 @@
           "links": [
             18
           ]
+        },
+        {
+          "name": "decode_info_json",
+          "type": "STRING",
+          "links": [
+            20
+          ]
         }
       ],
-      "widgets_values": []
+      "widgets_values": [
+        "vae",
+        "auto"
+      ]
     },
     {
       "pos": [
         2100,
-        240
+        290
       ],
       "size": [
         240,
@@ -986,10 +1012,10 @@
       "order": 15,
       "mode": 0,
       "properties": {
-        "Node name for S&R": "CreateVideo"
+        "Node name for S&R": "MMH3CreateVideo"
       },
       "id": 16,
-      "type": "CreateVideo",
+      "type": "MMH3CreateVideo",
       "inputs": [
         {
           "name": "images",
@@ -1003,6 +1029,11 @@
           "widget": {
             "name": "fps"
           }
+        },
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 19
         },
         {
           "name": "bit_depth",
@@ -1021,9 +1052,9 @@
           }
         },
         {
-          "name": "audio",
-          "type": "AUDIO",
-          "link": 19
+          "name": "decode_info_json",
+          "type": "STRING",
+          "link": 20
         }
       ],
       "outputs": [
@@ -1031,7 +1062,7 @@
           "name": "VIDEO",
           "type": "VIDEO",
           "links": [
-            20
+            21
           ]
         }
       ],
@@ -1062,7 +1093,7 @@
         {
           "name": "video",
           "type": "VIDEO",
-          "link": 20
+          "link": 21
         },
         {
           "name": "filename_prefix",
@@ -1295,11 +1326,19 @@
       15,
       0,
       16,
-      4,
+      2,
       "AUDIO"
     ],
     [
       20,
+      14,
+      1,
+      16,
+      5,
+      "STRING"
+    ],
+    [
+      21,
       16,
       0,
       17,
@@ -1308,7 +1347,7 @@
     ]
   ],
   "last_node_id": 18,
-  "last_link_id": 20,
+  "last_link_id": 21,
   "definitions": {
     "subgraphs": []
   }

@@ -5,6 +5,7 @@ from .node_support import CATEGORY, MMH3, MMH3ResourceError, _packet, io, ui
 from .stitch_upscale import (DEFAULT_UPSCALER, UPSCALER_NODE, UPSCALE_ASPECTS,
     build_stitch_upscale_expansion, restore_upscale_av, resolve_stitch_upscale_geometry)
 from .upscaler_adapter import resolve_upscaler_api
+from .video_output import trt_decoder_options
 
 
 class MMH3H3StitchUpscale(io.ComfyNode):
@@ -45,8 +46,11 @@ class MMH3H3StitchUpscale(io.ComfyNode):
                                default='Source', optional=True, advanced=True,
                                tooltip='Upscale-only Turbo LoRA at strength 1. Replaces source acceleration adapters; other LoRAs retain their order and strengths. Match the model family. Sampler/AV shifts remain from source.'),
                 *h3_optimization_inputs(optional=True),
+                io.Combo.Input('decode_mode', options=['vae', 'draft', 'trt'], default='vae', optional=True, display_name='Video decoder'),
+                io.Combo.Input('trt_decoder', options=trt_decoder_options(), default='auto', optional=True, advanced=True),
                 io.Boolean.Input('force_unload', default=True, advanced=True, optional=True,
                                  tooltip='Unload the learned upscaler after each part to save VRAM. Disable only with enough memory.'),
+                io.String.Input("turbo_loras_json", default="", optional=True, force_input=True),
             ],
             outputs=[MMH3.Output('packet'), io.Video.Output('video'), io.Latent.Output('latent'),
                      io.String.Output('assembly_report_json')], enable_expand=True,
@@ -55,7 +59,7 @@ class MMH3H3StitchUpscale(io.ComfyNode):
     @classmethod
     def execute(cls, segments, clip, video_vae, audio_vae, resolution, denoise, upscaler_model,
                 fl2va_model=None, ref2va_model=None, steps_override=0, manual_sigmas='', turbo_override='Source',
-                attention='Default', fp16_accumulation='Default', force_unload=True):
+                attention='Default', fp16_accumulation='Default', force_unload=True, decode_mode='vae', trt_decoder='auto', sage_attention='disabled', sage_allow_compile=False, turbo_loras_json=''):
         packets = [_packet(segments[key]) for key in sorted(segments, key=lambda key: int(key.rsplit('_', 1)[1]))
                    if segments[key] is not None]
         import nodes
@@ -71,7 +75,8 @@ class MMH3H3StitchUpscale(io.ComfyNode):
             steps_override=steps_override, manual_sigmas=manual_sigmas,
             turbo_override='' if turbo_override == 'Source' else turbo_override,
             attention=attention, fp16_accumulation=fp16_accumulation, force_unload=force_unload,
-            upscaler_api=upscaler_api)
+            sage_attention=sage_attention, sage_allow_compile=sage_allow_compile, turbo_loras_json=turbo_loras_json,
+            upscaler_api=upscaler_api, decode_mode=decode_mode, trt_decoder=trt_decoder)
         summary = f'{plan.source_width}×{plan.source_height} → {summary}'
         if plan.warnings:
             summary += '\n' + '\n'.join(plan.warnings)

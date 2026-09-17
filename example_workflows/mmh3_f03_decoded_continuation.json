@@ -1,8 +1,8 @@
 {
   "id": "8c9f3ee8-ada0-5246-a042-350809c4f7ad",
   "revision": 0,
-  "last_node_id": 37,
-  "last_link_id": 59,
+  "last_node_id": 39,
+  "last_link_id": 62,
   "nodes": [
     {
       "id": 1,
@@ -383,6 +383,12 @@
           "name": "model",
           "type": "MODEL",
           "link": 52
+        },
+        {
+          "name": "turbo_loras_json",
+          "type": "STRING",
+          "link": 62,
+          "shape": 7
         }
       ],
       "outputs": [
@@ -802,8 +808,8 @@
     },
     {
       "id": 17,
-      "type": "SaveVideo",
-      "title": "Save Preview Video",
+      "type": "MMH3SaveVideo",
+      "title": "Save Video · encode once",
       "pos": [
         3090,
         110
@@ -831,30 +837,42 @@
         },
         {
           "name": "format",
-          "type": "COMFY_DYNAMICCOMBO_V3",
+          "type": "COMBO",
           "link": null,
           "widget": {
             "name": "format"
           }
         },
         {
-          "name": "format.codec",
-          "type": "COMFY_DYNAMICCOMBO_V3",
+          "name": "codec",
+          "type": "COMBO",
           "link": null,
           "widget": {
-            "name": "format.codec"
+            "name": "codec"
           }
+        },
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "link": 60
         }
       ],
       "outputs": [
         {
           "name": "video",
           "type": "VIDEO",
-          "links": null
+          "links": []
+        },
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "links": [
+            41
+          ]
         }
       ],
       "properties": {
-        "Node name for S&R": "SaveVideo"
+        "Node name for S&R": "MMH3SaveVideo"
       },
       "widgets_values": [
         "video/MMH3_F03_decoded_continuation",
@@ -996,7 +1014,7 @@
           "name": "packet",
           "type": "MMH3_MEDIA",
           "links": [
-            41
+            60
           ]
         },
         {
@@ -1102,7 +1120,7 @@
       ],
       "size": [
         360,
-        426
+        474
       ],
       "flags": {},
       "order": 8,
@@ -1162,6 +1180,22 @@
           "name": "audio_vae",
           "type": "VAE",
           "link": 27
+        },
+        {
+          "name": "decode_mode",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "decode_mode"
+          }
+        },
+        {
+          "name": "trt_decoder",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "trt_decoder"
+          }
         }
       ],
       "outputs": [
@@ -1230,7 +1264,7 @@
       ],
       "size": [
         360,
-        150
+        198
       ],
       "flags": {},
       "order": 27,
@@ -1258,6 +1292,22 @@
             "name": "fp16_accumulation"
           },
           "label": "FP16 accumulation"
+        },
+        {
+          "name": "sage_attention",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "sage_attention"
+          }
+        },
+        {
+          "name": "sage_allow_compile",
+          "type": "BOOLEAN",
+          "link": null,
+          "widget": {
+            "name": "sage_allow_compile"
+          }
         }
       ],
       "outputs": [
@@ -1281,7 +1331,9 @@
       },
       "widgets_values": [
         "Default",
-        "Default"
+        "Default",
+        "disabled",
+        false
       ]
     },
     {
@@ -1307,6 +1359,102 @@
         "**Missing audio policy**\n\n`error` (default) requires enough synchronized source audio for the continuation prefix. `silence` only permits missing or too-short audio; if source audio exists, it is preserved and used. Keep `prefix_frames` on an exact H3 AV boundary: 39, 90, 141, ..."
       ],
       "title": "Audio policy: strict or allow silence"
+    },
+    {
+      "id": 39,
+      "type": "MMH3H3TurboLoRAs",
+      "title": "Turbo LoRAs",
+      "pos": [
+        590,
+        -250
+      ],
+      "size": [
+        400,
+        270
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "mode",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "mode"
+          }
+        },
+        {
+          "name": "lora_1",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "lora_1"
+          }
+        },
+        {
+          "name": "strength_1",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "strength_1"
+          }
+        },
+        {
+          "name": "lora_2",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "lora_2"
+          }
+        },
+        {
+          "name": "strength_2",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "strength_2"
+          }
+        },
+        {
+          "name": "lora_3",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "lora_3"
+          }
+        },
+        {
+          "name": "strength_3",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "strength_3"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "turbo_loras_json",
+          "type": "STRING",
+          "links": [
+            62
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MMH3H3TurboLoRAs"
+      },
+      "widgets_values": [
+        "auto",
+        "None",
+        1.0,
+        "None",
+        1.0,
+        "None",
+        1.0
+      ]
     }
   ],
   "links": [
@@ -1520,8 +1668,8 @@
     ],
     [
       41,
-      18,
-      0,
+      17,
+      1,
       19,
       0,
       "MMH3_MEDIA"
@@ -1621,6 +1769,22 @@
       6,
       8,
       "INT"
+    ],
+    [
+      60,
+      18,
+      0,
+      17,
+      4,
+      "MMH3_MEDIA"
+    ],
+    [
+      62,
+      39,
+      0,
+      30,
+      3,
+      "STRING"
     ]
   ],
   "groups": [
@@ -1714,7 +1878,7 @@
         "state": {
           "lastGroupId": 0,
           "lastNodeId": 16,
-          "lastLinkId": 65,
+          "lastLinkId": 68,
           "lastRerouteId": 0
         },
         "revision": 0,
@@ -1727,7 +1891,7 @@
             -220,
             20,
             160,
-            250
+            280
           ]
         },
         "outputNode": {
@@ -1870,6 +2034,30 @@
             "pos": [
               -180,
               240
+            ]
+          },
+          {
+            "id": "eea4fb8c-3f39-5359-b633-251aeaf72124",
+            "name": "decode_mode",
+            "type": "COMBO",
+            "linkIds": [
+              66
+            ],
+            "pos": [
+              -180,
+              260
+            ]
+          },
+          {
+            "id": "72ce23dd-8024-59f6-b0d0-5f648cc47ef0",
+            "name": "trt_decoder",
+            "type": "COMBO",
+            "linkIds": [
+              67
+            ],
+            "pos": [
+              -180,
+              280
             ]
           }
         ],
@@ -2083,7 +2271,7 @@
           },
           {
             "id": 12,
-            "type": "BasicScheduler",
+            "type": "MMH3H3Scheduler",
             "pos": [
               2090,
               300
@@ -2136,9 +2324,11 @@
               }
             ],
             "properties": {
-              "Node name for S&R": "BasicScheduler"
+              "Node name for S&R": "MMH3H3Scheduler"
             },
             "widgets_values": [
+              "simple",
+              20,
               1.0
             ]
           },
@@ -2206,14 +2396,14 @@
           },
           {
             "id": 14,
-            "type": "VAEDecode",
+            "type": "MMH3H3VideoDecode",
             "pos": [
               2590,
               110
             ],
             "size": [
               360,
-              136
+              190
             ],
             "flags": {},
             "order": 19,
@@ -2228,6 +2418,22 @@
                 "name": "vae",
                 "type": "VAE",
                 "link": 61
+              },
+              {
+                "name": "decode_mode",
+                "type": "COMBO",
+                "link": 66,
+                "widget": {
+                  "name": "decode_mode"
+                }
+              },
+              {
+                "name": "trt_decoder",
+                "type": "COMBO",
+                "link": 67,
+                "widget": {
+                  "name": "trt_decoder"
+                }
               }
             ],
             "outputs": [
@@ -2237,12 +2443,22 @@
                 "links": [
                   28
                 ]
+              },
+              {
+                "name": "decode_info_json",
+                "type": "STRING",
+                "links": [
+                  68
+                ]
               }
             ],
             "properties": {
-              "Node name for S&R": "VAEDecode"
+              "Node name for S&R": "MMH3H3VideoDecode"
             },
-            "widgets_values": []
+            "widgets_values": [
+              "vae",
+              "auto"
+            ]
           },
           {
             "id": 15,
@@ -2287,7 +2503,7 @@
           },
           {
             "id": 16,
-            "type": "CreateVideo",
+            "type": "MMH3CreateVideo",
             "pos": [
               2590,
               522
@@ -2333,6 +2549,11 @@
                 "widget": {
                   "name": "color_space"
                 }
+              },
+              {
+                "name": "decode_info_json",
+                "type": "STRING",
+                "link": 68
               }
             ],
             "outputs": [
@@ -2345,7 +2566,7 @@
               }
             ],
             "properties": {
-              "Node name for S&R": "CreateVideo"
+              "Node name for S&R": "MMH3CreateVideo"
             },
             "widgets_values": [
               24.0,
@@ -2547,6 +2768,30 @@
             "target_id": -20,
             "target_slot": 2,
             "type": "AUDIO"
+          },
+          {
+            "id": 66,
+            "origin_id": -10,
+            "origin_slot": 11,
+            "target_id": 14,
+            "target_slot": 2,
+            "type": "COMBO"
+          },
+          {
+            "id": 67,
+            "origin_id": -10,
+            "origin_slot": 12,
+            "target_id": 14,
+            "target_slot": 3,
+            "type": "COMBO"
+          },
+          {
+            "id": 68,
+            "origin_id": 14,
+            "origin_slot": 1,
+            "target_id": 16,
+            "target_slot": 5,
+            "type": "STRING"
           }
         ],
         "extra": {}

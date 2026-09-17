@@ -88,7 +88,7 @@ def build_stitch_upscale_expansion(packets, *, width, height, denoise, models, c
                                    video_vae, audio_vae, upscaler_model=DEFAULT_UPSCALER,
                                    graph_builder_factory=None, steps_override=0, manual_sigmas='', turbo_override='',
                                    attention='Default', fp16_accumulation='Default', force_unload=True,
-                                   upscaler_api='legacy_v1'):
+                                   upscaler_api='legacy_v1', decode_mode='vae', trt_decoder='auto', sage_attention='disabled', sage_allow_compile=False, turbo_loras_json=''):
     if not 0 <= steps_override <= 100:
         raise MMH3ResourceError('Upscale steps must be within 0–100 (0 inherits source)')
     explicit_sigmas = parse_upscale_sigmas(manual_sigmas)
@@ -107,7 +107,8 @@ def build_stitch_upscale_expansion(packets, *, width, height, denoise, models, c
             'MMH3H3RefineLoRAs now supports acceleration_policy=drop for that future/dedicated path.'
         )
     optimization_inputs = {'attention': selected_attention.pop('attention', 'Default'),
-                           'fp16_accumulation': fp16_accumulation}
+                           'fp16_accumulation': fp16_accumulation, 'sage_attention': sage_attention,
+                           'sage_allow_compile': sage_allow_compile}
     optimization_inputs.update({'attention.' + key: value for key, value in selected_attention.items()})
     recipes, summary = validate_sources(packets, width, height, denoise)
     if explicit_sigmas:
@@ -145,7 +146,7 @@ def build_stitch_upscale_expansion(packets, *, width, height, denoise, models, c
             target_width=width, target_height=height, align=32, device='cuda', precision='bf16',
             offload_after_upscale=force_unload, legacy_temporal_chunking=False))
         loras = graph.node('MMH3H3RefineLoRAs', packet=prepare.out(0), model=models[recipe.task_family],
-                           clip=clip, unknown_policy='error', missing_policy='error', turbo_override=turbo_override)
+                           clip=clip, unknown_policy='error', missing_policy='error', turbo_override=turbo_override, turbo_loras_json=turbo_loras_json)
         optimized = graph.node('MMH3H3ModelOptimizations', model=loras.out(0),
                                **optimization_inputs)
         condition = graph.node('MMH3H3AutoCondition', packet=prepare.out(0), prompt_override='', seed_override=-1,
@@ -169,7 +170,7 @@ def build_stitch_upscale_expansion(packets, *, width, height, denoise, models, c
         if explicit_sigmas:
             sigma_input = torch.tensor(explicit_sigmas, dtype=torch.float32)
         else:
-            sigmas = graph.node('BasicScheduler', model=shifted.out(0), scheduler=recipe.scheduler,
+            sigmas = graph.node('MMH3H3Scheduler', model=shifted.out(0), scheduler=recipe.scheduler,
                                 steps=effective_steps, denoise=recipe.denoise)
             sigma_input = sigmas.out(0)
         sampled = graph.node('SamplerCustomAdvanced', noise=noise.out(0), guider=guider.out(0),
@@ -181,9 +182,11 @@ def build_stitch_upscale_expansion(packets, *, width, height, denoise, models, c
                             applied_loras_json=loras.out(5), optimization_profile_json=optimized.out(1))
         high.append(packed.out(0))
     stitch = graph.node('MMH3H3LatentStitch', **{f'segments.segment_{i}': value for i, value in enumerate(high, 1)})
-    video = graph.node('VAEDecode', samples=stitch.out(1), vae=video_vae)
+    video = graph.node('MMH3H3VideoDecode', samples=stitch.out(1), vae=video_vae,
+                       decode_mode=decode_mode, trt_decoder=trt_decoder)
     audio = graph.node('VAEDecodeAudio', samples=stitch.out(1), vae=audio_vae)
-    movie = graph.node('CreateVideo', images=video.out(0), audio=audio.out(0), fps=24.0, bit_depth=8)
+    movie = graph.node('MMH3CreateVideo', images=video.out(0), audio=audio.out(0), fps=24.0,
+                       bit_depth=8, decode_info_json=video.out(1))
     packed = graph.node('MMH3PackH3Result', packet=stitch.out(0), latent=stitch.out(1), video=movie.out(0),
                         audio=audio.out(0), operation='latent_stitch_decode', mode='h3_continuation',
                         status=stitch.out(2), process_info_json=stitch.out(3), latent_origin='derived',

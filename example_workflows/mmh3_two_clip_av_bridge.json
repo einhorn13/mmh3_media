@@ -395,7 +395,7 @@
           "type": "MMH3_MEDIA",
           "links": [
             5,
-            31
+            32
           ]
         },
         {
@@ -410,8 +410,8 @@
           "name": "info_json",
           "type": "STRING",
           "links": [
-            35,
-            39
+            36,
+            41
           ]
         },
         {
@@ -758,11 +758,11 @@
       "order": 12,
       "mode": 0,
       "properties": {
-        "Node name for S&R": "BasicScheduler"
+        "Node name for S&R": "MMH3H3Scheduler"
       },
       "title": "Schedule",
       "id": 13,
-      "type": "BasicScheduler",
+      "type": "MMH3H3Scheduler",
       "inputs": [
         {
           "name": "model",
@@ -906,7 +906,7 @@
           "type": "LATENT",
           "links": [
             24,
-            32
+            33
           ]
         }
       ],
@@ -968,11 +968,11 @@
       "order": 16,
       "mode": 0,
       "properties": {
-        "Node name for S&R": "VAEDecode"
+        "Node name for S&R": "MMH3H3VideoDecode"
       },
       "title": "Decode video",
       "id": 17,
-      "type": "VAEDecode",
+      "type": "MMH3H3VideoDecode",
       "inputs": [
         {
           "name": "samples",
@@ -983,6 +983,22 @@
           "name": "vae",
           "type": "VAE",
           "link": 26
+        },
+        {
+          "name": "decode_mode",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "decode_mode"
+          }
+        },
+        {
+          "name": "trt_decoder",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "trt_decoder"
+          }
         }
       ],
       "outputs": [
@@ -992,9 +1008,19 @@
           "links": [
             29
           ]
+        },
+        {
+          "name": "decode_info_json",
+          "type": "STRING",
+          "links": [
+            31
+          ]
         }
       ],
-      "widgets_values": []
+      "widgets_values": [
+        "vae",
+        "auto"
+      ]
     },
     {
       "pos": [
@@ -1032,7 +1058,7 @@
           "type": "AUDIO",
           "links": [
             30,
-            34
+            35
           ]
         }
       ],
@@ -1051,11 +1077,11 @@
       "order": 18,
       "mode": 0,
       "properties": {
-        "Node name for S&R": "CreateVideo"
+        "Node name for S&R": "MMH3CreateVideo"
       },
       "title": "Assemble video",
       "id": 19,
-      "type": "CreateVideo",
+      "type": "MMH3CreateVideo",
       "inputs": [
         {
           "name": "images",
@@ -1069,6 +1095,11 @@
           "widget": {
             "name": "fps"
           }
+        },
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 30
         },
         {
           "name": "bit_depth",
@@ -1087,9 +1118,9 @@
           }
         },
         {
-          "name": "audio",
-          "type": "AUDIO",
-          "link": 30
+          "name": "decode_info_json",
+          "type": "STRING",
+          "link": 31
         }
       ],
       "outputs": [
@@ -1097,8 +1128,8 @@
           "name": "VIDEO",
           "type": "VIDEO",
           "links": [
-            33,
-            38
+            34,
+            40
           ]
         }
       ],
@@ -1130,7 +1161,7 @@
         {
           "name": "packet",
           "type": "MMH3_MEDIA",
-          "link": 31
+          "link": 32
         },
         {
           "name": "operation",
@@ -1159,7 +1190,7 @@
         {
           "name": "process_info_json",
           "type": "STRING",
-          "link": 35,
+          "link": 36,
           "widget": {
             "name": "process_info_json"
           }
@@ -1175,17 +1206,17 @@
         {
           "name": "latent",
           "type": "LATENT",
-          "link": 32
+          "link": 33
         },
         {
           "name": "video",
           "type": "VIDEO",
-          "link": 33
+          "link": 34
         },
         {
           "name": "audio",
           "type": "AUDIO",
-          "link": 34
+          "link": 35
         },
         {
           "name": "first_frame",
@@ -1243,7 +1274,7 @@
           "name": "packet",
           "type": "MMH3_MEDIA",
           "links": [
-            37
+            38
           ]
         },
         {
@@ -1283,16 +1314,16 @@
       "order": 20,
       "mode": 0,
       "properties": {
-        "Node name for S&R": "SaveVideo"
+        "Node name for S&R": "MMH3SaveVideo"
       },
-      "title": "Save video",
+      "title": "Save Video · encode once",
       "id": 21,
-      "type": "SaveVideo",
+      "type": "MMH3SaveVideo",
       "inputs": [
         {
           "name": "video",
           "type": "VIDEO",
-          "link": 36
+          "link": 37
         },
         {
           "name": "filename_prefix",
@@ -1304,19 +1335,24 @@
         },
         {
           "name": "format",
-          "type": "COMFY_DYNAMICCOMBO_V3",
+          "type": "COMBO",
           "link": null,
           "widget": {
             "name": "format"
           }
         },
         {
-          "name": "format.codec",
-          "type": "COMFY_DYNAMICCOMBO_V3",
+          "name": "codec",
+          "type": "COMBO",
           "link": null,
           "widget": {
-            "name": "format.codec"
+            "name": "codec"
           }
+        },
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "link": 38
         }
       ],
       "outputs": [
@@ -1324,6 +1360,13 @@
           "name": "video",
           "type": "VIDEO",
           "links": []
+        },
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "links": [
+            39
+          ]
         }
       ],
       "widgets_values": [
@@ -1354,7 +1397,7 @@
         {
           "name": "packet",
           "type": "MMH3_MEDIA",
-          "link": 37
+          "link": 39
         },
         {
           "name": "filename_prefix",
@@ -1420,12 +1463,12 @@
         {
           "name": "video",
           "type": "VIDEO",
-          "link": 38
+          "link": 40
         },
         {
           "name": "bridge_info_json",
           "type": "STRING",
-          "link": 39
+          "link": 41
         }
       ],
       "outputs": [
@@ -1433,7 +1476,7 @@
           "name": "video",
           "type": "VIDEO",
           "links": [
-            36
+            37
           ]
         }
       ],
@@ -1678,11 +1721,19 @@
       18,
       0,
       19,
-      4,
+      2,
       "AUDIO"
     ],
     [
       31,
+      17,
+      1,
+      19,
+      5,
+      "STRING"
+    ],
+    [
+      32,
       7,
       0,
       20,
@@ -1690,7 +1741,7 @@
       "MMH3_MEDIA"
     ],
     [
-      32,
+      33,
       15,
       0,
       20,
@@ -1698,7 +1749,7 @@
       "LATENT"
     ],
     [
-      33,
+      34,
       19,
       0,
       20,
@@ -1706,7 +1757,7 @@
       "VIDEO"
     ],
     [
-      34,
+      35,
       18,
       0,
       20,
@@ -1714,7 +1765,7 @@
       "AUDIO"
     ],
     [
-      35,
+      36,
       7,
       2,
       20,
@@ -1722,7 +1773,7 @@
       "STRING"
     ],
     [
-      36,
+      37,
       23,
       0,
       21,
@@ -1730,15 +1781,23 @@
       "VIDEO"
     ],
     [
-      37,
+      38,
       20,
       0,
+      21,
+      4,
+      "MMH3_MEDIA"
+    ],
+    [
+      39,
+      21,
+      1,
       22,
       0,
       "MMH3_MEDIA"
     ],
     [
-      38,
+      40,
       19,
       0,
       23,
@@ -1746,7 +1805,7 @@
       "VIDEO"
     ],
     [
-      39,
+      41,
       7,
       2,
       23,
@@ -1755,7 +1814,7 @@
     ]
   ],
   "last_node_id": 23,
-  "last_link_id": 39,
+  "last_link_id": 41,
   "definitions": {
     "subgraphs": []
   }

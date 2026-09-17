@@ -7,7 +7,7 @@ from typing import Any, Callable, Mapping, Sequence
 
 from .errors import MMH3ResourceError
 from .util import deep_copy_json
-from .vdn_optimization import build_vdn_settings, validate_vdn_sampling_profile
+from .vdn_optimization import VDN_DEFAULT_CHECKPOINT, build_vdn_settings, validate_vdn_sampling_profile
 from .optimization_contract import (
     ATTENTION_MODES, FP16_ACCUMULATION_MODES, validate_optimization_application,
 )
@@ -63,8 +63,6 @@ class ModelOptimizationPlan:
     def attention_stages(self) -> tuple[str, ...]:
         if not self.enabled or self.attention_mode == "inherit":
             return ()
-        if self.attention_mode == "h3_sla_sol_attn":
-            return ("h3_sla", "sol_attn")
         return (self.attention_mode,)
 
     @property
@@ -75,6 +73,8 @@ class ModelOptimizationPlan:
         if self.fp16_accumulation != "inherit":
             nodes.append(FP16_PATCH_NODE_ID)
         nodes.extend(ATTENTION_NODE_IDS[stage] for stage in self.attention_stages)
+        if self.settings.get("sage"):
+            nodes.append(ATTENTION_NODE_IDS["sage_attention_kj"])
         return tuple(nodes)
 
     def to_dict(self) -> dict[str, Any]:
@@ -86,6 +86,7 @@ class ModelOptimizationPlan:
                 "mode": self.attention_mode if self.enabled else "inherit",
                 "settings": deep_copy_json(self.settings.get("attention", {})) if self.enabled else {},
             },
+            "sage_attention": deep_copy_json(self.settings.get("sage", {})) if self.enabled else {},
             "torch": {
                 "fp16_accumulation": self.fp16_accumulation if self.enabled else "inherit",
             },
@@ -113,6 +114,7 @@ def build_model_optimization_plan(
     enabled: bool,
     attention_mode: str,
     fp16_accumulation: str,
+    sage_attention: str = "disabled",
     sage_mode: str = "auto",
     sage_allow_compile: bool = False,
     sol_tau: float = 1.0,
@@ -137,7 +139,7 @@ def build_model_optimization_plan(
     sla_protect_audio: bool = True,
     sla_dense_backend: str = "comfy_kitchen",
     vdn_task_family: str = "fl2va",
-    vdn_checkpoint: str = "stage-dmd-step-250",
+    vdn_checkpoint: str = VDN_DEFAULT_CHECKPOINT,
     vdn_apply_turbo_adapter: bool = True,
     vdn_strength: float = 1.0,
     vdn_lora_mode: str = "merge",
@@ -151,13 +153,15 @@ def build_model_optimization_plan(
         return ModelOptimizationPlan(False, "inherit", "inherit", {})
     if attention_mode not in ATTENTION_MODES:
         raise MMH3ResourceError(f"Unknown attention mode {attention_mode!r}")
+    if sage_attention not in {"disabled", "auto", "sageattn_qk_int8_pv_fp16_cuda", "sageattn_qk_int8_pv_fp16_triton", "sageattn_qk_int8_pv_fp8_cuda", "sageattn_qk_int8_pv_fp8_cuda++", "sageattn3", "sageattn3_per_block_mean"}:
+        raise MMH3ResourceError(f"Unknown SageAttention mode {sage_attention!r}")
     if fp16_accumulation not in FP16_ACCUMULATION_MODES:
         raise MMH3ResourceError(f"Unknown FP16 accumulation mode {fp16_accumulation!r}")
 
     attention: dict[str, Any] = {}
     if attention_mode == "sage_attention_kj":
         attention = {"sage_mode": str(sage_mode), "allow_compile": bool(sage_allow_compile)}
-    if attention_mode in {"sol_attn", "sol_native", "sla_native", "h3_sla_sol_attn"}:
+    if attention_mode in {"sol_attn", "sol_native", "sla_native"}:
         try:
             sol_tau = float(sol_tau)
             token_count = float(sol_min_tokens)
@@ -180,7 +184,7 @@ def build_model_optimization_plan(
             "sink_conditioning": sol_sink_conditioning,
             "dense_blocks": str(sol_dense_blocks),
         }
-        attention = {"sol_attn": sol_settings} if attention_mode == "h3_sla_sol_attn" else sol_settings
+        attention = sol_settings
         if attention_mode in {"sol_native", "sla_native"}:
             if isinstance(sol_extra_tokens, bool) or sol_extra_tokens not in (0, 64, 128, 192, 256):
                 raise MMH3ResourceError("Native Sol extra tokens must be 0, 64, 128, 192 or 256")
@@ -232,25 +236,22 @@ def build_model_optimization_plan(
         validated_sampling = validate_vdn_sampling_profile(vdn, sampling_profile)
         attention = vdn.to_dict()
         attention["sampling"] = validated_sampling
-    if attention_mode in {"h3_sla", "h3_sla_sol_attn"}:
+    if attention_mode == "h3_sla":
         sla_settings = {
             "sparsity_ratio": float(sla_sparsity_ratio),
             "block_size": str(sla_block_size),
             "min_seq_len": int(sla_min_seq_len),
             "dense_last_steps": int(sla_dense_last_steps),
             "protect_audio": bool(sla_protect_audio),
-            "dense_backend": str(sla_dense_backend),
+            "dense_backend": "auto" if sage_attention != "disabled" else str(sla_dense_backend),
         }
-        if attention_mode == "h3_sla_sol_attn":
-            attention["h3_sla"] = sla_settings
-            attention["apply_order"] = ["h3_sla", "sol_attn"]
-        else:
-            attention = sla_settings
+        attention = sla_settings
     return ModelOptimizationPlan(
         True,
         attention_mode,
         fp16_accumulation,
-        {"attention": attention},
+        {"attention": attention, **({"sage": {"sage_mode": sage_attention, "allow_compile": bool(sage_allow_compile)}}
+                                  if sage_attention != "disabled" and attention_mode != "sage_attention_kj" else {})},
     )
 
 
@@ -270,6 +271,9 @@ def build_model_optimization_expansion(
         plan.settings.get("attention", {}).get("sampling"),
     )
 
+    if plan.settings.get("sage"):
+        from .sage_optimization import validate_sage_application
+        validate_sage_application(model)
     sage_node_id = ATTENTION_NODE_IDS["sage_attention_kj"]
     if runtime_node_ids is not None:
         available = set(runtime_node_ids)
@@ -280,7 +284,7 @@ def build_model_optimization_expansion(
         missing = [node_id for node_id in required if node_id not in available]
         if missing:
             hint = (
-                ". Sol Attention requires ComfyUI-SolAttn_triton (Patch Sol-Attn / SolAttnPatch). "
+                ". Sol (Kijai) requires ComfyUI-SolAttn_triton (Patch Sol-Attn / SolAttnPatch). "
                 "If installed, check its startup import errors and restart ComfyUI after fixing them."
                 if "SolAttnPatch" in missing else ""
             )
@@ -322,7 +326,7 @@ def build_model_optimization_expansion(
 
     attention = dict(plan.settings.get("attention", {}))
     for stage in plan.attention_stages:
-        settings = attention[stage] if plan.attention_mode == "h3_sla_sol_attn" else attention
+        settings = attention
         if stage in {"pytorch", "comfy_kitchen"}:
             backend = graph.node(
                 "ModelAttentionBackend",
@@ -394,11 +398,18 @@ def build_model_optimization_expansion(
                 dense_last_steps=settings["dense_last_steps"],
                 protect_audio=settings["protect_audio"],
                 dense_steps="0",
-                dense_backend=settings["dense_backend"],
+                dense_backend="auto" if plan.settings.get("sage") else settings["dense_backend"],
                 disable_fp16_accum=False,
                 stabilize_motion=True,
             )
             current_model = sla.out(0)
+
+    if plan.settings.get("sage"):
+        sage = graph.node("MMH3H3SageAttentionPatch", model=current_model,
+                          sage_attention=plan.settings["sage"]["sage_mode"],
+                          allow_compile=plan.settings["sage"]["allow_compile"],
+                          preserve_strategy=plan.attention_mode not in {"pytorch", "comfy_kitchen"})
+        current_model = sage.out(0)
 
     recorded = graph.node(
         "MMH3H3OptimizationRecord", model=current_model,

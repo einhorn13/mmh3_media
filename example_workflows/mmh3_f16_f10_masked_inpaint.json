@@ -1,8 +1,8 @@
 {
   "id": "fa7cee3e-fe22-5f55-92e9-b26ebb60c3b1",
   "revision": 1,
-  "last_node_id": 120,
-  "last_link_id": 54,
+  "last_node_id": 122,
+  "last_link_id": 57,
   "nodes": [
     {
       "id": 111,
@@ -952,6 +952,12 @@
           "name": "model",
           "type": "MODEL",
           "link": 19
+        },
+        {
+          "name": "turbo_loras_json",
+          "type": "STRING",
+          "link": 57,
+          "shape": 7
         }
       ],
       "outputs": [
@@ -1030,7 +1036,7 @@
       ],
       "size": [
         360,
-        150
+        198
       ],
       "flags": {},
       "order": 15,
@@ -1058,6 +1064,22 @@
             "name": "fp16_accumulation"
           },
           "label": "FP16 accumulation"
+        },
+        {
+          "name": "sage_attention",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "sage_attention"
+          }
+        },
+        {
+          "name": "sage_allow_compile",
+          "type": "BOOLEAN",
+          "link": null,
+          "widget": {
+            "name": "sage_allow_compile"
+          }
         }
       ],
       "outputs": [
@@ -1081,7 +1103,9 @@
       },
       "widgets_values": [
         "Default",
-        "Default"
+        "Default",
+        "disabled",
+        false
       ]
     },
     {
@@ -1210,7 +1234,7 @@
       ],
       "size": [
         360,
-        426
+        474
       ],
       "flags": {},
       "order": 17,
@@ -1270,6 +1294,22 @@
           "name": "audio_vae",
           "type": "VAE",
           "link": 40
+        },
+        {
+          "name": "decode_mode",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "decode_mode"
+          }
+        },
+        {
+          "name": "trt_decoder",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "trt_decoder"
+          }
         }
       ],
       "outputs": [
@@ -1304,8 +1344,8 @@
     },
     {
       "id": 17,
-      "type": "SaveVideo",
-      "title": "Save Preview Video",
+      "type": "MMH3SaveVideo",
+      "title": "Save Video · encode once",
       "pos": [
         3090,
         110
@@ -1333,30 +1373,42 @@
         },
         {
           "name": "format",
-          "type": "COMFY_DYNAMICCOMBO_V3",
+          "type": "COMBO",
           "link": null,
           "widget": {
             "name": "format"
           }
         },
         {
-          "name": "format.codec",
-          "type": "COMFY_DYNAMICCOMBO_V3",
+          "name": "codec",
+          "type": "COMBO",
           "link": null,
           "widget": {
-            "name": "format.codec"
+            "name": "codec"
           }
+        },
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "link": 55
         }
       ],
       "outputs": [
         {
           "name": "video",
           "type": "VIDEO",
-          "links": null
+          "links": []
+        },
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "links": [
+            54
+          ]
         }
       ],
       "properties": {
-        "Node name for S&R": "SaveVideo"
+        "Node name for S&R": "MMH3SaveVideo"
       },
       "widgets_values": [
         "video/MMH3_F16_F10_INPAINT",
@@ -1498,7 +1550,7 @@
           "name": "packet",
           "type": "MMH3_MEDIA",
           "links": [
-            54
+            55
           ]
         },
         {
@@ -1620,6 +1672,102 @@
       "title": "How to use",
       "color": "#253248",
       "bgcolor": "#344760"
+    },
+    {
+      "id": 122,
+      "type": "MMH3H3TurboLoRAs",
+      "title": "Turbo LoRAs",
+      "pos": [
+        1590,
+        -250
+      ],
+      "size": [
+        400,
+        270
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "mode",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "mode"
+          }
+        },
+        {
+          "name": "lora_1",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "lora_1"
+          }
+        },
+        {
+          "name": "strength_1",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "strength_1"
+          }
+        },
+        {
+          "name": "lora_2",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "lora_2"
+          }
+        },
+        {
+          "name": "strength_2",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "strength_2"
+          }
+        },
+        {
+          "name": "lora_3",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "lora_3"
+          }
+        },
+        {
+          "name": "strength_3",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "strength_3"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "turbo_loras_json",
+          "type": "STRING",
+          "links": [
+            57
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MMH3H3TurboLoRAs"
+      },
+      "widgets_values": [
+        "auto",
+        "None",
+        1.0,
+        "None",
+        1.0,
+        "None",
+        1.0
+      ]
     }
   ],
   "links": [
@@ -2049,11 +2197,27 @@
     ],
     [
       54,
-      18,
-      0,
+      17,
+      1,
       19,
       0,
       "MMH3_MEDIA"
+    ],
+    [
+      55,
+      18,
+      0,
+      17,
+      4,
+      "MMH3_MEDIA"
+    ],
+    [
+      57,
+      122,
+      0,
+      30,
+      3,
+      "STRING"
     ]
   ],
   "groups": [
@@ -2103,7 +2267,7 @@
         2055,
         55,
         430,
-        520
+        580
       ],
       "color": "#9c6644",
       "font_size": 24,
@@ -2134,7 +2298,7 @@
         "state": {
           "lastGroupId": 0,
           "lastNodeId": 16,
-          "lastLinkId": 77,
+          "lastLinkId": 80,
           "lastRerouteId": 0
         },
         "revision": 0,
@@ -2147,7 +2311,7 @@
             -220,
             20,
             160,
-            250
+            280
           ]
         },
         "outputNode": {
@@ -2290,6 +2454,30 @@
             "pos": [
               -180,
               240
+            ]
+          },
+          {
+            "id": "af5757e4-4ca6-5165-885c-6b4027bbce86",
+            "name": "decode_mode",
+            "type": "COMBO",
+            "linkIds": [
+              78
+            ],
+            "pos": [
+              -180,
+              260
+            ]
+          },
+          {
+            "id": "bfc80768-7b29-53ca-a820-1b2ae8f6d9a9",
+            "name": "trt_decoder",
+            "type": "COMBO",
+            "linkIds": [
+              79
+            ],
+            "pos": [
+              -180,
+              280
             ]
           }
         ],
@@ -2503,7 +2691,7 @@
           },
           {
             "id": 12,
-            "type": "BasicScheduler",
+            "type": "MMH3H3Scheduler",
             "pos": [
               2090,
               300
@@ -2556,9 +2744,11 @@
               }
             ],
             "properties": {
-              "Node name for S&R": "BasicScheduler"
+              "Node name for S&R": "MMH3H3Scheduler"
             },
             "widgets_values": [
+              "simple",
+              20,
               1.0
             ]
           },
@@ -2626,14 +2816,14 @@
           },
           {
             "id": 14,
-            "type": "VAEDecode",
+            "type": "MMH3H3VideoDecode",
             "pos": [
               2590,
               110
             ],
             "size": [
               360,
-              136
+              190
             ],
             "flags": {},
             "order": 25,
@@ -2648,6 +2838,22 @@
                 "name": "vae",
                 "type": "VAE",
                 "link": 73
+              },
+              {
+                "name": "decode_mode",
+                "type": "COMBO",
+                "link": 78,
+                "widget": {
+                  "name": "decode_mode"
+                }
+              },
+              {
+                "name": "trt_decoder",
+                "type": "COMBO",
+                "link": 79,
+                "widget": {
+                  "name": "trt_decoder"
+                }
               }
             ],
             "outputs": [
@@ -2657,12 +2863,22 @@
                 "links": [
                   28
                 ]
+              },
+              {
+                "name": "decode_info_json",
+                "type": "STRING",
+                "links": [
+                  80
+                ]
               }
             ],
             "properties": {
-              "Node name for S&R": "VAEDecode"
+              "Node name for S&R": "MMH3H3VideoDecode"
             },
-            "widgets_values": []
+            "widgets_values": [
+              "vae",
+              "auto"
+            ]
           },
           {
             "id": 15,
@@ -2707,7 +2923,7 @@
           },
           {
             "id": 16,
-            "type": "CreateVideo",
+            "type": "MMH3CreateVideo",
             "pos": [
               2590,
               522
@@ -2753,6 +2969,11 @@
                 "widget": {
                   "name": "color_space"
                 }
+              },
+              {
+                "name": "decode_info_json",
+                "type": "STRING",
+                "link": 80
               }
             ],
             "outputs": [
@@ -2765,7 +2986,7 @@
               }
             ],
             "properties": {
-              "Node name for S&R": "CreateVideo"
+              "Node name for S&R": "MMH3CreateVideo"
             },
             "widgets_values": [
               24.0,
@@ -2967,6 +3188,30 @@
             "target_id": -20,
             "target_slot": 2,
             "type": "AUDIO"
+          },
+          {
+            "id": 78,
+            "origin_id": -10,
+            "origin_slot": 11,
+            "target_id": 14,
+            "target_slot": 2,
+            "type": "COMBO"
+          },
+          {
+            "id": 79,
+            "origin_id": -10,
+            "origin_slot": 12,
+            "target_id": 14,
+            "target_slot": 3,
+            "type": "COMBO"
+          },
+          {
+            "id": 80,
+            "origin_id": 14,
+            "origin_slot": 1,
+            "target_id": 16,
+            "target_slot": 5,
+            "type": "STRING"
           }
         ],
         "extra": {}

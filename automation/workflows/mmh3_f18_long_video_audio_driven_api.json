@@ -144,7 +144,7 @@
     }
   },
   "15": {
-    "class_type": "BasicScheduler",
+    "class_type": "MMH3H3Scheduler",
     "inputs": {
       "model": [
         "11",
@@ -181,7 +181,7 @@
     }
   },
   "17": {
-    "class_type": "VAEDecode",
+    "class_type": "MMH3H3VideoDecode",
     "inputs": {
       "samples": [
         "16",
@@ -190,11 +190,13 @@
       "vae": [
         "7",
         0
-      ]
+      ],
+      "decode_mode": "vae",
+      "trt_decoder": "auto"
     }
   },
   "17v": {
-    "class_type": "CreateVideo",
+    "class_type": "MMH3CreateVideo",
     "inputs": {
       "images": [
         "17",
@@ -205,7 +207,11 @@
         2
       ],
       "fps": 24.0,
-      "bit_depth": 8
+      "bit_depth": 8,
+      "decode_info_json": [
+        "17",
+        1
+      ]
     }
   },
   "18": {
@@ -254,8 +260,8 @@
     "class_type": "MMH3Save",
     "inputs": {
       "packet": [
-        "19",
-        0
+        "21",
+        1
       ],
       "filename_prefix": "__MMH3_FILENAME_PREFIX__",
       "target": "output",
@@ -263,14 +269,18 @@
     }
   },
   "21": {
-    "class_type": "SaveVideo",
+    "class_type": "MMH3SaveVideo",
     "inputs": {
       "video": [
         "17v",
         0
       ],
       "filename_prefix": "__MMH3_FILENAME_PREFIX__",
-      "format": "mp4"
+      "format": "mp4",
+      "packet": [
+        "19",
+        0
+      ]
     }
   },
   "12": {

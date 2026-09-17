@@ -840,7 +840,7 @@ class MMH3H3LatentStitchUpscaleTarget(io.ComfyNode):
         return io.Schema(
             node_id="MMH3H3LatentStitchUpscaleTarget",
             display_name="MMH3 H3 Latent Stitch Upscale Target",
-            category=CATEGORY,
+            category=f"{CATEGORY}/Internal",
             description=(
                 "F05 segment-upscale continuation target. Uses the learned-upscaled current video as the HR initializer, "
                 "optionally overwrites its prefix with the exact joint-AV tail of the previous HR sampler output, and "

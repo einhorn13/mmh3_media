@@ -517,9 +517,17 @@ class MMH3Media:
         rid = target["id"]
         removed = next(r for r in manifest["resources"] if r["id"] == rid)
         manifest["resources"] = [r for r in manifest["resources"] if r["id"] != rid]
+        if removed.get("order") is not None:
+            numbered = [res for res in self._ordered(manifest["resources"], removed["role"])
+                        if res.get("order") is not None]
+            for position, res in enumerate(numbered):
+                res["order"] = position
         payloads.pop(rid, None); origins.pop(rid, None)
         manifest["primary"] = {k: v for k, v in manifest.get("primary", {}).items() if v != rid}
         removed_representations = manifest.setdefault("representations", {}).pop(rid, [])
+        # Aggregate previews may still display the removed resource, including in
+        # cache-only mode. They cannot survive a change to the packet's composition.
+        removed_representations += manifest["representations"].pop("$packet", [])
         rep_payloads = dict(self.representation_payloads); rep_origins = dict(self.representation_origins)
         for record in removed_representations:
             rep_id = str(record.get("id") or ""); rep_payloads.pop(rep_id, None); rep_origins.pop(rep_id, None)

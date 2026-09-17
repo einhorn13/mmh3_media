@@ -8,10 +8,10 @@ from .errors import MMH3ResourceError
 
 STATE_KEY = "mmh3_optimization_state"
 CONTRACT = "mmh3_optimization_state_v1"
-SPARSE_MODES = {"vsa_native", "sol_native", "sol_attn", "sla_native", "h3_sla", "h3_sla_sol_attn"}
+SPARSE_MODES = {"vsa_native", "sol_native", "sol_attn", "sla_native", "h3_sla"}
 ATTENTION_MODES = (
     "inherit", "pytorch", "comfy_kitchen", "sage_attention_kj", "sol_attn",
-    "vsa_native", "sol_native", "sla_native", "h3_sla", "h3_sla_sol_attn", "vdn_h3",
+    "vsa_native", "sol_native", "sla_native", "h3_sla", "vdn_h3",
 )
 FP16_ACCUMULATION_MODES = ("inherit", "enabled", "disabled")
 
@@ -48,8 +48,7 @@ def optimization_state(model):
 def validate_optimization_application(model, attention="inherit", fp16="inherit", sampling_profile=None):
     """Reject repeats and unknown attention owners before any patch is installed.
 
-    Precision-only and attention-only nodes may compose once each. The explicit
-    legacy SLA -> Sol plan is one strategy, not permission for arbitrary stacking.
+    Precision-only and attention-only nodes may compose once each.
     """
     _validate_modes(attention, fp16)
     if attention == "inherit" and fp16 == "inherit":
@@ -66,7 +65,9 @@ def validate_optimization_application(model, attention="inherit", fp16="inherit"
     from .fasth3 import FASTH3_PROFILE
     if (adapter == FASTH3_PROFILE or (profile and profile.get("profile") == FASTH3_PROFILE)) and attention in SPARSE_MODES | {"vdn_h3"}:
         raise MMH3ResourceError("FastH3 dense cannot be combined with sparse attention or VDN-H3")
-    if attention == "vdn_h3" and (adapter or (profile and (profile.get("adapter") or profile.get("recommended_lora")))):
+    explicit_loras = (profile or {}).get("turbo_loras_override") or {}
+    explicit_vdn_loras = explicit_loras.get("mode") in {"custom", "extension", "disabled"}
+    if attention == "vdn_h3" and not explicit_vdn_loras and (adapter or (profile and (profile.get("adapter") or profile.get("recommended_lora")))):
         raise MMH3ResourceError("VDN-H3 cannot be stacked with an ordinary H3/FastH3 acceleration adapter")
     if profile and profile.get("vdn_required") and attention != "vdn_h3":
         raise MMH3ResourceError("VDN-H3 sampling preset requires VDN-H3 in H3 Optimizations")
@@ -97,7 +98,7 @@ def record_optimization(model, attention="inherit", fp16="inherit"):
 def require_unoptimized_sampling_model(model):
     state = optimization_state(model)
     options = getattr(model, "model_options", {}).get("transformer_options", {})
-    if (state["attention"] != "inherit" or state["fp16_accumulation"] != "inherit"
+    if (state.get("sage_attention") or state["attention"] != "inherit" or state["fp16_accumulation"] != "inherit"
             or _attachment(model, "mmh3_sampling_profile") or _attachment(model, "mmh3_sampling_adapter")
             or options.get("optimized_attention_override") or options.get("patches_replace")):
         raise MMH3ResourceError("H3 Sampling requires an unpatched base MODEL; sampling/optimizations already applied")

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Mapping
+from dataclasses import dataclass, replace
+import warnings
+from pathlib import Path
+from typing import Any, Mapping, Sequence
 
 from .errors import MMH3ResourceError
 from .util import deep_copy_json
@@ -15,10 +17,16 @@ from .sampling_presets import (
 VDN_NODE_ID = "ApplyVDNH3"
 VDN_SUPPORTED_TASK_FAMILIES = ("fl2va", "ref2va")
 VDN_LORA_MODES = ("merge", "bypass")
-VDN_BRANCH_WEIGHT_MODES = ("auto", "stream", "cache_gpu", "resident")
+VDN_BRANCH_WEIGHT_MODES = ("auto", "stream", "cache_gpu")
 VDN_RETAIN_BUFFER_MODES = ("auto", "on", "off")
 VDN_ATTENTION_BACKENDS = ("grouped", "flex")
-VDN_DEFAULT_CHECKPOINT = "stage-dmd-step-250"
+VDN_AUTO_CHECKPOINT = "auto"
+VDN_DEFAULT_CHECKPOINT = "auto"
+VDN_KNOWN_DMD_ALIASES = (
+    "vdn-minimax-h3-int8-convrot-comfyui",
+    "stage-dmd-step-250-int8_convrot_comfyui",
+    "stage-dmd-step-250",
+)
 VDN_RUNTIME_REQUIRED_INPUTS = {
     "model",
     "vdn_checkpoint",
@@ -30,6 +38,139 @@ VDN_RUNTIME_REQUIRED_INPUTS = {
     "verbose",
     "attention_backend",
 }
+
+
+def _warn_vdn(message: str) -> None:
+    """Emit a visible warning for an experimental but technically runnable VDN setup."""
+    warnings.warn(f"MMH3 VDN warning: {message}", RuntimeWarning, stacklevel=3)
+
+
+def _vdn_model_roots() -> tuple[Path, ...]:
+    """Return configured VDN model roots without requiring the external node.
+
+    ComfyUI-VDN-H3 normally registers a ``vdn`` model category, but MMH3 may be
+    imported before that custom node depending on startup order.  Fall back to
+    ``models/vdn`` so the UI can still expose installed stage directories.
+    """
+    roots: list[Path] = []
+    try:
+        import folder_paths  # type: ignore
+
+        registered = getattr(folder_paths, "folder_names_and_paths", {}).get("vdn")
+        if isinstance(registered, (tuple, list)) and registered:
+            candidates = registered[0]
+            if isinstance(candidates, (str, Path)):
+                candidates = [candidates]
+            if isinstance(candidates, (tuple, list, set)):
+                roots.extend(Path(item) for item in candidates if item)
+        models_dir = getattr(folder_paths, "models_dir", None)
+        if models_dir:
+            roots.append(Path(models_dir) / "vdn")
+    except Exception:
+        pass
+
+    unique: list[Path] = []
+    seen: set[str] = set()
+    for root in roots:
+        key = str(root)
+        if key not in seen:
+            seen.add(key)
+            unique.append(root)
+    return tuple(unique)
+
+
+def discover_vdn_checkpoints() -> tuple[str, ...]:
+    """Discover stage directory names for the VDN checkpoint combo.
+
+    Runtime validation still uses ApplyVDNH3.INPUT_TYPES() as the authority; this
+    filesystem scan is only for a useful dropdown during schema construction.
+    """
+    found: set[str] = set()
+    for root in _vdn_model_roots():
+        try:
+            for child in root.iterdir():
+                if child.is_dir() and not child.name.startswith("."):
+                    found.add(child.name)
+        except OSError:
+            continue
+    return tuple(sorted(found, key=str.casefold))
+
+
+def vdn_checkpoint_options() -> list[str]:
+    return [VDN_AUTO_CHECKPOINT, *discover_vdn_checkpoints()]
+
+
+def _runtime_choices(schema: Mapping[str, Any], key: str) -> tuple[str, ...]:
+    fields = {**(schema.get("required", {}) or {}), **(schema.get("optional", {}) or {})}
+    spec = fields.get(key)
+    choices = spec[0] if isinstance(spec, (tuple, list)) and spec else None
+    if isinstance(choices, (tuple, list)):
+        return tuple(str(choice) for choice in choices)
+    return ()
+
+
+def _vdn_checkpoint_family(name: str) -> str | None:
+    lowered = str(name).strip().lower().replace("_", "-")
+    if lowered in {item.lower().replace("_", "-") for item in VDN_KNOWN_DMD_ALIASES}:
+        return "dmd"
+    if "stage-dmd" in lowered or "-dmd-" in lowered:
+        return "dmd"
+    if "stage-b" in lowered or lowered.startswith("stageb-"):
+        return "stage_b"
+    return None
+
+
+def _checkpoint_preference(name: str, family: str) -> tuple[int, str]:
+    lowered = str(name).lower()
+    score = 0
+    if family == "dmd":
+        if name == "vdn-minimax-h3-int8-convrot-comfyui":
+            score += 100
+        if "int8" in lowered and "convrot" in lowered:
+            score += 50
+        if name == "stage-dmd-step-250":
+            score += 20
+    elif family == "stage_b":
+        if name == "stage-b-step-2000":
+            score += 100
+        if "int8" in lowered and "convrot" in lowered:
+            score += 20
+    return (-score, lowered)
+
+
+def resolve_vdn_checkpoint(
+    settings: "VDNOptimizationSettings",
+    available: Sequence[str],
+) -> str:
+    """Resolve ``auto`` (and the legacy hard-coded DMD default) safely.
+
+    Auto never picks a stage from the wrong trained trajectory.  Unknown custom
+    stage names remain selectable explicitly but are not guessed by auto.
+    """
+    choices = tuple(dict.fromkeys(str(item) for item in available if str(item).strip()))
+    requested = str(settings.checkpoint or "").strip()
+    family = "dmd" if settings.apply_turbo_adapter else "stage_b"
+
+    if requested and requested != VDN_AUTO_CHECKPOINT and requested in choices:
+        return requested
+
+    legacy_dmd_default = requested == "stage-dmd-step-250" and settings.apply_turbo_adapter
+    if requested not in {"", VDN_AUTO_CHECKPOINT} and not legacy_dmd_default:
+        raise MMH3ResourceError(
+            f"Installed ApplyVDNH3 does not support vdn_checkpoint={requested!r}; "
+            f"available: {list(choices)!r}"
+        )
+
+    compatible = [name for name in choices if _vdn_checkpoint_family(name) == family]
+    if not compatible:
+        label = "DMD 8-step" if family == "dmd" else "Stage-B 50-step"
+        raise MMH3ResourceError(
+            f"VDN checkpoint='auto' could not find a compatible {label} stage. "
+            f"Available ApplyVDNH3 checkpoints: {list(choices)!r}. "
+            "Install the matching stage under ComfyUI/models/vdn or select a compatible checkpoint explicitly."
+        )
+    compatible.sort(key=lambda name: _checkpoint_preference(name, family))
+    return compatible[0]
 
 
 @dataclass(frozen=True)
@@ -111,8 +252,9 @@ def build_vdn_settings(
     if attention_backend not in VDN_ATTENTION_BACKENDS:
         raise MMH3ResourceError(f"Unsupported VDN-H3 attention backend {attention_backend!r}")
     if apply_turbo_adapter and lora_mode != "merge":
-        raise MMH3ResourceError(
-            "VDN-H3 8-step/DMD mode requires lora_mode='merge'; bypass is intentionally refused"
+        _warn_vdn(
+            "VDN-H3 8-step/DMD is trained for lora_mode='merge'; "
+            f"requested lora_mode={lora_mode!r}. Running unchanged as an experiment."
         )
     return VDNOptimizationSettings(
         family,
@@ -132,11 +274,11 @@ def validate_vdn_sampling_profile(
     settings: VDNOptimizationSettings,
     sampling_profile: Mapping[str, Any] | None,
 ) -> dict[str, Any]:
-    """Require the sampling trajectory that the selected VDN stage was trained for.
+    """Validate VDN sampling and warn for off-training combinations.
 
-    VDN DMD is not a generic attention patch that can be dropped onto ordinary H3 Turbo
-    or a 20-step base trajectory.  The caller must provide a machine-readable H3 sampling
-    profile and it must match the VDN stage exactly.
+    Resource/API failures remain hard errors, but sampling choices are user-owned.
+    Known VDN recipe mismatches are warnings and are passed through unchanged so
+    experimental trajectories (for example 6-step DMD) can reach ApplyVDNH3.
     """
     if not isinstance(sampling_profile, Mapping):
         raise MMH3ResourceError(
@@ -146,42 +288,49 @@ def validate_vdn_sampling_profile(
     profile = deep_copy_json(dict(sampling_profile))
     if str(profile.get("contract") or "") != SAMPLING_PRESET_CONTRACT:
         raise MMH3ResourceError("VDN-H3 received an unsupported sampling contract")
+
     if str(profile.get("task_family") or "") != settings.task_family:
-        raise MMH3ResourceError(
-            "VDN-H3 sampling/model task-family mismatch: "
-            f"sampling={profile.get('task_family')!r}, VDN={settings.task_family!r}"
+        _warn_vdn(
+            "sampling/model task-family mismatch: "
+            f"sampling={profile.get('task_family')!r}, VDN={settings.task_family!r}. "
+            "Running unchanged as an experiment."
         )
+
     actual_profile = str(profile.get("profile") or "")
     actual_trajectory = str(profile.get("trajectory") or "")
     try:
         actual_steps = int(profile.get("steps"))
     except (TypeError, ValueError):
         actual_steps = -1
+
     if (
         actual_profile != settings.required_sampling_profile
         or actual_trajectory != settings.required_trajectory
         or actual_steps != settings.recommended_steps
     ):
-        raise MMH3ResourceError(
-            "VDN-H3 trajectory mismatch: "
-            f"selected stage requires {settings.required_sampling_profile} / "
-            f"{settings.required_trajectory} / {settings.recommended_steps} steps; "
-            f"got profile={actual_profile!r}, trajectory={actual_trajectory!r}, steps={actual_steps}. "
-            "Do not stack ordinary H3 Turbo/Standard sampling with VDN."
+        _warn_vdn(
+            "trajectory mismatch: selected stage is trained for "
+            f"{settings.required_sampling_profile} / {settings.required_trajectory} / "
+            f"{settings.recommended_steps} steps; got profile={actual_profile!r}, "
+            f"trajectory={actual_trajectory!r}, steps={actual_steps}. "
+            "Running the requested sampling trajectory unchanged."
         )
+
     if profile.get("recommended_lora") or profile.get("adapter"):
-        raise MMH3ResourceError(
-            "VDN-H3 sampling must not carry an ordinary H3 acceleration/Turbo adapter; "
-            "the released VDN DMD adapter is owned by ApplyVDNH3"
+        _warn_vdn(
+            "sampling carries an ordinary H3 acceleration/Turbo adapter while VDN normally owns "
+            "its released DMD adapter. The requested profile is preserved; another optimization "
+            "contract may still reject physically incompatible stacking."
         )
+
     expected = build_sampling_preset(
         profile=settings.required_sampling_profile, task_family=settings.task_family
     ).to_dict()
     for key in ("steps", "sampler", "scheduler", "video_shift", "audio_shift", "sigma_preset", "vdn_required"):
         if profile.get(key) != expected[key]:
-            raise MMH3ResourceError(
-                f"VDN-H3 sampling contract mismatch for {key}: "
-                f"expected {expected[key]!r}, got {profile.get(key)!r}"
+            _warn_vdn(
+                f"sampling contract mismatch for {key}: trained/recommended {expected[key]!r}, "
+                f"requested {profile.get(key)!r}. Running unchanged as an experiment."
             )
     return profile
 
@@ -216,12 +365,25 @@ def apply_external_vdn(model: Any, node_class: Any, settings: VDNOptimizationSet
     validate_vdn_runtime_node(node_class)
     schema = node_class.INPUT_TYPES()
     inputs = {**schema.get("required", {}), **schema.get("optional", {})}
+    runtime_checkpoints = _runtime_choices(schema, "vdn_checkpoint")
+    requested_checkpoint = settings.checkpoint
+    if runtime_checkpoints:
+        resolved_checkpoint = resolve_vdn_checkpoint(settings, runtime_checkpoints)
+    elif requested_checkpoint == VDN_AUTO_CHECKPOINT:
+        raise MMH3ResourceError(
+            "VDN checkpoint='auto' requires ApplyVDNH3 to expose its checkpoint dropdown; "
+            "update Saganaki22/ComfyUI-VDN-H3 and restart ComfyUI"
+        )
+    else:
+        # Older/test runtimes may use an unconstrained string contract. Explicit
+        # selections remain compatible, while auto deliberately requires discovery.
+        resolved_checkpoint = requested_checkpoint
+    resolved_settings = replace(settings, checkpoint=resolved_checkpoint)
     for key, value in (
-        ("vdn_checkpoint", settings.checkpoint),
-        ("lora_mode", settings.lora_mode),
-        ("branch_weights", settings.branch_weights),
-        ("retain_buffers", settings.retain_buffers),
-        ("attention_backend", settings.attention_backend),
+        ("lora_mode", resolved_settings.lora_mode),
+        ("branch_weights", resolved_settings.branch_weights),
+        ("retain_buffers", resolved_settings.retain_buffers),
+        ("attention_backend", resolved_settings.attention_backend),
     ):
         spec = inputs[key]
         choices = spec[0] if isinstance(spec, (tuple, list)) and spec else None
@@ -229,18 +391,24 @@ def apply_external_vdn(model: Any, node_class: Any, settings: VDNOptimizationSet
             raise MMH3ResourceError(
                 f"Installed ApplyVDNH3 does not support {key}={value!r}; available: {choices!r}"
             )
+    # Keep checkpoint/trajectory selection independent of the user's LoRA
+    # policy: replacing the DMD adapter must not switch to a Stage-B checkpoint.
+    lora_selection = sampling.get("turbo_loras_override") or {}
+    runtime_turbo_adapter = resolved_settings.apply_turbo_adapter
+    if lora_selection.get("mode") in {"custom", "disabled"}:
+        runtime_turbo_adapter = False
     instance = node_class()
     function_name = str(getattr(node_class, "FUNCTION"))
     result = getattr(instance, function_name)(
         model=model,
-        vdn_checkpoint=settings.checkpoint,
-        apply_turbo_adapter=settings.apply_turbo_adapter,
-        strength=settings.strength,
-        lora_mode=settings.lora_mode,
-        branch_weights=settings.branch_weights,
-        retain_buffers=settings.retain_buffers,
-        attention_backend=settings.attention_backend,
-        verbose=settings.verbose,
+        vdn_checkpoint=resolved_settings.checkpoint,
+        apply_turbo_adapter=runtime_turbo_adapter,
+        strength=resolved_settings.strength,
+        lora_mode=resolved_settings.lora_mode,
+        branch_weights=resolved_settings.branch_weights,
+        retain_buffers=resolved_settings.retain_buffers,
+        attention_backend=resolved_settings.attention_backend,
+        verbose=resolved_settings.verbose,
     )
     if not isinstance(result, (tuple, list)) or len(result) != 1:
         raise MMH3ResourceError("ApplyVDNH3 returned an unexpected result shape")
@@ -248,18 +416,26 @@ def apply_external_vdn(model: Any, node_class: Any, settings: VDNOptimizationSet
     profile = {
         "contract": "mmh3_vdn_h3_v1",
         "enabled": True,
-        "vdn": deep_copy_json(settings.to_dict()),
+        "vdn": deep_copy_json(resolved_settings.to_dict()),
         "sampling": sampling,
     }
+    profile["vdn"]["requested_checkpoint"] = requested_checkpoint
+    profile["vdn"]["apply_turbo_adapter"] = runtime_turbo_adapter
+    if lora_selection:
+        profile["vdn"]["turbo_loras_override"] = deep_copy_json(lora_selection)
+    checkpoint_status = resolved_checkpoint
+    if requested_checkpoint != resolved_checkpoint:
+        checkpoint_status = f"{requested_checkpoint} -> {resolved_checkpoint}"
     status = (
-        f"READY · VDN-H3 · {settings.task_family} · {settings.checkpoint} · "
-        f"recommended_steps={settings.recommended_steps}"
+        f"READY · VDN-H3 · {resolved_settings.task_family} · {checkpoint_status} · "
+        f"recommended_steps={resolved_settings.recommended_steps}"
     )
     return result[0], profile, status
 
 
 __all__ = [
     "VDN_ATTENTION_BACKENDS",
+    "VDN_AUTO_CHECKPOINT",
     "VDN_BRANCH_WEIGHT_MODES",
     "VDN_DEFAULT_CHECKPOINT",
     "VDN_LORA_MODES",
@@ -269,6 +445,9 @@ __all__ = [
     "VDNOptimizationSettings",
     "apply_external_vdn",
     "build_vdn_settings",
+    "discover_vdn_checkpoints",
+    "resolve_vdn_checkpoint",
+    "vdn_checkpoint_options",
     "validate_vdn_runtime_node",
     "validate_vdn_sampling_profile",
 ]

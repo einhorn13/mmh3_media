@@ -111,7 +111,7 @@ def apply_fasth3(model, path: str, name: str):
     return patched, provenance
 
 
-def apply_packaged_turbo(model, recommended_name: str):
+def apply_packaged_turbo(model, recommended_name: str, *, strength=1.0, allow_existing=False, exact_name=False):
     """Couple a known packaged recipe to one installed adapter; never guess a replacement."""
     from pathlib import PurePosixPath
     import folder_paths
@@ -120,11 +120,12 @@ def apply_packaged_turbo(model, recommended_name: str):
     require_unoptimized_sampling_model(model)
     import comfy.lora_convert
 
-    if getattr(model, "patches", None) or getattr(model, "object_patches", None):
+    if not allow_existing and (getattr(model, "patches", None) or getattr(model, "object_patches", None)):
         raise MMH3ResourceError("Automatic Turbo loading requires the unpatched base model")
     basename = PurePosixPath(recommended_name.replace("\\", "/")).name
     matches = [n for n in folder_paths.get_filename_list("loras")
-               if PurePosixPath(n.replace("\\", "/")).name == basename]
+               if (n.replace("\\", "/") == recommended_name.replace("\\", "/") if exact_name
+                   else PurePosixPath(n.replace("\\", "/")).name == basename)]
     if len(matches) != 1:
         raise MMH3ResourceError(f"Turbo requires exactly one installed {basename}; found {len(matches)}")
     name = matches[0]
@@ -136,8 +137,8 @@ def apply_packaged_turbo(model, recommended_name: str):
     if not patches:
         raise MMH3ResourceError("Turbo adapter did not map to this base model")
     patched = model.clone()
-    if set(patched.add_patches(patches, 1.0)) != set(patches):
+    if set(patched.add_patches(patches, strength)) != set(patches):
         raise MMH3ResourceError("Turbo adapter was only partially applied")
     return patched, {"name": name.replace("\\", "/"), "sha256": digest,
-                     "strength_model": 1.0, "strength_clip": None,
+                     "strength_model": strength, "strength_clip": None,
                      "purpose": "acceleration", "loader": "LoraLoaderModelOnly"}

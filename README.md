@@ -61,6 +61,20 @@ To get started, choose one generation path; you do not need both diffusion model
 
 ## Your first video
 
+Final decoding has one **Video decoder** control on the decode node or the combined Sampling + AV Decode subgraph. The separate Draft TAE primitive has been removed. Choose `vae` (default: connected ordinary VAE), `draft` (temporal taeh3), or `trt` (TensorRT). This also applies to **Upscale + Stitch**, which decodes the assembled latent once. Preparatory refine decodes, reference encoding, audio and the archived generation latent retain their original paths.
+
+For `draft`, download [taeh3.safetensors](https://github.com/madebyollin/taehv/raw/refs/heads/main/safetensors/taeh3.safetensors) into `ComfyUI/models/vae_approx/` and use ComfyUI with native taeh3 support. The older 2D `tae_minimax_h3.safetensors` is not interchangeable. Both the exported video and its archived copy have draft quality.
+
+For `trt`, install [ComfyUI-H3VAE_TRT](https://github.com/lihaoyun6/ComfyUI-H3VAE_TRT), compile an H3 decoder engine for your GPU/runtime, and select it in **trt_decoder**. `auto` requires exactly one decoder-named `.engine` in the provider's VAE catalog; with multiple engines, select one explicitly. Only the decoder is loaded, with the provider's encoder set to `None`. Missing/incompatible engines fail explicitly; there is no silent ordinary-VAE fallback. TRT speed, memory and visual parity depend on the engine and may vary between systems.
+
+**Decode provenance:** keep **H3 Video Decode → MMH3 Create Video** connected through both IMAGE and `decode_info_json`. **Pack H3 Result** records the decoder mode, backend, class and draft/engine identity in the video resource's `extensions.minimax_h3.video_decode` and in `last_process.info.video_decode`. This survives archive save/load. Older media without this metadata remain unknown. Normal VAE records the connected decoder class; an exact ordinary checkpoint filename is not inferred from its object.
+
+**Sampler and scheduler choices:** select **Custom** in **H3 Sampling** to choose registered ComfyUI samplers, including `er_sde` and `res_2s` when RES4LYF beta samplers are enabled. H3 Scheduler exposes the runtime schedules plus built-in `beta57` (beta alpha=0.5, beta=0.7; no RES4LYF dependency for this schedule). F07 and Upscale + Stitch use the same scheduler dispatch when refining a saved custom profile. Distilled presets retain their own recipes; fixed TaoMate sigma trajectories still take priority. These choices do not certify every sampler's joint AV quality.
+
+Restart ComfyUI and reopen the updated workflow JSON after upgrading. API final decoders now accept `decode_mode` and `trt_decoder`. Local development recipes are regenerated with `workflow_generate.py`; `workflow_decode_migrate.py` updates the bundled older decode wiring. CPU contracts and model-free installed-ComfyUI integration have been checked; TRT operation and near-equivalent ordinary-VAE output were confirmed by the user on 2026-09-16.
+
+Workflows with both video and archive output now use **MMH3 Save Video → MMH3 Save**. The video node writes the encoded file once and passes an updated packet to the archive node, which copies those bytes. Keep that packet connection when customizing the workflow. Original latents, separate audio, references and settings remain in the archive; no fast-save mode or resource removal is applied. Restart ComfyUI and reopen the updated workflow after installing this version.
+
 1. Drag [mmh3_f01_fl2va.json](example_workflows/mmh3_f01_fl2va.json) onto the ComfyUI canvas.
 2. Select the models you installed in the loaders.
 3. In **MMH3 Create**, select **Video (optional frames)** and write a prompt describing what happens in the scene, how the camera moves, and what audio you want.
@@ -124,9 +138,11 @@ For the ordinary path, generate and save a source with F01, load that `.mmh3` in
 
 **H3 Optimizations** exposes two experimental VDN-H3 choices: **VDN-H3 · FL2VA** and **VDN-H3 · Ref2VA**. They use `Saganaki22/ComfyUI-VDN-H3` as an optional runtime backend while MMH3 keeps responsibility for task-family selection, validation, graph wiring, and optimization provenance. Install that custom node separately and place a compatible VDN stage directory under `ComfyUI/models/vdn/`.
 
-Use the matching **H3 Sampling** preset before enabling VDN: **VDN-H3 DMD - 8 steps (experimental)** or **VDN-H3 Stage-B - 50 steps (experimental)**. The default DMD path targets `stage-dmd-step-250` with the VDN-owned turbo adapter enabled. Ordinary H3 Turbo/FastH3 acceleration adapters are not stacked with VDN, and VDN must not be combined with Sol-Attn or H3 SLA. **Upscale + Stitch** currently rejects VDN because its low-sigma refine tail cannot guarantee the trained VDN trajectory.
+Use the matching **H3 Sampling** preset before enabling VDN: **VDN-H3 DMD - 8 steps (experimental)** or **VDN-H3 Stage-B - 50 steps (experimental)**. `VDN checkpoint` defaults to **auto** and resolves against the checkpoints actually exposed by the installed `ApplyVDNH3`; the dropdown also lists discovered directories under `models/vdn`. For DMD/8-step, auto prefers a compatible INT8 ConvRot stage when present, otherwise the official `stage-dmd-*` stage. Ordinary H3 Turbo/FastH3 acceleration adapters are not stacked with VDN, and VDN must not be combined with Sol-Attn or H3 SLA. **Upscale + Stitch** currently rejects VDN because its low-sigma refine tail cannot guarantee the trained VDN trajectory. Current upstream recommendation is ComfyUI-VDN-H3 v1.5.2 or newer because v1.5.x includes memory/prefetch fixes and current Stage-B adapter metadata support.
 
-F05 Upscale + Stitch and F07 offer **Attention** and **FP16 accumulation** controls, applied after the source LoRAs. **Default** keeps ComfyUI's settings; other attention modes may require external nodes. For the former F07 SLA recipe choose **Attention = H3 SLA** and **FP16 accumulation = Disabled**; SLA defaults are `0.90 / 64 / 4096 / 1`, with audio protection enabled and `comfy_kitchen` as the dense backend. The external `H3SLAAttention` backend is required only when SLA is selected. Refinement follows the source packet's sampler and a short tail of its sampling trajectory. Keep **force_unload** enabled to save VRAM; disabling it can avoid repeated upscaler loading when enough memory is available.
+**H3 Turbo LoRAs** is a separate block connected to Sampling (generation) or Refine Source LoRAs / Upscale + Stitch. `auto` keeps the preset or recorded source adapters. `custom` (Replace preset LoRAs) replaces the acceleration stack with up to three selected model-only LoRAs and their strengths; `extension` (Add to preset LoRAs) retains that stack and appends the selected LoRAs; `disabled` removes it. A zero strength skips that slot. Creative source LoRAs keep their order during refinement. The actual loaded filenames, strengths and SHA-256 hashes are recorded in `.mmh3`. Select a sampling trajectory compatible with your custom Turbo weights. VDN-H3 accepts custom and extension selections: custom disables its built-in Turbo adapter, while extension retains it. The selected VDN checkpoint and sampling trajectory stay unchanged. FastH3 retains its architecture-specific adapter loader and requires `auto`; the block does not convert these weights. Do not combine the block's custom/disabled mode with a legacy Turbo override.
+
+F05 Upscale + Stitch and F07 offer **Attention**, independent **SageAttention (KJ)** and **FP16 accumulation** controls, applied after the source LoRAs. **Default** keeps ComfyUI's settings; other attention modes may require external nodes. For the former F07 SLA recipe choose **Attention = H3 SLA** and **FP16 accumulation = Disabled**; SLA defaults are `0.90 / 64 / 4096 / 1`, with audio protection enabled and `comfy_kitchen` as the dense backend. The external `H3SLAAttention` backend is required only when SLA is selected. Refinement follows the source packet's sampler and a short tail of its sampling trajectory. Keep **force_unload** enabled to save VRAM; disabling it can avoid repeated upscaler loading when enough memory is available.
 
 **Video Stitch** is intended for independent clips. **Latent Stitch** requires a continuous chain of saved H3 continuations in their original order: arbitrary videos, missing segments, or independently generated segments will not work. For latent assembly, use matching video/audio overlap values and disable audio feather. Keep the original segment order and use the compatibility reports before saving the final assembly.
 
@@ -215,6 +231,40 @@ Continuation duration includes repeated context from the previous segment, so th
 
 ## Saving and FAQ
 
+**MMH3 Remove** deletes one resource and its cached representations, including aggregate
+packet previews. Removing a numbered resource compacts the remaining numbered resources
+of that role from zero; unordered resources and other roles retain their ordering.
+Save the returned packet to write an archive without the removed members. The original
+archive and historical provenance are preserved. Internal graph helpers are grouped under
+**Internal**; see [the node review](NODE_REVIEW.md) for their roles and consolidation decisions.
+
+The Python adapter API also provides `build_project_review_state(packet, execution_ledger=None)`
+for a read-only snapshot of chain history, interactive drafts and F18 candidates, with a
+deterministic `state_digest`. See [the review model and staged integration plan](PROJECT_REVIEW.md)
+for candidate binding semantics and limitations. Guarded Python actions provide reroll/reopen
+previews, replacement-draft preparation and atomic publication to a dedicated authoritative
+archive, preserving its previous snapshot. After restarting ComfyUI, use **Open Project Manager**
+on Load, Save or Segment Review. Create a project from an accepted archive, add saved drafts,
+select/reject candidates and confirm acceptance. **Prepare in workflow** configures F04 in
+Draft mode; use the normal Queue button to render. **Preview branch** creates an independent
+copy from an accepted result, saved historical revision or candidate. **Inspect storage**
+reports archive sizes and offers reversible trash/restore for unreferenced rejected candidates.
+Trash preserves files and does not free disk space; permanent deletion is not available.
+
+For the interactive loop, open the configured **F04 Segment Workflow** and create the
+project from its first saved accepted result. **Render draft** submits the current workflow;
+**Render another take · new seed** repeats the same segment with another seed. Saved results
+from its connected MMH3 Save appear as candidates automatically while this browser session
+remains open. Select a candidate, confirm acceptance, then render the next continuation.
+Click an accepted segment to prepare a replacement; its saved parent is found automatically.
+For imported chains with missing earlier files, use **Attach saved accepted segment**.
+**Preview final assembly → Assemble and save MP4** assembles only the current accepted
+revisions, removes repeated continuation context from both video and audio, and saves an
+H.264/AAC file under `output/mmh3_projects/<id>/exports/<digest>/final.mp4`, with a download
+link. Every segment must contain decoded video/audio and recorded continuation timing.
+The first segment's reroll still requires its original conditioning source; image reanchors
+remain configured in F04. A saved final export is independent of further project edits.
+
 For **Reroll accepted**, set Source to the target segment's parent and choose the latest accepted chain in the second Load. For **Reanchor**, choose a new first frame in the image loader and use the FL2VA model. Selecting an action enables its bundled helper loader and mutes unused ones. Reanchor starts a fresh shot without the previous audio/video prefix. Rerolling a reanchored shot requires its anchor image again; enable its loader with Ctrl+M if needed. Use Video Stitch between independent shots.
 
 - **How do I open a result later?** Use **MMH3 Load**, select the `.mmh3` file, and press **Refresh (R)** if needed. Keep `path override` empty when selecting from the file list; a non-empty override takes precedence.
@@ -223,8 +273,30 @@ For **Reroll accepted**, set Source to the target segment's parent and choose th
 - **Running out of memory?** Reduce the resolution and duration, and work with short segments. Upscaling and the final decode of a long chain also require memory; there is no single minimum VRAM requirement that applies to every workflow.
 - **Can I upscale only the finished video?** In graphs with **MMH3 Video Upscale**, select **RTX VSR**. This requires the external `RTXVideoSuperResolution` node from Comfy-Org NVIDIA RTX nodes. **Original** keeps the source video unchanged.
 - **Can older `.mmh3` files be opened?** Version v0.3 can read schema 2 archives. Archives from before v0.3 are not converted automatically.
-- **SageAttention (KJ) reports a missing node?** This option requires ComfyUI-KJNodes and its SageAttention dependencies. The adapter recognizes the registered `PathchSageAttentionKJ` spelling and the compatible `PatchSageAttentionKJ` alias. If neither loads, inspect ComfyUI startup errors. Choose **Default** when you do not need that optional backend.
+- **SageAttention (KJ) reports a missing node?** This option requires ComfyUI-KJNodes and its SageAttention dependencies. The adapter recognizes the registered `PathchSageAttentionKJ` spelling and the compatible `PatchSageAttentionKJ` alias. If neither loads, inspect ComfyUI startup errors. Leave **SageAttention (KJ) = disabled** when you do not need that optional backend. Sage runs dense attention while the selected sparse strategy retains its routing and kernels; it does not replace Sol/SLA/VSA/VDN kernels. For H3 SLA, enabling Sage overrides its dense backend to `auto` so dense calls reach Sage.
 - **Do the inputs look wrong after an update?** Restart ComfyUI, refresh the browser, and reopen the current workflow JSON.
 
 The public repository includes the node code, canvas examples and F18 automation templates. Development tests, local build tools and internal documentation are not needed to install or run the node.
 
+
+
+### Experimental TaoMate sampling
+
+H3 Sampling includes three experimental presets using the installed
+`taomate_3step_lora_avg_rank_19_bf16.safetensors`:
+
+| Preset | Task | LoRA strength | Sigmas | Additional LoRA |
+| --- | --- | --- | --- | --- |
+| Taomate 3 steps | FL2VA | 1.0 | 1, 0.961165, 0.853333, 0 | None |
+| Taomate 6 steps | FL2VA | 1.0 | 1, 0.9806, 0.9612, 0.9072, 0.8533, 0.64, 0 | Motion_BoosterV2.safetensors, 0.6 |
+| Taomate Ref2VA 8 steps | Ref2VA | 0.7 | Generated simple schedule | None |
+
+All three use Euler, video shift 12 and audio shift 3. The 3-step grid follows the
+[published TaoMate recommendation](https://huggingface.co/drbaph/MiniMax-H3-Turbo-Lora-ComfyUI/blob/main/README.md).
+The 6-step grid and booster strength are the requested experimental combination;
+the 8-step schedule is an unvalidated Ref2VA experiment. No quality or speed benchmark is claimed.
+Updated workflows use H3 Scheduler to honor fixed sigmas attached to MODEL. In an older
+custom workflow replace BasicScheduler with H3 Scheduler, retaining its connections.
+Explicit schedules require denoise=1 and the preset step count. Source trajectories
+with explicit sigmas are currently rejected by automatic upscale/refine schedule derivation.
+Both adapters and their strengths are recorded in sampling provenance.

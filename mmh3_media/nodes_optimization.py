@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
+from .sampling_runtime import sampler_options, scheduler_options, scheduler_sigmas
 
 
-from .node_support import CATEGORY, MMH3ResourceError, io
+from .node_support import CATEGORY, MMH3ResourceError, io, folder_paths
 from .optimization_contract import (
     record_optimization, require_unoptimized_sampling_model,
     resolve_sampling_profile, validate_optimization_application,
@@ -17,12 +18,13 @@ from .sampling_presets import (
     SAMPLING_PROFILE_ATTACHMENT,
     VDN_DMD_PROFILE,
     VDN_STAGE_B_PROFILE,
-    build_sampling_preset,
+    build_sampling_preset, TAOMATE_RECIPES,
 )
 from .vdn_optimization import (
     VDN_ATTENTION_BACKENDS,
     VDN_BRANCH_WEIGHT_MODES,
     VDN_DEFAULT_CHECKPOINT,
+    vdn_checkpoint_options,
     VDN_LORA_MODES,
     VDN_NODE_ID,
     VDN_RETAIN_BUFFER_MODES,
@@ -53,7 +55,12 @@ class MMH3H3VDNApply(io.ComfyNode):
             inputs=[
                 io.Model.Input("model"),
                 io.Combo.Input("task_family", options=["fl2va", "ref2va"], default="fl2va"),
-                io.String.Input("vdn_checkpoint", default=VDN_DEFAULT_CHECKPOINT),
+                io.Combo.Input(
+                    "vdn_checkpoint",
+                    options=vdn_checkpoint_options(),
+                    default=VDN_DEFAULT_CHECKPOINT,
+                    tooltip="Auto selects a compatible installed VDN stage; or choose a discovered models/vdn directory explicitly.",
+                ),
                 io.Boolean.Input("apply_turbo_adapter", default=True),
                 io.Float.Input("strength", default=1.0, min=0.0, max=2.0, step=0.05),
                 io.Combo.Input("lora_mode", options=list(VDN_LORA_MODES), default="merge"),
@@ -86,7 +93,6 @@ class MMH3H3VDNApply(io.ComfyNode):
             sampling_profile = json.loads(sampling_profile_json) if sampling_profile_json.strip() else None
         except json.JSONDecodeError as exc:
             raise MMH3ResourceError(f"VDN-H3 sampling_profile_json is not valid JSON: {exc}") from exc
-        validate_vdn_sampling_profile(settings, sampling_profile)
         try:
             import nodes as comfy_nodes  # type: ignore
         except ImportError as exc:
@@ -102,7 +108,7 @@ class MMH3H3SLAApply(io.ComfyNode):
         return io.Schema(
             node_id="MMH3H3SLAApply",
             display_name="MMH3 H3 SLA Apply (PlagueKind v1.3.6)",
-            category=CATEGORY,
+            category=f"{CATEGORY}/Internal",
             description=(
                 "Fail-closed F07 adapter for PlagueKind H3SLAAttention v1.3.6. "
                 "Verifies the external schema and the materialized ModelPatcher hooks before sampling."
@@ -225,6 +231,25 @@ class MMH3H3FP16AccumulationPatch(io.ComfyNode):
         return io.NodeOutput(patched)
 
 
+class MMH3H3SageAttentionPatch(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(node_id="MMH3H3SageAttentionPatch", display_name="H3 SageAttention composition",
+            category=CATEGORY, inputs=[io.Model.Input("model"), io.String.Input("sage_attention"),
+                io.Boolean.Input("allow_compile", default=False),
+                io.Boolean.Input("preserve_strategy", default=True)], outputs=[io.Model.Output("model")])
+
+    @classmethod
+    def execute(cls, model, sage_attention, allow_compile=False, preserve_strategy=True):
+        import nodes
+        from .sage_optimization import apply_sage_attention
+        provider = (nodes.NODE_CLASS_MAPPINGS.get("PathchSageAttentionKJ")
+                    or nodes.NODE_CLASS_MAPPINGS.get("PatchSageAttentionKJ"))
+        if provider is None:
+            raise MMH3ResourceError("SageAttention requires ComfyUI-KJNodes and the sageattention package")
+        return io.NodeOutput(apply_sage_attention(model, provider, sage_attention, allow_compile, preserve_strategy))
+
+
 class MMH3H3OptimizationRecord(io.ComfyNode):
     @classmethod
     def define_schema(cls):
@@ -242,6 +267,31 @@ class MMH3H3OptimizationRecord(io.ComfyNode):
         return io.NodeOutput(patched)
 
 
+class MMH3H3TurboLoRAs(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(node_id="MMH3H3TurboLoRAs", display_name="H3 Turbo LoRAs", category=CATEGORY,
+            description="Select the model-only Turbo adapters loaded by Sampling or Refine Source LoRAs. Custom replaces preset LoRAs; Extension adds to preset LoRAs; Auto preserves the preset/source. Files and actual strengths are recorded in MMH3.",
+            inputs=[io.Combo.Input("mode", display_name="LoRA mode", options=["auto", "custom", "extension", "disabled"], default="auto", tooltip="auto: use preset/source LoRAs. custom: replace preset LoRAs with your selection. extension: keep preset LoRAs and add your selection. disabled: no preset LoRAs."),
+                io.Combo.Input("lora_1", options=["None"] + folder_paths.get_filename_list("loras"), default="None"),
+                io.Float.Input("strength_1", default=1.0, min=-10.0, max=10.0, step=0.05),
+                io.Combo.Input("lora_2", options=["None"] + folder_paths.get_filename_list("loras"), default="None"),
+                io.Float.Input("strength_2", default=1.0, min=-10.0, max=10.0, step=0.05),
+                io.Combo.Input("lora_3", options=["None"] + folder_paths.get_filename_list("loras"), default="None"),
+                io.Float.Input("strength_3", default=1.0, min=-10.0, max=10.0, step=0.05),
+            ],
+            outputs=[io.String.Output("turbo_loras_json")])
+
+    @classmethod
+    def execute(cls, mode="auto", lora_1="None", strength_1=1.0, lora_2="None", strength_2=1.0, lora_3="None", strength_3=1.0):
+        from .turbo_loras import parse_turbo_loras
+        config = json.dumps({"version": 1, "mode": mode, "loras": [
+            {"name": name, "strength": strength}
+            for name, strength in ((lora_1, strength_1), (lora_2, strength_2), (lora_3, strength_3)) if name != "None"]})
+        parse_turbo_loras(config)
+        return io.NodeOutput(config)
+
+
 class MMH3H3SamplingPreset(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
@@ -250,7 +300,7 @@ class MMH3H3SamplingPreset(io.ComfyNode):
             node_id="MMH3H3SamplingPreset",
             display_name="H3 Sampling",
             category=CATEGORY,
-            description="Select a sampling recipe; matching Turbo/FastH3 loading and actual adapter provenance follow automatically. Connect the unpatched H3 base model.",
+            description="Select a sampling recipe; matching Turbo/FastH3 loading and actual adapter provenance follow automatically. Connect the unpatched H3 base model. An optional H3 Turbo LoRAs block replaces or extends automatic adapters.",
             inputs=[
                 io.DynamicCombo.Input(
                     "profile",
@@ -259,6 +309,9 @@ class MMH3H3SamplingPreset(io.ComfyNode):
                         io.DynamicCombo.Option("Turbo - 4 steps", []),
                         io.DynamicCombo.Option("Standard - 20 steps", []),
                         io.DynamicCombo.Option("Turbo - 8 steps", []),
+                        io.DynamicCombo.Option("Taomate - 3 steps (experimental)", []),
+                        io.DynamicCombo.Option("Taomate - 6 steps (experimental)", []),
+                        io.DynamicCombo.Option("Taomate Ref2VA - 8 steps (experimental)", []),
                         io.DynamicCombo.Option("VDN-H3 DMD - 8 steps (experimental)", []),
                         io.DynamicCombo.Option("VDN-H3 Stage-B - 50 steps (experimental)", []),
                         io.DynamicCombo.Option("FastH3 dense - 6 steps (experimental)", [
@@ -271,14 +324,15 @@ class MMH3H3SamplingPreset(io.ComfyNode):
                                 io.Int.Input("steps", display_name="Steps", default=20, min=1, max=100),
                                 io.Float.Input("video_shift", display_name="Video shift", default=12.0, min=0.0, max=30.0, step=0.1, advanced=True),
                                 io.Float.Input("audio_shift", display_name="Audio shift", default=3.0, min=0.0, max=30.0, step=0.1, advanced=True),
-                                io.Combo.Input("sampler", display_name="Sampler", options=["res_multistep", "euler"], default="res_multistep", advanced=True),
-                                io.Combo.Input("scheduler", display_name="Scheduler", options=["simple", "normal"], default="simple", advanced=True),
+                                io.Combo.Input("sampler", display_name="Sampler", options=sampler_options(), default="res_multistep", tooltip="Registered ComfyUI samplers. res_2s requires RES4LYF with beta samplers enabled; validate joint AV quality separately."),
+                                io.Combo.Input("scheduler", display_name="Scheduler", options=scheduler_options(), default="simple"),
                             ],
                         ),
                     ],
                 ),
                 io.Combo.Input("task_family", display_name="Task family", options=["fl2va", "ref2va"], default="fl2va"),
                 io.Model.Input("model", tooltip="Unpatched H3 base. Standard/Custom pass it through; Turbo/FastH3 load their adapter. Connect MODEL to Optimizations and applied_loras_json to Pack."),
+                io.String.Input("turbo_loras_json", default="", optional=True, force_input=True, tooltip="Connect H3 Turbo LoRAs to select your own acceleration files and strengths."),
             ],
             outputs=[
                 io.String.Output("sampling_profile_json"),
@@ -298,6 +352,7 @@ class MMH3H3SamplingPreset(io.ComfyNode):
         profile: dict | str,
         task_family: str,
         model,
+        turbo_loras_json: str = "",
     ) -> io.NodeOutput:
         if model is None:
             raise MMH3ResourceError("H3 Sampling requires the unpatched base MODEL input")
@@ -324,10 +379,18 @@ class MMH3H3SamplingPreset(io.ComfyNode):
             custom_sampler=str(selected.get("sampler", "res_multistep")),
             custom_scheduler=str(selected.get("scheduler", "simple")),
         )
+        from .sampling_presets import TAOMATE_RECIPES
         from .fasth3 import FASTH3_PROFILE, apply_fasth3
         applied_loras = []
         info = preset.to_dict()
-        if preset.profile == FASTH3_PROFILE:
+        from .turbo_loras import parse_turbo_loras, turbo_lora_mode
+        turbo_selection = parse_turbo_loras(turbo_loras_json)
+        lora_mode = turbo_lora_mode(turbo_loras_json)
+        if turbo_selection is not None and preset.profile == FASTH3_PROFILE:
+            raise MMH3ResourceError("FastH3 owns its architecture adapter; keep Turbo LoRAs in auto mode")
+        if turbo_selection is not None and lora_mode != "extension":
+            pass  # Explicit replacement/disable skips the preset's LoRA loader.
+        elif preset.profile == FASTH3_PROFILE:
             import folder_paths
             name = str(selected.get("lora_name") or "")
             if name not in folder_paths.get_filename_list("loras"):
@@ -340,9 +403,26 @@ class MMH3H3SamplingPreset(io.ComfyNode):
             info["adapter"] = entry
         elif preset.recommended_lora:
             from .fasth3 import apply_packaged_turbo
-            model, entry = apply_packaged_turbo(model, preset.recommended_lora)
+            if preset.profile in TAOMATE_RECIPES:
+                model, entry = apply_packaged_turbo(model, preset.recommended_lora, strength=preset.lora_strength)
+            else:
+                model, entry = apply_packaged_turbo(model, preset.recommended_lora)
             applied_loras = [entry]
             info["adapter"] = entry
+            for extra in preset.extra_loras:
+                model, extra_entry = apply_packaged_turbo(model, extra["name"], strength=extra["strength"], allow_existing=True)
+                applied_loras.append(extra_entry)
+            info["adapters"] = applied_loras
+
+        if turbo_selection is not None:
+            from .fasth3 import apply_packaged_turbo
+            for item in turbo_selection:
+                model, entry = apply_packaged_turbo(model, item["name"], strength=item["strength"],
+                                                    allow_existing=bool(applied_loras), exact_name=True)
+                applied_loras.append(entry)
+            info.update(adapter=applied_loras[0] if applied_loras else None, adapters=applied_loras,
+                        recommended_lora=applied_loras[0]["name"] if applied_loras else None,
+                        turbo_loras_override=json.loads(turbo_loras_json), runtime_validated=False)
 
         # Sampling is a trajectory contract, so carry it with MODEL into H3 Optimizations.
         # Clone only the otherwise-unpatched base path to avoid mutating a shared loader output.
@@ -351,7 +431,7 @@ class MMH3H3SamplingPreset(io.ComfyNode):
         setter = getattr(model, "set_attachments", None)
         if callable(setter):
             setter("mmh3_sampling_profile", json.loads(json.dumps(info)))
-            if preset.recommended_lora:
+            if applied_loras:
                 setter("mmh3_sampling_adapter", preset.profile)
         return io.NodeOutput(
             json.dumps(info, ensure_ascii=False, indent=2),
@@ -373,7 +453,7 @@ def _sol_attention_inputs(native=False):
         io.Int.Input("sol_min_tokens", display_name="Minimum tokens", default=4096, min=0, max=1048576, step=512, advanced=True),
         *([io.Int.Input("sol_extra_tokens", display_name="Extra exact tokens", default=256, min=0, max=256, step=64, advanced=True)] if native else [io.Boolean.Input("sol_int8_qk", display_name="INT8 QK", default=True, advanced=True)]),
         io.Combo.Input("sol_sink_conditioning", display_name="Conditioning protection", options=["exact_kv", "exact_kv_and_rows", "off"], default="exact_kv_and_rows", advanced=True),
-        io.String.Input("sol_dense_blocks", display_name="Dense blocks", default="", tooltip=("Non-negative block indices, e.g. 0-2,47-49." if native else "Blocks excluded from Sol, e.g. 0-2,-1. In SLA → Sol these may use SLA instead of dense attention. Blank applies Sol to all blocks."), advanced=True),
+        io.String.Input("sol_dense_blocks", display_name="Dense blocks", default="", tooltip=("Non-negative block indices, e.g. 0-2,47-49." if native else "Blocks excluded from Sol, e.g. 0-2,-1. Blank applies Sol to all blocks."), advanced=True),
     ]
 
 
@@ -411,9 +491,10 @@ def _sla_attention_inputs():
 
 def _vdn_attention_inputs(task_family: str):
     return [
-        io.String.Input(
-            "vdn_checkpoint", display_name="VDN checkpoint", default=VDN_DEFAULT_CHECKPOINT,
-            tooltip="Directory under ComfyUI/models/vdn, e.g. stage-dmd-step-250 or an INT8 ConvRot conversion.",
+        io.Combo.Input(
+            "vdn_checkpoint", display_name="VDN checkpoint",
+            options=vdn_checkpoint_options(), default=VDN_DEFAULT_CHECKPOINT,
+            tooltip="Auto selects a compatible installed stage from ApplyVDNH3. You can also choose a discovered models/vdn directory explicitly.",
         ),
         io.Boolean.Input(
             "vdn_apply_turbo_adapter", display_name="VDN 8-step turbo adapter", default=True,
@@ -440,23 +521,19 @@ def h3_optimization_inputs(*, optional=False):
                 io.DynamicCombo.Option("Default", []),
                 io.DynamicCombo.Option("PyTorch", []),
                 io.DynamicCombo.Option("Comfy Kitchen", []),
-                io.DynamicCombo.Option("SageAttention (KJ)", [
-                    io.Combo.Input("sage_mode", display_name="Implementation", options=["auto", "sageattn_qk_int8_pv_fp16_cuda", "sageattn_qk_int8_pv_fp16_triton", "sageattn_qk_int8_pv_fp8_cuda", "sageattn_qk_int8_pv_fp8_cuda++", "sageattn3", "sageattn3_per_block_mean"], default="auto", advanced=True),
-                    io.Boolean.Input("sage_allow_compile", display_name="Allow compile", default=False, advanced=True),
-                ]),
                 io.DynamicCombo.Option("Sol (ComfyUI)", _sol_attention_inputs(native=True)),
                 io.DynamicCombo.Option("Sol (Kijai)", _sol_attention_inputs()),
-                # Retain the serialized label for existing UI/API workflows.
-                io.DynamicCombo.Option("Sol Attention", _sol_attention_inputs()),
                 io.DynamicCombo.Option("VSA (ComfyUI)", _vsa_attention_inputs()),
                 io.DynamicCombo.Option("SLA (ComfyUI)", _native_sla_attention_inputs()),
                 io.DynamicCombo.Option("H3 SLA", _sla_attention_inputs()),
-                io.DynamicCombo.Option("SLA → Sol (experimental)", _sla_attention_inputs() + _sol_attention_inputs()),
                 io.DynamicCombo.Option("VDN-H3 · FL2VA (experimental)", _vdn_attention_inputs("fl2va")),
                 io.DynamicCombo.Option("VDN-H3 · Ref2VA (experimental)", _vdn_attention_inputs("ref2va")),
             ],
         ),
         io.Combo.Input("fp16_accumulation", display_name="FP16 accumulation", options=["Default", "Enabled", "Disabled"], default="Default", optional=optional),
+        io.Combo.Input("sage_attention", display_name="SageAttention (KJ)", options=["disabled", "auto", "sageattn_qk_int8_pv_fp16_cuda", "sageattn_qk_int8_pv_fp16_triton", "sageattn_qk_int8_pv_fp8_cuda", "sageattn_qk_int8_pv_fp8_cuda++", "sageattn3", "sageattn3_per_block_mean"], default="disabled", optional=True,
+                       tooltip="Optional dense attention backend. Sparse/architecture routing stays active; Sage handles its standard dense fallbacks."),
+        io.Boolean.Input("sage_allow_compile", display_name="Sage allow compile", default=False, optional=True, advanced=True),
     ]
 
 
@@ -467,7 +544,7 @@ class MMH3H3ModelOptimizations(io.ComfyNode):
             node_id="MMH3H3ModelOptimizations",
             display_name="H3 Optimizations",
             category=CATEGORY,
-            description="Apply one H3 attention/architecture strategy plus optional scoped FP16 accumulation. VDN-H3 is an exclusive hybrid-attention architecture extension (FL2VA/Ref2VA) and requires the external ComfyUI-VDN-H3 runtime + VDN stage weights; do not stack it with Sol/SLA.",
+            description="Apply one H3 attention/architecture strategy plus independent SageAttention for dense paths and scoped FP16 accumulation. VDN-H3 is an exclusive hybrid-attention architecture extension (FL2VA/Ref2VA) and requires the external ComfyUI-VDN-H3 runtime + VDN stage weights; do not stack it with Sol/SLA.",
             inputs=[
                 io.Model.Input("model"),
                 *h3_optimization_inputs(),
@@ -481,7 +558,7 @@ class MMH3H3ModelOptimizations(io.ComfyNode):
         )
 
     @classmethod
-    def execute(cls, model, attention: dict | str, fp16_accumulation: str, sampling_profile_json: str = "", **_unused) -> io.NodeOutput:
+    def execute(cls, model, attention: dict | str, fp16_accumulation: str, sampling_profile_json: str = "", sage_attention: str = "disabled", sage_allow_compile: bool = False, **_unused) -> io.NodeOutput:
         selected = dict(attention) if isinstance(attention, dict) else {"attention": attention}
         attention_label = str(selected.get("attention") or "Default")
         attention_modes = {
@@ -489,13 +566,11 @@ class MMH3H3ModelOptimizations(io.ComfyNode):
             "PyTorch": "pytorch",
             "Comfy Kitchen": "comfy_kitchen",
             "SageAttention (KJ)": "sage_attention_kj",
-            "Sol Attention": "sol_attn",
             "Sol (Kijai)": "sol_attn",
             "Sol (ComfyUI)": "sol_native",
             "SLA (ComfyUI)": "sla_native",
             "VSA (ComfyUI)": "vsa_native",
             "H3 SLA": "h3_sla",
-            "SLA → Sol (experimental)": "h3_sla_sol_attn",
             "VDN-H3 · FL2VA (experimental)": "vdn_h3",
             "VDN-H3 · Ref2VA (experimental)": "vdn_h3",
         }
@@ -516,11 +591,12 @@ class MMH3H3ModelOptimizations(io.ComfyNode):
         sampling_profile = resolve_sampling_profile(model, explicit_sampling)
         fp16_mode = fp16_modes.get(fp16_accumulation, fp16_accumulation)
         plan = build_model_optimization_plan(
-            enabled=attention_mode != "inherit" or fp16_mode != "inherit",
+            enabled=attention_mode != "inherit" or fp16_mode != "inherit" or sage_attention != "disabled",
+            sage_attention=sage_attention,
             attention_mode=attention_mode,
             fp16_accumulation=fp16_mode,
             sampling_profile=sampling_profile,
-            **{key: value for key, value in selected.items() if key != "attention"},
+            **{**{"sage_allow_compile": sage_allow_compile}, **{key: value for key, value in selected.items() if key != "attention"}},
         )
         validate_optimization_application(model, plan.attention_mode, plan.fp16_accumulation, sampling_profile)
         runtime_nodes = None
@@ -538,3 +614,22 @@ class MMH3H3ModelOptimizations(io.ComfyNode):
             json.dumps(expansion.profile, ensure_ascii=False, indent=2),
             expand=expansion.graph,
         )
+
+
+class MMH3H3Scheduler(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(node_id="MMH3H3Scheduler", display_name="H3 Scheduler", category=CATEGORY,
+            inputs=[io.Model.Input("model"), io.Combo.Input("scheduler", options=scheduler_options()),
+                    io.Int.Input("steps", default=20, min=1, max=10000),
+                    io.Float.Input("denoise", default=1.0, min=0.0, max=1.0, step=0.01)],
+            outputs=[io.Sigmas.Output("SIGMAS")])
+
+    @classmethod
+    def execute(cls, model, scheduler, steps, denoise=1.0):
+        from .sampling_presets import explicit_preset_sigmas
+        fixed = explicit_preset_sigmas(resolve_sampling_profile(model), steps, denoise)
+        if fixed is not None:
+            import torch
+            return io.NodeOutput(torch.tensor(fixed, dtype=torch.float32))
+        return io.NodeOutput(scheduler_sigmas(model, scheduler, steps, denoise))

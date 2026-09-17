@@ -59,6 +59,39 @@ class ChainCommitResult:
 
 
 @dataclass(frozen=True)
+class ChainRerollImpact:
+    target_segment_id: str
+    current_revision: int
+    invalidated_segment_ids: tuple[str, ...]
+
+
+def _reroll_target_and_descendants(chain: dict[str, Any], target_segment_id: str):
+    """One owner for chain-v1 invalidation: active segments after the target index."""
+    target_segment_id = _clean_id(target_segment_id, label="target_segment_id")
+    target = next((item for item in chain["segments"] if item.get("segment_id") == target_segment_id), None)
+    if target is None:
+        raise MMH3ResourceError(f"Reroll target {target_segment_id!r} does not exist")
+    if target.get("status") != "active":
+        raise MMH3ResourceError(f"Reroll target {target_segment_id!r} is not active")
+    affected = tuple(item["segment_id"] for item in chain["segments"]
+                     if item["index"] > target["index"] and item.get("status") == "active")
+    return target, affected
+
+
+def inspect_chain_reroll(packet: MMH3Media, *, target_segment_id: str) -> ChainRerollImpact:
+    """Inspect exactly the invalidation set used by commit_chain_segment, without I/O."""
+    report = validate_chain(packet, require_head_state=True)
+    if not report.ready:
+        raise MMH3ResourceError("Cannot inspect invalid chain: " + "; ".join(report.reasons))
+    chain = _chain_from_packet(packet)
+    target, affected = _reroll_target_and_descendants(chain, target_segment_id)
+    revision = target.get("revision")
+    if type(revision) is not int or revision < 1:
+        raise MMH3ResourceError("Invalid reroll target revision")
+    return ChainRerollImpact(target["segment_id"], revision, affected)
+
+
+@dataclass(frozen=True)
 class RerollSourceValidation:
     ready: bool
     target_segment_id: str
@@ -389,12 +422,9 @@ def commit_chain_segment(
     now = utc_now_iso()
 
     if action == "reroll":
-        target_segment_id = _clean_id(target_segment_id, label="target_segment_id")
-        target = next((item for item in segments if item.get("segment_id") == target_segment_id), None)
-        if target is None:
-            raise MMH3ResourceError(f"Reroll target {target_segment_id!r} does not exist")
-        if target.get("status") != "active":
-            raise MMH3ResourceError(f"Reroll target {target_segment_id!r} is not active")
+        target, invalidated_ids = _reroll_target_and_descendants(chain, target_segment_id)
+        invalidated_id_set = set(invalidated_ids)
+        target_segment_id = target["segment_id"]
         old_revision = {
             key: deep_copy_json(target.get(key))
             for key in (
@@ -411,7 +441,7 @@ def commit_chain_segment(
         revision = int(target.get("revision", 1)) + 1
         scene_id = target["scene_id"]
         for item in segments:
-            if int(item.get("index", -1)) > int(target["index"]) and item.get("status") == "active":
+            if item["segment_id"] in invalidated_id_set:
                 item["status"] = "invalidated"
                 item["invalidated_by"] = target_segment_id
                 item["invalidated_at"] = now

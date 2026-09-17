@@ -2,7 +2,7 @@
   "id": "a3895cb2-5d55-50d1-ae7b-48d7eafebb6c",
   "revision": 0,
   "last_node_id": 5,
-  "last_link_id": 4,
+  "last_link_id": 5,
   "nodes": [
     {
       "id": 1,
@@ -242,7 +242,7 @@
           "name": "packet",
           "type": "MMH3_MEDIA",
           "links": [
-            4
+            5
           ]
         },
         {
@@ -281,8 +281,8 @@
     },
     {
       "id": 4,
-      "type": "SaveVideo",
-      "title": "Save Preview Video",
+      "type": "MMH3SaveVideo",
+      "title": "Save Video · encode once",
       "pos": [
         3090,
         110
@@ -310,30 +310,42 @@
         },
         {
           "name": "format",
-          "type": "COMFY_DYNAMICCOMBO_V3",
+          "type": "COMBO",
           "link": null,
           "widget": {
             "name": "format"
           }
         },
         {
-          "name": "format.codec",
-          "type": "COMFY_DYNAMICCOMBO_V3",
+          "name": "codec",
+          "type": "COMBO",
           "link": null,
           "widget": {
-            "name": "format.codec"
+            "name": "codec"
           }
+        },
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "link": 5
         }
       ],
       "outputs": [
         {
           "name": "video",
           "type": "VIDEO",
-          "links": null
+          "links": []
+        },
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "links": [
+            4
+          ]
         }
       ],
       "properties": {
-        "Node name for S&R": "SaveVideo"
+        "Node name for S&R": "MMH3SaveVideo"
       },
       "widgets_values": [
         "mmh3_automation/batch_stitch/preview",
@@ -436,10 +448,18 @@
     ],
     [
       4,
-      3,
-      0,
+      4,
+      1,
       5,
       0,
+      "MMH3_MEDIA"
+    ],
+    [
+      5,
+      3,
+      0,
+      4,
+      4,
       "MMH3_MEDIA"
     ]
   ],

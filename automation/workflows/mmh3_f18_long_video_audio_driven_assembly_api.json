@@ -15,22 +15,26 @@
     }
   },
   "3": {
-    "class_type": "SaveVideo",
+    "class_type": "MMH3SaveVideo",
     "inputs": {
       "video": [
         "2",
         1
       ],
       "filename_prefix": "mmh3_automation/audio_driven/final_preview",
-      "format": "mp4"
+      "format": "mp4",
+      "packet": [
+        "2",
+        0
+      ]
     }
   },
   "4": {
     "class_type": "MMH3Save",
     "inputs": {
       "packet": [
-        "2",
-        0
+        "3",
+        1
       ],
       "filename_prefix": "mmh3_automation/audio_driven/final",
       "target": "output",

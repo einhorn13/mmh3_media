@@ -155,6 +155,10 @@ def pack_h3_result(
             "A capability-bound ControlNet packet requires control_process_info from MMH3 H3 Control Apply"
         )
     outputs = {"latent": latent, "video": video, "audio": audio, "first_frame": first_frame, "last_frame": last_frame}
+    from .video_output import video_decode_metadata
+    decode_metadata = video_decode_metadata(video) if video is not None else None
+    if decode_metadata is not None:
+        process_info['video_decode'] = decode_metadata
     if all(payload is None for payload in outputs.values()):
         raise MMH3ResourceError("Pack H3 Result requires at least one connected result resource")
 
@@ -187,6 +191,7 @@ def pack_h3_result(
             payload, kind=kind, role="auxiliary", mode="replace" if existing else "add",
             resource_id=existing["id"] if existing else "", descriptor=descriptor_from_media_metadata(kind, facts),
             tags=["output"], record_history=False,
+            extensions={"minimax_h3": {"video_decode": decode_metadata}} if kind == 'video' and decode_metadata is not None else {},
         )
         out = out.set_primary(kind, resource_ids[key])
 

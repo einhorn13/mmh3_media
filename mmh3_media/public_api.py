@@ -58,6 +58,16 @@ from .decoded_continuation import (
     prepare_decoded_prefix,
 )
 from .chain import ChainCommitResult, ChainValidation, RerollSourceValidation, commit_chain_segment, start_chain, validate_chain, validate_reroll_source
+from .project_review import (
+    PROJECT_REVIEW_CONTRACT, ProjectReviewState, ReviewCandidate, ReviewCandidateBinding,
+    ReviewJob, ReviewSegment, build_project_review_state, project_state_digest,
+)
+from .project_actions import (
+    ChainMutationPreview, ProjectSegmentAcceptance, ProjectPublication,
+    ProjectStateConflict, ProjectPublicationBusy, preview_chain_mutation,
+    prepare_project_reopen, accept_project_segment, publish_project_segment,
+)
+from .branching import build_project_branch
 from .stitch import DecodedSegment, StitchCompatibility, StitchPlan, StitchResult, inspect_stitch_packets, materialize_decoded_segment, pcm_boundary, stitch_decoded_segments
 from .streaming_stitch import StreamingSegment, StreamingStitchResult, StreamingStitchedVideo, build_streaming_stitch, iter_stitched_rgb_frames, materialize_streaming_segment
 from .lora_reapply import LoRAReapplyDiagnostic, LoRAReapplyExpansion, LoRAReapplyPlan, build_high_sigma_lora_plan, build_lora_reapply_expansion
@@ -307,6 +317,12 @@ def put_resource(
 
 
 __all__ = [
+    "build_project_branch",
+    "ChainMutationPreview", "ProjectSegmentAcceptance", "ProjectPublication",
+    "ProjectStateConflict", "ProjectPublicationBusy", "preview_chain_mutation",
+    "prepare_project_reopen", "accept_project_segment", "publish_project_segment",
+    "PROJECT_REVIEW_CONTRACT", "ProjectReviewState", "ReviewCandidate", "ReviewCandidateBinding",
+    "ReviewJob", "ReviewSegment", "build_project_review_state", "project_state_digest",
     "apply_av_edit_policy", "restore_av_protection", "select_edit_delivery_audio",
     "prepare_av_bridge", "encode_av_bridge", "trim_bridge_components",
     "configure_reference_schedule", "compile_scene_references", "add_reference_alias",

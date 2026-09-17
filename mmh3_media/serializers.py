@@ -402,7 +402,19 @@ def deserialize_audio(path: Path, res: dict[str, Any]) -> dict:
 
 def video_source_path(payload: Any) -> tuple[Path | None, str | None]:
     """Return an untouched on-disk source and suffix when byte-copy is semantically valid."""
-    if not hasattr(payload, "get_stream_source"):
+    existing_path = getattr(payload, "_mmh3_existing_video_path", None)
+    if existing_path is not None:
+        source = existing_path()
+        return (Path(source), Path(source).suffix.lower() or ".mp4") if source is not None else (None, None)
+    # get_stream_source is a materializing API on tensor/streaming VIDEOs.
+    # Only the native file implementation promises a cheap accessor. Unknown
+    # providers can opt into the explicit non-materializing capability above.
+    try:
+        from comfy_api.latest import InputImpl
+        is_file = type(payload) is InputImpl.VideoFromFile
+    except (ImportError, AttributeError):
+        is_file = False
+    if not is_file:
         return None, None
     try:
         if hasattr(payload, "get_active_trim_window"):

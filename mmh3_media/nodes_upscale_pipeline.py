@@ -60,9 +60,9 @@ class MMH3H3RefineScheduler(io.ComfyNode):
 
     @classmethod
     def execute(cls, model, refine_sampling_json):
-        import comfy.samplers
+        from .sampling_runtime import calculate_sigmas
         sigmas, report = build_refine_sigmas(_parse_object(refine_sampling_json, "sampling"),
-            lambda scheduler, steps: comfy.samplers.calculate_sigmas(model.get_model_object("model_sampling"), scheduler, steps))
+            lambda scheduler, steps: calculate_sigmas(model.get_model_object("model_sampling"), scheduler, steps))
         return io.NodeOutput(sigmas, json.dumps(report))
 
 
