@@ -381,7 +381,7 @@
       ],
       "size": [
         520,
-        738
+        768
       ],
       "flags": {},
       "order": 7,
@@ -556,6 +556,14 @@
           "type": "STRING",
           "link": 11,
           "shape": 7
+        },
+        {
+          "name": "streaming",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "streaming"
+          }
         }
       ],
       "outputs": [
@@ -601,7 +609,8 @@
         false,
         "vae",
         "auto",
-        true
+        true,
+        "auto"
       ]
     },
     {

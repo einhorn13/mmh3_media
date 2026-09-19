@@ -332,72 +332,6 @@
       "title": "Audio VAE"
     },
     {
-      "id": 7,
-      "type": "MMH3H3VideoDecode",
-      "pos": [
-        1390,
-        80
-      ],
-      "size": [
-        300,
-        190
-      ],
-      "flags": {},
-      "order": 6,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "samples",
-          "type": "LATENT",
-          "link": 4
-        },
-        {
-          "name": "vae",
-          "type": "VAE",
-          "link": 6
-        },
-        {
-          "name": "decode_mode",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "decode_mode"
-          }
-        },
-        {
-          "name": "trt_decoder",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "trt_decoder"
-          }
-        }
-      ],
-      "outputs": [
-        {
-          "name": "IMAGE",
-          "type": "IMAGE",
-          "links": [
-            8
-          ]
-        },
-        {
-          "name": "decode_info_json",
-          "type": "STRING",
-          "links": [
-            20
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "MMH3H3VideoDecode"
-      },
-      "widgets_values": [
-        "vae",
-        "auto"
-      ]
-    },
-    {
       "id": 8,
       "type": "VAEDecodeAudio",
       "pos": [
@@ -440,57 +374,57 @@
     },
     {
       "id": 9,
-      "type": "MMH3CreateVideo",
+      "type": "MMH3H3DecodeVideo",
       "pos": [
         1800,
         100
       ],
       "size": [
         330,
-        180
+        220
       ],
       "flags": {},
       "order": 8,
       "mode": 0,
       "inputs": [
         {
-          "name": "images",
-          "type": "IMAGE",
-          "link": 8
+          "name": "samples",
+          "type": "LATENT",
+          "link": 4
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 6
+        },
+        {
+          "name": "decode_mode",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "decode_mode"
+          }
+        },
+        {
+          "name": "trt_decoder",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "trt_decoder"
+          }
+        },
+        {
+          "name": "streaming",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "streaming"
+          }
         },
         {
           "name": "audio",
           "type": "AUDIO",
           "link": 9
-        },
-        {
-          "name": "fps",
-          "type": "FLOAT",
-          "link": null,
-          "widget": {
-            "name": "fps"
-          }
-        },
-        {
-          "name": "bit_depth",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "bit_depth"
-          }
-        },
-        {
-          "name": "color_space",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "color_space"
-          }
-        },
-        {
-          "name": "decode_info_json",
-          "type": "STRING",
-          "link": 20
         }
       ],
       "outputs": [
@@ -501,15 +435,20 @@
             16,
             17
           ]
+        },
+        {
+          "name": "decode_info_json",
+          "type": "STRING",
+          "links": []
         }
       ],
       "properties": {
-        "Node name for S&R": "MMH3CreateVideo"
+        "Node name for S&R": "MMH3H3DecodeVideo"
       },
       "widgets_values": [
-        24,
-        8,
-        "sRGB"
+        "vae",
+        "auto",
+        "auto"
       ]
     },
     {
@@ -867,7 +806,7 @@
       4,
       4,
       1,
-      7,
+      9,
       0,
       "LATENT"
     ],
@@ -883,7 +822,7 @@
       6,
       5,
       0,
-      7,
+      9,
       1,
       "VAE"
     ],
@@ -896,19 +835,11 @@
       "VAE"
     ],
     [
-      8,
-      7,
-      0,
-      9,
-      0,
-      "IMAGE"
-    ],
-    [
       9,
       8,
       0,
       9,
-      1,
+      5,
       "AUDIO"
     ],
     [
@@ -982,14 +913,6 @@
       11,
       4,
       "MMH3_MEDIA"
-    ],
-    [
-      20,
-      7,
-      1,
-      9,
-      5,
-      "STRING"
     ]
   ],
   "groups": [],

@@ -60,6 +60,23 @@ def decode_report(vae, mode, engine=None):
             'weights': engine if mode == 'trt' else TAEH3_FILENAME if mode == 'draft' else 'connected_vae'}
 
 
+def load_video_decoder(vae, mode, selected, runtime_nodes):
+    if mode not in DECODE_MODES:
+        raise MMH3ResourceError(f'Unknown video decoder {mode!r}')
+    engine = None
+    if mode == 'draft':
+        import folder_paths
+        validate_taeh3_file(folder_paths.get_full_path('vae_approx', TAEH3_FILENAME))
+        loader = runtime_nodes.get('VAELoader')
+        if 'taeh3' not in getattr(loader, 'video_taes', ()):
+            raise MMH3ResourceError('Draft decode requires native taeh3 support in ComfyUI')
+        vae = loader().load_vae(TAEH3_FILENAME)[0]
+    elif mode == 'trt':
+        loader, engine = resolve_trt_decoder(runtime_nodes, selected)
+        vae = loader().load_vae(decoder=engine, encoder='None')[0]
+    return vae, decode_report(vae, mode, engine)
+
+
 class DecodedVideo:
     """VIDEO adapter carrying explicit decode provenance until it is archived."""
     def __init__(self, video, report):

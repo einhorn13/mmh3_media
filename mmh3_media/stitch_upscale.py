@@ -88,7 +88,7 @@ def build_stitch_upscale_expansion(packets, *, width, height, denoise, models, c
                                    video_vae, audio_vae, upscaler_model=DEFAULT_UPSCALER,
                                    graph_builder_factory=None, steps_override=0, manual_sigmas='', turbo_override='',
                                    attention='Default', fp16_accumulation='Default', force_unload=True,
-                                   upscaler_api='legacy_v1', decode_mode='vae', trt_decoder='auto', sage_attention='disabled', sage_allow_compile=False, turbo_loras_json=''):
+                                   upscaler_api='legacy_v1', decode_mode='vae', trt_decoder='auto', sage_attention='disabled', sage_allow_compile=False, turbo_loras_json='', streaming='auto'):
     if not 0 <= steps_override <= 100:
         raise MMH3ResourceError('Upscale steps must be within 0–100 (0 inherits source)')
     explicit_sigmas = parse_upscale_sigmas(manual_sigmas)
@@ -182,11 +182,9 @@ def build_stitch_upscale_expansion(packets, *, width, height, denoise, models, c
                             applied_loras_json=loras.out(5), optimization_profile_json=optimized.out(1))
         high.append(packed.out(0))
     stitch = graph.node('MMH3H3LatentStitch', **{f'segments.segment_{i}': value for i, value in enumerate(high, 1)})
-    video = graph.node('MMH3H3VideoDecode', samples=stitch.out(1), vae=video_vae,
-                       decode_mode=decode_mode, trt_decoder=trt_decoder)
     audio = graph.node('VAEDecodeAudio', samples=stitch.out(1), vae=audio_vae)
-    movie = graph.node('MMH3CreateVideo', images=video.out(0), audio=audio.out(0), fps=24.0,
-                       bit_depth=8, decode_info_json=video.out(1))
+    movie = graph.node('MMH3H3DecodeVideo', samples=stitch.out(1), vae=video_vae,
+                       decode_mode=decode_mode, trt_decoder=trt_decoder, streaming=streaming, audio=audio.out(0))
     packed = graph.node('MMH3PackH3Result', packet=stitch.out(0), latent=stitch.out(1), video=movie.out(0),
                         audio=audio.out(0), operation='latent_stitch_decode', mode='h3_continuation',
                         status=stitch.out(2), process_info_json=stitch.out(3), latent_origin='derived',

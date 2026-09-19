@@ -16,7 +16,7 @@ from .nodes_optimization import MMH3H3TurboLoRAs, MMH3H3SageAttentionPatch, MMH3
 from .nodes_settings import MMH3H3GenerationSettings, MMH3H3ReferenceImageSettings
 from .nodes_segments import MMH3H3SegmentPrepare, MMH3SegmentReview
 from .nodes_stitch_upscale import MMH3H3StitchUpscale, MMH3H3UpscaleAVRestore
-from .nodes_delivery import MMH3VideoUpscale, MMH3SaveVideo, MMH3H3VideoDecode, MMH3CreateVideo
+from .nodes_delivery import MMH3VideoUpscale, MMH3SaveVideo, MMH3H3VideoDecode, MMH3CreateVideo, MMH3H3DecodeVideo
 from .nodes_automation import MMH3AutomationAssembleChunks, MMH3AutomationAssemblyGate, MMH3AutomationAudioChunk, MMH3AutomationCheckpoint, MMH3AutomationLedger, MMH3AutomationReport, MMH3AutomationVideoChunk, MMH3BatchInputPlan, MMH3BatchNormalizeImport, MMH3BatchPreQueueEstimate, MMH3BatchStitch, MMH3H3AudioSyncProof, MMH3InteractiveAudioTimelinePlan, MMH3LongAudioTimelinePlan, MMH3LongVideoAudioSyncSettings, MMH3LongVideoChunkPlan, MMH3LongVideoUpscaleSettings, MMH3TrimAudioSamples, MMH3TrimAudioSamplesPadded
 from .upstream_backports.minimax_h3_forward_patch import BackportCompatibilityError
 from .nodes_h3 import MMH3H3AudioVAE
@@ -95,6 +95,7 @@ class MMH3Extension(ComfyExtension):
             MMH3VideoUpscale,
             MMH3SaveVideo,
             MMH3H3VideoDecode,
+            MMH3H3DecodeVideo,
             MMH3CreateVideo,
             MMH3ChainCommit,
             MMH3ChainValidate,

@@ -51,6 +51,8 @@ class MMH3H3StitchUpscale(io.ComfyNode):
                 io.Boolean.Input('force_unload', default=True, advanced=True, optional=True,
                                  tooltip='Unload the learned upscaler after each part to save VRAM. Disable only with enough memory.'),
                 io.String.Input("turbo_loras_json", default="", optional=True, force_input=True),
+                io.Combo.Input('streaming', options=['off', 'auto', 'stream'], default='auto', optional=True,
+                               tooltip='Auto streams TRT/TAEH3 delivery over 15 seconds. Off uses ordinary full decode.'),
             ],
             outputs=[MMH3.Output('packet'), io.Video.Output('video'), io.Latent.Output('latent'),
                      io.String.Output('assembly_report_json')], enable_expand=True,
@@ -59,7 +61,7 @@ class MMH3H3StitchUpscale(io.ComfyNode):
     @classmethod
     def execute(cls, segments, clip, video_vae, audio_vae, resolution, denoise, upscaler_model,
                 fl2va_model=None, ref2va_model=None, steps_override=0, manual_sigmas='', turbo_override='Source',
-                attention='Default', fp16_accumulation='Default', force_unload=True, decode_mode='vae', trt_decoder='auto', sage_attention='disabled', sage_allow_compile=False, turbo_loras_json=''):
+                attention='Default', fp16_accumulation='Default', force_unload=True, decode_mode='vae', trt_decoder='auto', sage_attention='disabled', sage_allow_compile=False, turbo_loras_json='', streaming='auto'):
         packets = [_packet(segments[key]) for key in sorted(segments, key=lambda key: int(key.rsplit('_', 1)[1]))
                    if segments[key] is not None]
         import nodes
@@ -76,7 +78,7 @@ class MMH3H3StitchUpscale(io.ComfyNode):
             turbo_override='' if turbo_override == 'Source' else turbo_override,
             attention=attention, fp16_accumulation=fp16_accumulation, force_unload=force_unload,
             sage_attention=sage_attention, sage_allow_compile=sage_allow_compile, turbo_loras_json=turbo_loras_json,
-            upscaler_api=upscaler_api, decode_mode=decode_mode, trt_decoder=trt_decoder)
+            upscaler_api=upscaler_api, decode_mode=decode_mode, trt_decoder=trt_decoder, streaming=streaming)
         summary = f'{plan.source_width}×{plan.source_height} → {summary}'
         if plan.warnings:
             summary += '\n' + '\n'.join(plan.warnings)

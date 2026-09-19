@@ -372,6 +372,28 @@ class MMH3Put(io.ComfyNode):
         supplied = _parse_object(descriptor_json, "descriptor_json")
         observed.update(supplied)
         extensions = _parse_object(extensions_json, "extensions_json")
+        if not primary and role == "reference" and kind in {"image", "video", "audio"}:
+            from copy import deepcopy
+            existing = None
+            if resource_id.strip():
+                existing = packet.get_by_id(resource_id.strip())
+            elif mode in {"replace", "upsert"}:
+                existing = next((ref.descriptor for ref in packet.filter_resource_refs(role=role)
+                                 if ref.descriptor.get("kind") == kind
+                                 and ref.descriptor.get("order") == (None if order < 0 else order)), None)
+            old_extensions = (existing or {}).get("extensions", {})
+            if not extensions_json.strip():
+                extensions = deepcopy(old_extensions)
+            h3 = extensions.setdefault("minimax_h3", {})
+            if not isinstance(h3, dict):
+                raise MMH3ResourceError("extensions.minimax_h3 must be an object")
+            if "reference" not in h3:
+                old_h3 = old_extensions.get("minimax_h3", {})
+                old_reference = old_h3.get("reference") if isinstance(old_h3, dict) else None
+                h3["reference"] = (deepcopy(old_reference)
+                                   if old_reference is not None and existing.get("kind") == kind
+                                   and existing.get("role") == role
+                                   else make_reference_contract(kind=kind))
         parsed_tags = [item.strip() for item in tags.split(",") if item.strip()]
         if primary:
             out, rid = packet.put_primary(

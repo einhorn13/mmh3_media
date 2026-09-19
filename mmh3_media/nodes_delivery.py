@@ -3,7 +3,7 @@ from __future__ import annotations
 from .decoded_upscale import upscale_decoded_video
 from .node_support import CATEGORY, MMH3, MMH3ResourceError, _packet, io, ui, InputImpl, Types
 from .video_output import save_output_video, build_video_decode_graph
-from .video_output import DECODE_MODES, trt_decoder_options, resolve_trt_decoder, decode_report, DecodedVideo
+from .video_output import DECODE_MODES, trt_decoder_options, DecodedVideo
 
 
 class MMH3SaveVideo(io.ComfyNode):
@@ -66,22 +66,9 @@ class MMH3H3VideoDecode(io.ComfyNode):
         import nodes
         if draft_tae is not None:
             decode_mode = 'draft' if draft_tae else decode_mode
-        if decode_mode not in DECODE_MODES:
-            raise MMH3ResourceError(f'Unknown video decoder {decode_mode!r}')
-        engine = None
-        if decode_mode == 'draft':
-            import folder_paths
-            from .video_output import TAEH3_FILENAME, validate_taeh3_file
-            validate_taeh3_file(folder_paths.get_full_path("vae_approx", TAEH3_FILENAME))
-            loader = nodes.NODE_CLASS_MAPPINGS.get('VAELoader')
-            if 'taeh3' not in getattr(loader, 'video_taes', ()):
-                raise MMH3ResourceError('Draft decode requires native taeh3 support in ComfyUI')
-            vae = loader().load_vae(TAEH3_FILENAME)[0]
-        elif decode_mode == 'trt':
-            loader, engine = resolve_trt_decoder(nodes.NODE_CLASS_MAPPINGS, trt_decoder)
-            vae = loader().load_vae(decoder=engine, encoder='None')[0]
+        from .video_output import load_video_decoder
+        vae, report = load_video_decoder(vae, decode_mode, trt_decoder, nodes.NODE_CLASS_MAPPINGS)
         images = nodes.NODE_CLASS_MAPPINGS['VAEDecode']().decode(vae, samples)[0]
-        report = decode_report(vae, decode_mode, engine)
         # A long stitched latent must decode to its full AV timeline, never a silently truncated engine tile.
         from .h3 import is_nested_tensor, nested_parts, h3_frame_count_from_video_t
         latent = samples['samples']
@@ -114,6 +101,42 @@ class MMH3CreateVideo(io.ComfyNode):
             video = DecodedVideo(video, json.loads(decode_info_json))
             video_decode_metadata(video)
         return io.NodeOutput(video)
+
+
+class MMH3H3DecodeVideo(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id='MMH3H3DecodeVideo', display_name='H3 Decode to Video', category=CATEGORY,
+            description='Final H3 delivery without a full IMAGE batch. Auto streams supported TRT/TAEH3 videos over 15 seconds. Off retains ordinary decode. Audio and the joint AV latent remain unchanged.',
+            inputs=[io.Latent.Input('samples'), io.Vae.Input('vae'),
+                    io.Combo.Input('decode_mode', options=DECODE_MODES, default='vae'),
+                    io.Combo.Input('trt_decoder', options=trt_decoder_options(), default='auto', advanced=True),
+                    io.Combo.Input('streaming', options=['off', 'auto', 'stream'], default='auto'),
+                    io.Audio.Input('audio', optional=True)],
+            outputs=[io.Video.Output('VIDEO'), io.String.Output('decode_info_json')])
+
+    @classmethod
+    def execute(cls, samples, vae, decode_mode='vae', trt_decoder='auto', streaming='auto', audio=None):
+        import json
+        import nodes
+        from .streaming_decode import video_latent, backend_kind, select_stream, StreamingDecodedVideo
+        from .video_output import load_video_decoder
+        vae, report = load_video_decoder(vae, decode_mode, trt_decoder, nodes.NODE_CLASS_MAPPINGS)
+        z, frames = video_latent(samples)
+        kind = backend_kind(vae.first_stage_model)
+        active = select_stream(streaming, frames, kind is not None)
+        report.update(frames=frames, streaming='stream' if active else 'off', streaming_requested=streaming)
+        if active:
+            report['temporal_method'] = 'persistent_memblocks' if kind == 'draft' else '7_token_overlap_blend'
+            video = StreamingDecodedVideo(vae, z, frames, kind, audio, report)
+        else:
+            from comfy_extras.nodes_video import CreateVideo
+            images = nodes.NODE_CLASS_MAPPINGS['VAEDecode']().decode(vae, samples)[0]
+            if len(images) != frames:
+                raise MMH3ResourceError(f'Decoder returned {len(images)} frames; expected {frames}')
+            video = DecodedVideo(CreateVideo.execute(images, 24.0, audio, 8, 'sRGB')[0], report)
+        return io.NodeOutput(video, json.dumps(report))
 
 
 class MMH3VideoUpscale(io.ComfyNode):
