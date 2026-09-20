@@ -50,7 +50,7 @@ class MMH3H3StitchUpscale(io.ComfyNode):
                 io.Combo.Input('trt_decoder', options=trt_decoder_options(), default='auto', optional=True, advanced=True),
                 io.Boolean.Input('force_unload', default=True, advanced=True, optional=True,
                                  tooltip='Unload the learned upscaler after each part to save VRAM. Disable only with enough memory.'),
-                io.String.Input("turbo_loras_json", default="", optional=True, force_input=True),
+                io.String.Input("turbo_loras_json", display_name="LoRAs", default="", optional=True, force_input=True),
                 io.Combo.Input('streaming', options=['off', 'auto', 'stream'], default='auto', optional=True,
                                tooltip='Auto streams TRT/TAEH3 delivery over 15 seconds. Off uses ordinary full decode.'),
             ],

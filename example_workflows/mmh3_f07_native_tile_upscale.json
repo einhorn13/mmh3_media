@@ -2174,7 +2174,7 @@
       ]
     },
     {
-      "title": "Turbo LoRAs",
+      "title": "Load LoRAs",
       "pos": [
         590,
         -250
@@ -2245,6 +2245,14 @@
           "widget": {
             "name": "strength_3"
           }
+        },
+        {
+          "name": "lora_entries_json",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "lora_entries_json"
+          }
         }
       ],
       "outputs": [
@@ -2263,7 +2271,8 @@
         "None",
         1.0,
         "None",
-        1.0
+        1.0,
+        ""
       ]
     }
   ],

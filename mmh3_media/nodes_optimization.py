@@ -270,8 +270,8 @@ class MMH3H3OptimizationRecord(io.ComfyNode):
 class MMH3H3TurboLoRAs(io.ComfyNode):
     @classmethod
     def define_schema(cls):
-        return io.Schema(node_id="MMH3H3TurboLoRAs", display_name="H3 Turbo LoRAs", category=CATEGORY,
-            description="Select the model-only Turbo adapters loaded by Sampling or Refine Source LoRAs. Custom replaces preset LoRAs; Extension adds to preset LoRAs; Auto preserves the preset/source. Files and actual strengths are recorded in MMH3.",
+        return io.Schema(node_id="MMH3H3TurboLoRAs", display_name="Load LoRAs", category=CATEGORY,
+            description="Add LoRA files and strengths with + Add LoRA. Sampling or Refine Source LoRAs loads the ordered model-only list. Custom replaces preset LoRAs; Extension adds to them; Auto preserves the preset/source. Actual files and strengths are recorded in MMH3.",
             inputs=[io.Combo.Input("mode", display_name="LoRA mode", options=["auto", "custom", "extension", "disabled"], default="auto", tooltip="auto: use preset/source LoRAs. custom: replace preset LoRAs with your selection. extension: keep preset LoRAs and add your selection. disabled: no preset LoRAs."),
                 io.Combo.Input("lora_1", options=["None"] + folder_paths.get_filename_list("loras"), default="None"),
                 io.Float.Input("strength_1", default=1.0, min=-10.0, max=10.0, step=0.05),
@@ -279,16 +279,16 @@ class MMH3H3TurboLoRAs(io.ComfyNode):
                 io.Float.Input("strength_2", default=1.0, min=-10.0, max=10.0, step=0.05),
                 io.Combo.Input("lora_3", options=["None"] + folder_paths.get_filename_list("loras"), default="None"),
                 io.Float.Input("strength_3", default=1.0, min=-10.0, max=10.0, step=0.05),
+                io.String.Input("lora_entries_json", default="", optional=True, multiline=True, advanced=True,
+                                tooltip="Internal ordered list managed by the Load LoRAs editor. Empty retains legacy slots."),
             ],
-            outputs=[io.String.Output("turbo_loras_json")])
+            outputs=[io.String.Output("turbo_loras_json", display_name="LoRAs")])
 
     @classmethod
-    def execute(cls, mode="auto", lora_1="None", strength_1=1.0, lora_2="None", strength_2=1.0, lora_3="None", strength_3=1.0):
-        from .turbo_loras import parse_turbo_loras
-        config = json.dumps({"version": 1, "mode": mode, "loras": [
-            {"name": name, "strength": strength}
-            for name, strength in ((lora_1, strength_1), (lora_2, strength_2), (lora_3, strength_3)) if name != "None"]})
-        parse_turbo_loras(config)
+    def execute(cls, mode="auto", lora_1="None", strength_1=1.0, lora_2="None", strength_2=1.0, lora_3="None", strength_3=1.0, lora_entries_json=""):
+        from .turbo_loras import build_lora_selection
+        config = build_lora_selection(mode, lora_entries_json,
+            ((lora_1, strength_1), (lora_2, strength_2), (lora_3, strength_3)))
         return io.NodeOutput(config)
 
 
@@ -300,7 +300,7 @@ class MMH3H3SamplingPreset(io.ComfyNode):
             node_id="MMH3H3SamplingPreset",
             display_name="H3 Sampling",
             category=CATEGORY,
-            description="Select a sampling recipe; matching Turbo/FastH3 loading and actual adapter provenance follow automatically. Connect the unpatched H3 base model. An optional H3 Turbo LoRAs block replaces or extends automatic adapters.",
+            description="Select a sampling recipe; matching Turbo/FastH3 loading and actual adapter provenance follow automatically. Connect the unpatched H3 base model. An optional Load LoRAs block replaces or extends automatic adapters.",
             inputs=[
                 io.DynamicCombo.Input(
                     "profile",
@@ -332,7 +332,7 @@ class MMH3H3SamplingPreset(io.ComfyNode):
                 ),
                 io.Combo.Input("task_family", display_name="Task family", options=["fl2va", "ref2va"], default="fl2va"),
                 io.Model.Input("model", tooltip="Unpatched H3 base. Standard/Custom pass it through; Turbo/FastH3 load their adapter. Connect MODEL to Optimizations and applied_loras_json to Pack."),
-                io.String.Input("turbo_loras_json", default="", optional=True, force_input=True, tooltip="Connect H3 Turbo LoRAs to select your own acceleration files and strengths."),
+                io.String.Input("turbo_loras_json", display_name="LoRAs", default="", optional=True, force_input=True, tooltip="Connect Load LoRAs to select your own adapter files and strengths."),
             ],
             outputs=[
                 io.String.Output("sampling_profile_json"),
@@ -387,7 +387,7 @@ class MMH3H3SamplingPreset(io.ComfyNode):
         turbo_selection = parse_turbo_loras(turbo_loras_json)
         lora_mode = turbo_lora_mode(turbo_loras_json)
         if turbo_selection is not None and preset.profile == FASTH3_PROFILE:
-            raise MMH3ResourceError("FastH3 owns its architecture adapter; keep Turbo LoRAs in auto mode")
+            raise MMH3ResourceError("FastH3 owns its architecture adapter; keep Load LoRAs in auto mode")
         if turbo_selection is not None and lora_mode != "extension":
             pass  # Explicit replacement/disable skips the preset's LoRA loader.
         elif preset.profile == FASTH3_PROFILE:

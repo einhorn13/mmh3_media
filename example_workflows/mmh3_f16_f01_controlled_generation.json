@@ -387,7 +387,8 @@
           "name": "turbo_loras_json",
           "type": "STRING",
           "link": 81,
-          "shape": 7
+          "shape": 7,
+          "label": "LoRAs"
         }
       ],
       "outputs": [
@@ -1716,7 +1717,7 @@
     {
       "id": 110,
       "type": "MMH3H3TurboLoRAs",
-      "title": "Turbo LoRAs",
+      "title": "Load LoRAs",
       "pos": [
         590,
         -250
@@ -1784,6 +1785,15 @@
           "widget": {
             "name": "strength_3"
           }
+        },
+        {
+          "name": "lora_entries_json",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "lora_entries_json"
+          },
+          "shape": 7
         }
       ],
       "outputs": [
@@ -1793,7 +1803,8 @@
           "links": [
             81
           ],
-          "slot_index": 0
+          "slot_index": 0,
+          "label": "LoRAs"
         }
       ],
       "properties": {
@@ -1806,7 +1817,8 @@
         "None",
         1.0,
         "None",
-        1.0
+        1.0,
+        ""
       ]
     }
   ],

@@ -631,7 +631,7 @@ class MMH3H3RefineLoRAs(io.ComfyNode):
                                 tooltip="Replace only source acceleration LoRAs with this model-only LoRA at strength 1."),
                 io.Combo.Input("acceleration_policy", options=["preserve", "drop"], default="preserve", optional=True, advanced=True,
                                tooltip="drop removes source Turbo/PDD/FastH3 acceleration adapters but preserves creative/style/content LoRAs. Required when changing to a trajectory-owning architecture such as VDN."),
-                io.String.Input("turbo_loras_json", default="", optional=True, force_input=True),
+                io.String.Input("turbo_loras_json", display_name="LoRAs", default="", optional=True, force_input=True),
             ],
             outputs=[
                 io.Model.Output("model"),

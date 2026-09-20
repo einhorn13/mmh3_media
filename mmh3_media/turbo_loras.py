@@ -5,6 +5,30 @@ import math
 from .errors import MMH3ResourceError
 
 
+def build_lora_selection(mode, entries_json="", legacy=()):
+    """Keep the v1 wire contract and accept old three-slot API/workflow inputs."""
+    if entries_json:
+        try:
+            entries = json.loads(entries_json)
+        except (TypeError, ValueError) as exc:
+            raise MMH3ResourceError("Invalid Load LoRAs list") from exc
+        if not isinstance(entries, list) or any(not isinstance(e, dict) for e in entries):
+            raise MMH3ResourceError("Load LoRAs requires an ordered list of entries")
+    else:
+        entries = [{"name": name, "strength": strength} for name, strength in legacy]
+    selected = []
+    for entry in entries:
+        name = entry.get('name')
+        if not isinstance(name, str) or not name.strip():
+            raise MMH3ResourceError('Select a LoRA filename')
+        if name == 'None':
+            continue  # Empty editor rows are not adapters.
+        selected.append(dict(name=name, strength=entry.get('strength', 1.0)))
+    config = json.dumps(dict(version=1, mode=mode, loras=selected))
+    parse_turbo_loras(config)
+    return config
+
+
 def turbo_lora_mode(text):
     if not text or not text.strip():
         return "auto"
