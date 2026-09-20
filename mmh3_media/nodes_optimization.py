@@ -14,10 +14,6 @@ from .model_optimizations import (
     build_model_optimization_plan,
 )
 from .sampling_presets import (
-    SAMPLING_ADAPTER_ATTACHMENT,
-    SAMPLING_PROFILE_ATTACHMENT,
-    VDN_DMD_PROFILE,
-    VDN_STAGE_B_PROFILE,
     build_sampling_preset, TAOMATE_RECIPES,
 )
 from .vdn_optimization import (
@@ -30,7 +26,6 @@ from .vdn_optimization import (
     VDN_RETAIN_BUFFER_MODES,
     apply_external_vdn,
     build_vdn_settings,
-    validate_vdn_sampling_profile,
 )
 from .sla_optimization import (
     H3_SLA_BLOCK_SIZES,

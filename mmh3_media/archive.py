@@ -36,11 +36,6 @@ MAX_PACKET_JSON = 16 * 1024 * 1024
 _LOGGER = logging.getLogger(__name__)
 
 
-def _zip_compression_for(res: dict[str, Any] | None) -> int:
-    # PNG/video/safetensors/WAV are already compressed or binary; deflate wastes CPU and can expand memory pressure.
-    return zipfile.ZIP_DEFLATED if res is None else zipfile.ZIP_STORED
-
-
 def _read_manifest(zf: zipfile.ZipFile) -> dict[str, Any]:
     try:
         info = zf.getinfo(PACKET_JSON)

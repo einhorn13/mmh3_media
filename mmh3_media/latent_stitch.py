@@ -11,7 +11,7 @@ from .continuation import h3_video_t_from_frames
 from .core import MMH3Media
 from .errors import MMH3ResourceError
 from .h3 import h3_expected_audio_t, make_nested_tensor, nested_parts, validate_h3_av_latent
-from .h3_contract import h3_latent_contract_from_resource, validate_h3_latent_contract
+from .h3_contract import h3_latent_contract_from_resource
 
 
 @dataclass(frozen=True)

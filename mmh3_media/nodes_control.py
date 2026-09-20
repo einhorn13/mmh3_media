@@ -29,14 +29,12 @@ from .control_provider import (
 )
 from .h3_fun_model_patch import (
     CURRENT_BACKEND,
-    CURRENT_PROVIDER,
     apply_current_h3_fun_patch,
     available_h3_fun_checkpoints,
     load_current_h3_fun_patch,
     current_patch_preflight_info,
 )
 from .node_support import CATEGORY, MMH3, MMH3ResourceError, InputImpl, Types, _packet, _parse_object, folder_paths, hashlib, io, json, ui
-from .util import json_dumps_canonical
 
 from .h3_resource_semantics import find_control_resource
 from .inpaint_prepare import (

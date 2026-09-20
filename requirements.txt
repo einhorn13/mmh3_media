@@ -5,4 +5,4 @@
 # ComfyUI modules (comfy, comfy_api, comfy_execution, etc.) come from the host.
 # Keep the host's compatible torch/torchaudio/CUDA stack; do not reinstall it here.
 # Optional workflow backends and model weights must be installed separately:
-# see README.md and docs/WORKFLOWS.md.
+# see README.md.

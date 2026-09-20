@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from .decoded_upscale import upscale_decoded_video
 from .node_support import CATEGORY, MMH3, MMH3ResourceError, _packet, io, ui, InputImpl, Types
-from .video_output import save_output_video, build_video_decode_graph
+from .video_output import save_output_video
 from .video_output import DECODE_MODES, trt_decoder_options, DecodedVideo
 
 

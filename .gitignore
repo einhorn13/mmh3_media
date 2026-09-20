@@ -37,12 +37,8 @@ _audit/
 /robots.md
 /trash/
 
-# Keep user-facing runtime documentation; omit internal research and handoffs.
-/docs/*
-!/docs/MMH3_MEDIA_v0.3.md
-!/docs/H3_LATENT_CONTRACT_V2.md
-!/docs/WORKFLOWS.md
-!/docs/AV_EDIT_BRIDGE_REFERENCES.md
+# Local technical references and handoffs; public usage lives in README.md.
+/docs/
 
 # Local environments, secrets and generated media/model artifacts.
 /.venv/
@@ -62,4 +58,3 @@ _audit/
 *.mkv
 *.wav
 *.mp3
-/docs/

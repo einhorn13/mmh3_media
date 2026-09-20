@@ -11,7 +11,6 @@ import torch
 from .archive import get_resource_payload
 from .control_contract import (
     H3_CONTROLNET_ALGORITHMS,
-    ControlProviderProvenance,
     H3ControlConfiguration,
     control_configuration_from_dict,
     get_control_configuration,

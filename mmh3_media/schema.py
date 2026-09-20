@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from .constants import FORMAT_NAME, REFERENCE_PURPOSES, SCHEMA_VERSION, VERIFY_MODES
+from .constants import FORMAT_NAME, SCHEMA_VERSION, VERIFY_MODES
 from .errors import MMH3FormatError, MMH3ResourceError
 from .lora_provenance import normalize_generation_loras
 from .util import safe_member_path

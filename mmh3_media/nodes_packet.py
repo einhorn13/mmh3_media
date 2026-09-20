@@ -73,37 +73,6 @@ def _validate_metadata_merge_patch(patch: dict[str, Any]) -> None:
         )
 
 
-def _generation_from_video_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
-    generation: dict[str, Any] = {}
-    dimensions = metadata.get("dimensions")
-    if isinstance(dimensions, (list, tuple)) and len(dimensions) >= 2:
-        try:
-            width, height = int(dimensions[0]), int(dimensions[1])
-            if width > 0 and height > 0:
-                generation.update(width=width, height=height)
-        except (TypeError, ValueError):
-            pass
-    try:
-        frames = int(metadata.get("frame_count"))
-        if frames > 0:
-            generation["frames"] = frames
-    except (TypeError, ValueError):
-        pass
-    try:
-        fps = float(metadata.get("fps"))
-        if fps > 0:
-            generation["fps"] = fps
-    except (TypeError, ValueError):
-        pass
-    if "fps" not in generation and "frames" in generation:
-        try:
-            duration = float(metadata.get("duration"))
-            if duration > 0:
-                generation["fps"] = generation["frames"] / duration
-        except (TypeError, ValueError):
-            pass
-    return generation
-
 class MMH3Create(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:

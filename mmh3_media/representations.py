@@ -5,7 +5,6 @@ import io
 import json
 import re
 import uuid
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable, Mapping
 
 import numpy as np

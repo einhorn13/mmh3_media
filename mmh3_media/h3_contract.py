@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-from .constants import AUDIO_LATENT_FPS, AUDIO_SAMPLE_RATE, FPS, H3_LATENT_ORIGINS, H3_TEMPORAL_GRID
+from .constants import AUDIO_LATENT_FPS, AUDIO_SAMPLE_RATE, FPS, H3_TEMPORAL_GRID
 from .errors import MMH3ResourceError
 from .h3 import H3LatentInfo, validate_h3_latent_origin
 from .util import deep_copy_json

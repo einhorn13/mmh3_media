@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from fractions import Fraction
 from pathlib import Path
 from typing import Any, Mapping
 
