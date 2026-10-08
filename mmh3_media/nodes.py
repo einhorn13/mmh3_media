@@ -5,6 +5,7 @@ import logging
 from .node_support import ComfyExtension, io, override
 from .nodes_packet import MMH3Create, MMH3Load, MMH3Save, MMH3Put, MMH3Remove, MMH3Move, MMH3Metadata, MMH3GenerationLoRAs, MMH3H3RefineLoRAs
 from .nodes_conditioning import MMH3Inspect, MMH3Preflight, MMH3ReferenceConfigure, MMH3ReferenceReport, MMH3ReferenceCacheStore, MMH3ReferenceCacheGet, MMH3ReferenceCacheVerify, MMH3ResolveReport, MMH3H3VideoReference, MMH3H3ReferenceImageResize, MMH3H3AutoCondition, MMH3H3ContinuationCondition, MMH3PackH3Result
+from .nodes_conditioning_reuse import MMH3H3ReuseConditioning, MMH3H3RememberConditioning
 from .nodes_editing import MMH3AVEditPolicy, MMH3AVProtectionRestore, MMH3TwoClipAVBridge, MMH3ReferenceSchedule, MMH3SceneReferences, MMH3ReferenceAlias, MMH3AVEditAudio, MMH3BridgeMiddle
 from .nodes_chain import MMH3ChainStart, MMH3ChainCommit, MMH3ChainValidate, MMH3ChainValidateRerollSource, MMH3VideoStitch, MMH3H3LatentStitch, MMH3Unpack
 from .nodes_upscale_pipeline import MMH3H3UpscaleSettings, MMH3H3UpscalePreflight, MMH3H3RefineScheduler, MMH3H3UpscaleAudio
@@ -12,7 +13,7 @@ from .nodes_upscale import MMH3H3LearnedUpscale, MMH3H3LatentUpscalePrepare, MMH
 from .nodes_h3 import MMH3H3AVSeparate, MMH3H3AVCombine, MMH3H3Provenance, MMH3H3Compatibility, MMH3H3ContinuationHandover, MMH3H3DecodedContinuation, MMH3H3ContinuationGuide
 from .nodes_utility import MMH3Compare, MMH3Export, MMH3Preview, _MMH3GetBase, MMH3GetLatent, MMH3GetImage, MMH3GetVideo, MMH3GetAudio, MMH3GetMask, MMH3GetJSON
 from .nodes_control import MMH3ControlConfigure, MMH3InpaintPrepare, MMH3ControlPreflight, MMH3ControlVideo, MMH3MaskedEditCondition, MMH3H3ControlApply, MMH3H3FunControl
-from .nodes_optimization import MMH3H3TurboLoRAs, MMH3H3SageAttentionPatch, MMH3H3OptimizationRecord, MMH3H3FP16AccumulationPatch, MMH3H3ModelOptimizations, MMH3H3SamplingPreset, MMH3H3Scheduler, MMH3H3SLAApply, MMH3H3VDNApply
+from .nodes_optimization import MMH3FastH3V2Model, MMH3H3TurboLoRAs, MMH3H3SageAttentionPatch, MMH3H3OptimizationRecord, MMH3H3FP16AccumulationPatch, MMH3H3ModelOptimizations, MMH3H3SamplingPreset, MMH3H3Scheduler, MMH3H3SLAApply, MMH3H3VDNApply
 from .nodes_settings import MMH3H3GenerationSettings, MMH3H3ReferenceImageSettings
 from .nodes_segments import MMH3H3SegmentPrepare, MMH3SegmentReview
 from .nodes_stitch_upscale import MMH3H3StitchUpscale, MMH3H3UpscaleAVRestore
@@ -20,6 +21,8 @@ from .nodes_delivery import MMH3VideoUpscale, MMH3SaveVideo, MMH3H3VideoDecode, 
 from .nodes_automation import MMH3AutomationAssembleChunks, MMH3AutomationAssemblyGate, MMH3AutomationAudioChunk, MMH3AutomationCheckpoint, MMH3AutomationLedger, MMH3AutomationReport, MMH3AutomationVideoChunk, MMH3BatchInputPlan, MMH3BatchNormalizeImport, MMH3BatchPreQueueEstimate, MMH3BatchStitch, MMH3H3AudioSyncProof, MMH3InteractiveAudioTimelinePlan, MMH3LongAudioTimelinePlan, MMH3LongVideoAudioSyncSettings, MMH3LongVideoChunkPlan, MMH3LongVideoUpscaleSettings, MMH3TrimAudioSamples, MMH3TrimAudioSamplesPadded
 from .upstream_backports.minimax_h3_forward_patch import BackportCompatibilityError
 from .nodes_h3 import MMH3H3AudioVAE
+from .nodes_long_video_ui import MMH3LongVideoStudio, MMH3LongVideoStudioStep, MMH3LongVideoStudioComplete
+from .nodes_workflow import MMH3H3TaskModel, MMH3Generate, MMH3KeyframePrepare, MMH3PacketKeyframes, MMH3ReferenceCards, MMH3H3Refine, MMH3RefineMaskRestore
 from .upstream_backports.minimax_h3_fun_pr15860 import ensure_minimax_h3_fun_backport
 
 
@@ -30,6 +33,8 @@ class MMH3Extension(ComfyExtension):
     @override
     async def get_node_list(self) -> list[type[io.ComfyNode]]:
         node_list = [
+            MMH3H3TaskModel, MMH3Generate, MMH3KeyframePrepare, MMH3PacketKeyframes, MMH3ReferenceCards, MMH3H3Refine, MMH3RefineMaskRestore,
+            MMH3LongVideoStudio, MMH3LongVideoStudioStep, MMH3LongVideoStudioComplete,
             MMH3H3AudioVAE,
             MMH3AVEditPolicy,
             MMH3AVProtectionRestore,
@@ -79,6 +84,8 @@ class MMH3Extension(ComfyExtension):
             MMH3ResolveReport,
             MMH3H3VideoReference,
             MMH3H3ReferenceImageResize,
+            MMH3H3ReuseConditioning,
+            MMH3H3RememberConditioning,
             MMH3H3AutoCondition,
             MMH3H3ContinuationCondition,
             MMH3PackH3Result,
@@ -123,7 +130,7 @@ class MMH3Extension(ComfyExtension):
             MMH3H3ExternalTileFinalize,
             MMH3H3SLAApply,
             MMH3H3VDNApply,
-            MMH3H3TurboLoRAs,
+            MMH3FastH3V2Model, MMH3H3TurboLoRAs,
             MMH3H3SamplingPreset, MMH3H3Scheduler,
             MMH3H3SageAttentionPatch,
             MMH3H3OptimizationRecord,

@@ -1,19 +1,19 @@
 {
   "id": "9fa8069a-b21f-5a1e-9561-5cdb552d2912",
   "revision": 0,
-  "last_node_id": 39,
-  "last_link_id": 64,
+  "last_node_id": 41,
+  "last_link_id": 67,
   "nodes": [
     {
       "id": 1,
       "type": "MMH3Create",
       "pos": [
         90,
-        110
+        125
       ],
       "size": [
-        360,
-        430
+        380,
+        500
       ],
       "flags": {},
       "order": 0,
@@ -64,12 +64,14 @@
         {
           "name": "first_frame",
           "type": "IMAGE",
-          "link": null
+          "link": null,
+          "label": "First frame"
         },
         {
           "name": "last_frame",
           "type": "IMAGE",
-          "link": null
+          "link": null,
+          "label": "Last frame"
         }
       ],
       "outputs": [
@@ -77,7 +79,7 @@
           "name": "packet",
           "type": "MMH3_MEDIA",
           "links": [
-            50
+            65
           ]
         }
       ],
@@ -98,12 +100,12 @@
       "type": "CLIPLoader",
       "title": "Text Encoder",
       "pos": [
-        590,
-        110
+        660,
+        125
       ],
       "size": [
-        360,
-        160
+        380,
+        190
       ],
       "flags": {},
       "order": 1,
@@ -156,11 +158,11 @@
       "id": 4,
       "type": "VAELoader",
       "pos": [
-        590,
-        340
+        660,
+        390
       ],
       "size": [
-        360,
+        380,
         120
       ],
       "flags": {},
@@ -198,11 +200,11 @@
       "id": 5,
       "type": "VAELoader",
       "pos": [
-        590,
-        530
+        660,
+        585
       ],
       "size": [
-        360,
+        380,
         120
       ],
       "flags": {},
@@ -241,12 +243,12 @@
       "type": "UNETLoader",
       "title": "Diffusion Model",
       "pos": [
-        590,
-        720
+        660,
+        780
       ],
       "size": [
-        360,
-        136
+        380,
+        155
       ],
       "flags": {},
       "order": 6,
@@ -291,11 +293,11 @@
       "type": "MMH3H3SamplingPreset",
       "title": "Sampling",
       "pos": [
-        590,
-        926
+        660,
+        1010
       ],
       "size": [
-        360,
+        380,
         260
       ],
       "flags": {},
@@ -315,6 +317,9 @@
           "name": "task_family",
           "type": "COMBO",
           "link": 54,
+          "widget": {
+            "name": "task_family"
+          },
           "label": "Task family"
         },
         {
@@ -326,7 +331,6 @@
           "name": "turbo_loras_json",
           "type": "STRING",
           "link": 64,
-          "shape": 7,
           "label": "LoRAs"
         }
       ],
@@ -401,11 +405,11 @@
       "type": "MMH3H3ReferenceImageSettings",
       "title": "Reference Image Size",
       "pos": [
-        1090,
-        858
+        1230,
+        125
       ],
       "size": [
-        360,
+        380,
         180
       ],
       "flags": {},
@@ -415,7 +419,7 @@
         {
           "name": "packet",
           "type": "MMH3_MEDIA",
-          "link": 50
+          "link": 67
         },
         {
           "name": "mode",
@@ -447,7 +451,7 @@
         {
           "name": "settings_json",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -463,11 +467,11 @@
       "type": "MMH3H3GenerationSettings",
       "title": "Video Settings",
       "pos": [
-        1090,
-        1118
+        1230,
+        380
       ],
       "size": [
-        360,
+        380,
         210
       ],
       "flags": {},
@@ -558,11 +562,11 @@
       "type": "MMH3H3AutoCondition",
       "title": "Prepare H3 Generation",
       "pos": [
-        1090,
-        1552
+        1800,
+        125
       ],
       "size": [
-        360,
+        380,
         330
       ],
       "flags": {},
@@ -604,12 +608,6 @@
           "label": "Video VAE"
         },
         {
-          "name": "audio_vae",
-          "type": "VAE",
-          "link": 8,
-          "label": "Audio VAE"
-        },
-        {
           "name": "width_override",
           "type": "INT",
           "link": 57,
@@ -626,6 +624,12 @@
           "type": "INT",
           "link": 59,
           "label": "Frames"
+        },
+        {
+          "name": "audio_vae",
+          "type": "VAE",
+          "link": 8,
+          "label": "Audio VAE"
         }
       ],
       "outputs": [
@@ -697,14 +701,14 @@
     {
       "id": 17,
       "type": "MMH3SaveVideo",
-      "title": "Save Video · encode once",
+      "title": "Save Video Â· encode once",
       "pos": [
-        3090,
-        110
+        2370,
+        125
       ],
       "size": [
-        360,
-        420
+        380,
+        490
       ],
       "flags": {},
       "order": 24,
@@ -773,11 +777,11 @@
       "type": "MMH3PackH3Result",
       "title": "Build MMH3 Result",
       "pos": [
-        3090,
-        800.0
+        1800,
+        530
       ],
       "size": [
-        360,
+        380,
         484
       ],
       "flags": {
@@ -908,12 +912,12 @@
         {
           "name": "summary",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "result_info_json",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -937,12 +941,12 @@
       "type": "MMH3Save",
       "title": "Save MMH3",
       "pos": [
-        3090,
-        1354.0
+        2370,
+        690
       ],
       "size": [
         380,
-        470
+        490
       ],
       "flags": {},
       "order": 26,
@@ -959,7 +963,8 @@
           "link": null,
           "widget": {
             "name": "filename_prefix"
-          }
+          },
+          "label": "Filename"
         },
         {
           "name": "target",
@@ -982,12 +987,12 @@
         {
           "name": "packet",
           "type": "MMH3_MEDIA",
-          "links": null
+          "links": []
         },
         {
           "name": "path",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -1003,11 +1008,11 @@
       "id": 33,
       "type": "b2844441-2c76-5c42-b760-f7621cfa0188",
       "pos": [
-        2090,
-        110
+        1800,
+        1089
       ],
       "size": [
-        360,
+        380,
         474
       ],
       "flags": {},
@@ -1120,12 +1125,12 @@
       "id": 34,
       "type": "MarkdownNote",
       "pos": [
-        590,
-        2175.0
+        2370,
+        1255
       ],
       "size": [
-        360,
-        40
+        380,
+        340
       ],
       "flags": {
         "collapsed": true
@@ -1147,12 +1152,12 @@
       "type": "MMH3H3ModelOptimizations",
       "title": "Optimizations",
       "pos": [
-        590,
-        1336.0
+        660,
+        1345
       ],
       "size": [
-        360,
-        198
+        380,
+        260
       ],
       "flags": {},
       "order": 27,
@@ -1187,7 +1192,8 @@
           "link": null,
           "widget": {
             "name": "sage_attention"
-          }
+          },
+          "label": "SageAttention (KJ)"
         },
         {
           "name": "sage_allow_compile",
@@ -1195,6 +1201,15 @@
           "link": null,
           "widget": {
             "name": "sage_allow_compile"
+          },
+          "label": "Sage allow compile"
+        },
+        {
+          "name": "sampling_profile_json",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "sampling_profile_json"
           }
         }
       ],
@@ -1221,7 +1236,8 @@
         "Default",
         "Default",
         "disabled",
-        false
+        false,
+        ""
       ]
     },
     {
@@ -1229,12 +1245,12 @@
       "type": "MMH3H3TurboLoRAs",
       "title": "Load LoRAs",
       "pos": [
-        590,
-        -250
+        660,
+        1680
       ],
       "size": [
         400,
-        270
+        365
       ],
       "flags": {},
       "order": 0,
@@ -1249,61 +1265,20 @@
           }
         },
         {
-          "name": "lora_1",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "lora_1"
-          }
-        },
-        {
-          "name": "strength_1",
-          "type": "FLOAT",
-          "link": null,
-          "widget": {
-            "name": "strength_1"
-          }
-        },
-        {
-          "name": "lora_2",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "lora_2"
-          }
-        },
-        {
-          "name": "strength_2",
-          "type": "FLOAT",
-          "link": null,
-          "widget": {
-            "name": "strength_2"
-          }
-        },
-        {
-          "name": "lora_3",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "lora_3"
-          }
-        },
-        {
-          "name": "strength_3",
-          "type": "FLOAT",
-          "link": null,
-          "widget": {
-            "name": "strength_3"
-          }
-        },
-        {
           "name": "lora_entries_json",
           "type": "STRING",
           "link": null,
           "widget": {
             "name": "lora_entries_json"
-          },
-          "shape": 7
+          }
+        },
+        {
+          "name": "lora_catalog",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "lora_catalog"
+          }
         }
       ],
       "outputs": [
@@ -1312,9 +1287,7 @@
           "type": "STRING",
           "links": [
             64
-          ],
-          "slot_index": 0,
-          "label": "LoRAs"
+          ]
         }
       ],
       "properties": {
@@ -1322,14 +1295,180 @@
       },
       "widgets_values": [
         "auto",
-        "None",
-        1.0,
-        "None",
-        1.0,
-        "None",
-        1.0,
-        ""
+        "[]",
+        "None"
       ]
+    },
+    {
+      "id": 40,
+      "type": "LoadImage",
+      "pos": [
+        90,
+        700
+      ],
+      "size": [
+        380,
+        490
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "image"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            66
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        ""
+      ],
+      "title": "Character reference"
+    },
+    {
+      "id": 41,
+      "type": "MMH3Put",
+      "inputs": [
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "link": 65
+        },
+        {
+          "name": "resource",
+          "type": "*",
+          "link": 66
+        },
+        {
+          "name": "role",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "role"
+          }
+        },
+        {
+          "name": "order",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "order"
+          }
+        },
+        {
+          "name": "mode",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "mode"
+          }
+        },
+        {
+          "name": "primary",
+          "type": "BOOLEAN",
+          "link": null,
+          "widget": {
+            "name": "primary"
+          }
+        },
+        {
+          "name": "resource_id",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "resource_id"
+          }
+        },
+        {
+          "name": "name",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "name"
+          }
+        },
+        {
+          "name": "tags",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "tags"
+          }
+        },
+        {
+          "name": "descriptor_json",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "descriptor_json"
+          }
+        },
+        {
+          "name": "extensions_json",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "extensions_json"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "links": [
+            67
+          ]
+        },
+        {
+          "name": "resource_id",
+          "type": "STRING",
+          "links": []
+        }
+      ],
+      "widgets_values": [
+        "reference",
+        0,
+        "upsert",
+        false,
+        "",
+        "Character",
+        "identity",
+        "{}",
+        "{\"minimax_h3\":{\"reference\":{\"contract_version\":1,\"enabled\":true,\"purposes\":[\"identity\"]}}}"
+      ],
+      "pos": [
+        90,
+        1265
+      ],
+      "size": [
+        380,
+        470
+      ],
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "MMH3Put"
+      }
     }
   ],
   "links": [
@@ -1362,7 +1501,7 @@
       5,
       0,
       6,
-      5,
+      8,
       "VAE"
     ],
     [
@@ -1550,14 +1689,6 @@
       "MODEL"
     ],
     [
-      50,
-      1,
-      0,
-      37,
-      0,
-      "MMH3_MEDIA"
-    ],
-    [
       54,
       6,
       7,
@@ -1586,7 +1717,7 @@
       31,
       1,
       6,
-      6,
+      5,
       "INT"
     ],
     [
@@ -1594,7 +1725,7 @@
       31,
       2,
       6,
-      7,
+      6,
       "INT"
     ],
     [
@@ -1602,7 +1733,7 @@
       31,
       3,
       6,
-      8,
+      7,
       "INT"
     ],
     [
@@ -1636,17 +1767,41 @@
       30,
       3,
       "STRING"
+    ],
+    [
+      65,
+      1,
+      0,
+      41,
+      0,
+      "MMH3_MEDIA"
+    ],
+    [
+      66,
+      40,
+      0,
+      41,
+      1,
+      "*"
+    ],
+    [
+      67,
+      41,
+      0,
+      37,
+      0,
+      "MMH3_MEDIA"
     ]
   ],
   "groups": [
     {
       "id": 1,
-      "title": "01 · INPUTS / ASSETS",
+      "title": "01 · SOURCE / REFERENCES",
       "bounding": [
-        55,
-        55,
+        65,
+        65,
         430,
-        1970.0
+        1745
       ],
       "color": "#355070",
       "font_size": 24,
@@ -1654,12 +1809,12 @@
     },
     {
       "id": 2,
-      "title": "02 · MODEL / ENCODERS / OPTIMIZATION",
+      "title": "02 · MODELS / SAMPLING",
       "bounding": [
-        555,
-        55,
-        430,
-        2078.0
+        635,
+        65,
+        450,
+        2055
       ],
       "color": "#4f5d75",
       "font_size": 24,
@@ -1667,40 +1822,40 @@
     },
     {
       "id": 3,
-      "title": "03 · SETTINGS / CONDITIONING / CONTROL",
+      "title": "03 · SETTINGS / PLAN",
       "bounding": [
-        1055,
-        55,
+        1205,
+        65,
         430,
-        2040
+        600
       ],
       "color": "#6d597a",
       "font_size": 24,
       "flags": {}
     },
     {
-      "id": 5,
-      "title": "04 · H3 SAMPLING + AV DECODE",
+      "id": 4,
+      "title": "04 · GENERATION / EDIT",
       "bounding": [
-        2055,
-        55,
+        1775,
+        65,
         430,
-        1156
+        1573
       ],
-      "color": "#9c6644",
+      "color": "#8d6a4a",
       "font_size": 24,
       "flags": {}
     },
     {
-      "id": 7,
-      "title": "05 · PREVIEW / PACK / SAVE",
+      "id": 5,
+      "title": "05 · REVIEW / SAVE",
       "bounding": [
-        3055,
-        55,
+        2345,
+        65,
         430,
-        1804.0
+        1605
       ],
-      "color": "#2a9d8f",
+      "color": "#52796f",
       "font_size": 24,
       "flags": {}
     }

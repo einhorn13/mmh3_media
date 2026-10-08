@@ -9,11 +9,11 @@
       "type": "MMH3Create",
       "pos": [
         90,
-        110
+        125
       ],
       "size": [
-        360,
-        430
+        380,
+        500
       ],
       "flags": {},
       "order": 0,
@@ -64,12 +64,14 @@
         {
           "name": "first_frame",
           "type": "IMAGE",
-          "link": null
+          "link": null,
+          "label": "First frame"
         },
         {
           "name": "last_frame",
           "type": "IMAGE",
-          "link": null
+          "link": null,
+          "label": "Last frame"
         }
       ],
       "outputs": [
@@ -97,12 +99,12 @@
       "id": 2,
       "type": "MMH3Metadata",
       "pos": [
-        90,
-        680.0
+        660,
+        125
       ],
       "size": [
-        360,
-        260
+        380,
+        295
       ],
       "flags": {},
       "order": 1,
@@ -187,12 +189,12 @@
       "id": 3,
       "type": "MMH3Preflight",
       "pos": [
-        1090,
-        110
+        660,
+        495
       ],
       "size": [
-        360,
-        364
+        380,
+        400
       ],
       "flags": {},
       "order": 2,
@@ -280,17 +282,17 @@
         {
           "name": "ready",
           "type": "BOOLEAN",
-          "links": null
+          "links": []
         },
         {
           "name": "summary",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "info_json",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -330,12 +332,12 @@
   "groups": [
     {
       "id": 1,
-      "title": "01 · PACKET INPUT",
+      "title": "01 · SOURCE / REFERENCES",
       "bounding": [
-        55,
-        55,
+        65,
+        65,
         430,
-        1030.0
+        635
       ],
       "color": "#355070",
       "font_size": 24,
@@ -343,12 +345,12 @@
     },
     {
       "id": 3,
-      "title": "02 · VALIDATION / REPORT",
+      "title": "03 · SETTINGS / PLAN",
       "bounding": [
-        1055,
-        55,
+        635,
+        65,
         430,
-        454
+        905
       ],
       "color": "#6d597a",
       "font_size": 24,

@@ -4,16 +4,19 @@
 
 Custom nodes and ready-to-use workflows for **MiniMax H3** in ComfyUI — from your first prompt to a finished sequence.
 
-[Get started](#installation) · [First video](#your-first-video) · [Workflows](#choosing-a-workflow) · [Advanced controls](#advanced-controls) · [FAQ](#saving-and-faq)
+[Get started](#installation) · [First video](#your-first-video) · [Workflows](#choosing-a-workflow) · [Long videos](#long-music-and-performance-videos) · [Advanced controls](#advanced-controls) · [FAQ](#saving-and-faq)
 
 ## What you can do
 
 - **Generate** from text, first/last frames, or image, video and audio references.
 - **Build a sequence** with continuations, alternate takes and Draft → Accept review.
+- **Make long music and performance videos** from an identity image and a full song, scene by scene.
 - **Refine the result** with upscaling, masks, independent audio/video editing and clip bridges.
 - **Return to your work** with `.mmh3` project files that keep media, settings, references and saved generation state (latents).
 
 **A typical workflow:** Generate → Save `.mmh3` → Continue & review → Stitch → Export video
+
+**Six primary workflows:** [Generate](example_workflows/primary/01_generate.json) · [Continue](example_workflows/primary/02_continue.json) · [Edit](example_workflows/primary/03_edit.json) · [Refine](example_workflows/primary/04_refine.json) · [Assemble](example_workflows/primary/05_assemble.json) · [Studio](example_workflows/primary/06_studio.json). Start here; the detailed F01–F18 graphs remain compatible advanced examples. See the [primary workflow guide](example_workflows/primary/README.md).
 
 > Save a video for playback and sharing. Keep the `.mmh3` file to continue or edit the generation later.
 
@@ -57,32 +60,29 @@ Run `git pull --ff-only` inside the installed node folder, then restart ComfyUI,
 
 ## Your first video
 
-1. Drag [**F01 · Text and Frames**](example_workflows/mmh3_f01_fl2va.json) onto the ComfyUI canvas.
-2. Select your models in the loaders.
+1. Drag [**01 · Generate**](example_workflows/primary/01_generate.json) onto the ComfyUI canvas.
+2. Select the FL2VA/Ref2VA checkpoints, text encoder and AV VAEs in **H3 Generate**. Only the matching task checkpoint is loaded.
 3. In **MMH3 Create**, choose **Video (optional frames)** and describe the scene, motion and sound.
 4. Leave frame inputs empty for text-to-video, or connect a first frame, a last frame, or both.
 5. Set resolution and duration in **H3 Video Settings**. Start with a short clip at a modest resolution.
 6. Run the workflow. Save the video to share it and the `.mmh3` to keep working.
 
-**H3 Sampling** defaults to **4-step Turbo** and loads its matching LoRA automatically. Do not apply it twice. If you do not have that LoRA, choose **Standard (20 steps)**.
+**H3 Generate** starts with **Standard - 20 steps**. The optional Turbo presets load their matching LoRA automatically. Select Turbo only when the adapter is installed.
 
-Want to use references? Open [**F01 · References**](example_workflows/mmh3_f01_ref2va.json), select the Ref2VA model and connect images, video or audio. Reference inputs expand as you connect them.
+Want to use references? Choose **References** in Create in the same workflow and connect images, video or audio. Reference inputs expand as you connect them. Queue once to populate **Reference Cards**, then assign aliases/roles and preview the native prompt labels. **Prepare Packet Keyframes** provides crop, contain or stretch previews for first/last frames.
 
 ## Choosing a workflow
 
-Open these JSON files on the ComfyUI canvas. Start with F01, then choose the next step for your project.
+Open one of these six primary JSON files on the ComfyUI canvas. Detailed graphs remain available below for advanced controls.
 
 | I want to… | Open |
 | --- | --- |
-| Generate a video | F01 · [Text and Frames](example_workflows/mmh3_f01_fl2va.json) / [References](example_workflows/mmh3_f01_ref2va.json) |
-| Continue a saved generation | F02 · [Continuation](example_workflows/mmh3_f02_continuation.json) / [With References](example_workflows/mmh3_f02_ref2va_continuation.json) |
-| Continue a video without saved latents | F03 · [Decoded Video Continuation](example_workflows/mmh3_f03_decoded_continuation.json) |
-| Build a scene and compare takes | F04 · [Segment Workflow](example_workflows/mmh3_f04_chain_append.json) |
-| Join independent clips | F05 · [Video Stitch](example_workflows/mmh3_f05_stitch.json) |
-| Assemble a continuation chain | F05 · [Latent Stitch](example_workflows/mmh3_f05_latent_stitch.json) / [Upscale + Stitch](example_workflows/mmh3_f05_latent_stitch_upscale.json) |
-| Upscale a saved result | F07 · [Latent Upscale](example_workflows/mmh3_f07_latent_upscale.json) / [Native Tile Upscale](example_workflows/mmh3_f07_native_tile_upscale.json) |
-| Edit video and audio separately | [Independent AV Edit](example_workflows/mmh3_independent_av_edit.json) |
-| Generate a transition between two clips | [Two-Clip AV Bridge](example_workflows/mmh3_two_clip_av_bridge.json) |
+| Generate from text, keyframes or references | [01 · Generate](example_workflows/primary/01_generate.json) |
+| Continue a saved generation and compare takes | [02 · Continue](example_workflows/primary/02_continue.json) |
+| Edit video and audio separately | [03 · Edit](example_workflows/primary/03_edit.json) |
+| Refine full frames, tiles or masked regions | [04 · Refine](example_workflows/primary/04_refine.json) |
+| Join independent clips or assemble a batch | [05 · Assemble](example_workflows/primary/05_assemble.json) |
+| Make a long music/performance video | [06 · Studio](example_workflows/primary/06_studio.json) |
 
 **Choose the right stitch:** Video Stitch joins independent clips with Cut, Crossfade or Auto Seamless. Latent Stitch needs a compatible, unbroken H3 continuation chain in its original order; it removes repeated context and decodes once. Use matching video/audio overlap and disable audio feather for latent assembly.
 
@@ -93,6 +93,12 @@ F03 re-encodes decoded video, so the handover is not lossless. Missing or short 
 
 | Use case | Workflow |
 | --- | --- |
+| Customize task-specific generation graphs | F01 · [Text and Frames](example_workflows/mmh3_f01_fl2va.json) / [References](example_workflows/mmh3_f01_ref2va.json) |
+| Continue with explicit task-specific loaders | F02 · [Continuation](example_workflows/mmh3_f02_continuation.json) / [With References](example_workflows/mmh3_f02_ref2va_continuation.json) |
+| Continue decoded video without saved latents | F03 · [Decoded Video Continuation](example_workflows/mmh3_f03_decoded_continuation.json) |
+| Stitch a compatible continuation chain | F05 · [Latent Stitch](example_workflows/mmh3_f05_latent_stitch.json) / [Upscale + Stitch](example_workflows/mmh3_f05_latent_stitch_upscale.json) |
+| Customize refinement internals | F07 · [Latent Upscale](example_workflows/mmh3_f07_latent_upscale.json) / [Native Tile Upscale](example_workflows/mmh3_f07_native_tile_upscale.json) |
+| Generate a transition between two clips | [Two-Clip AV Bridge](example_workflows/mmh3_two_clip_av_bridge.json) |
 | Organize references and aliases | F13 · [Reference Management](example_workflows/mmh3_f13_reference_management.json) |
 | Check input compatibility | F15 · [Preflight](example_workflows/mmh3_f15_preflight.json) |
 | Generate with structural controls | F16 · [Controlled Generation](example_workflows/mmh3_f16_f01_controlled_generation.json) / [Pose + Ref2VA](example_workflows/mmh3_f16_f01_ref2va_pose_generation.json) |
@@ -101,7 +107,7 @@ F03 re-encodes decoded video, so the handover is not lossless. Missing or short 
 | Assemble batches or long videos | F18 · [Batch Stitch](example_workflows/mmh3_f18_batch_stitch.json) / [Long Video Lipsync](example_workflows/mmh3_f18_long_video_lipsync.json) / [Unified Assembly](example_workflows/mmh3_f18_long_video_assembly.json) |
 | Try progressive generation/upscaling | F07 · [Progressive Handoff](example_workflows/mmh3_f07_progressive_handoff.json) — experimental |
 
-F16 needs a compatible H3 Fun runtime and matching control models; these examples still need runtime validation. F18 uses separate **setup → execution → assembly** stages; follow the [automation guide](automation/workflows/README.md) for API templates, audio-driven generation and interactive music-video workflows.
+F16 needs a compatible H3 Fun runtime and matching control models; these examples still need runtime validation. The three F16 refine graphs (Full Frame, Tile Refine, Masked Refine) still use an older upscaler node schema and may need their upscaler node reconfigured for the current Upscaler release. F18 stage workflows use separate **setup → execution → assembly** stages; follow the [automation guide](automation/workflows/README.md) for API templates, audio-driven generation and the command-line runner.
 
 Progressive Handoff requires [Flow-Aligned Regenerate](https://github.com/xmarre/MiniMax-H3-Flow-Aligned-Regenerate) and [Upscaler-Plus](https://github.com/xmarre/Comfyui_Minimax_h3_latent_Upscaler-Plus).
 
@@ -119,7 +125,30 @@ The duration includes repeated context from the previous segment. Check the **ge
 
 **Project Manager** brings saved segments and candidates together. Open it from Load, Save or Segment Review to compare takes, accept candidates, prepare replacements and preview the final assembly. **Assemble and save MP4** exports the accepted revisions; each segment needs decoded video/audio and recorded continuation timing.
 
+Select/Reject and candidate registration use a small atomic `current.index.json` beside the accepted archive. Existing projects migrate automatically on their first review edit. Keep the whole managed project directory when moving or backing up an active project. Acceptance embeds the latest review state in the new `.mmh3`; an interrupted publication cannot apply an old index over a newer accepted head. Use **Save portable .mmh3 snapshot** to capture the current head and review metadata without waiting for another acceptance. Other segment/candidate archives remain separate project assets.
+
+The visual timeline shows accepted duration after continuation context removal, revision/status, thumbnails and zoom. Missing timing is shown explicitly; attach saved segment archives to restore it. Click a segment to see only its takes, inspect prompt/seed, filter rejected or stale history, and pin two takes for A/B preview. Selection and acceptance remain separate actions, with replacement impact shown before publication.
+
+**Faster rerolls:** Prepare H3 Generation and Prepare H3 Continuation keep the prepared prompt/reference conditioning in RAM (up to 256 MiB, four entries). Changing only the seed skips re-encoding; any change to the prompt, size, references, models or patches prepares it again. Nothing is written to archives or disk. Use **Clear conditioning memory** in Project Manager or restart ComfyUI to release it.
+
 Use **New scene** or **Reanchor** for a fresh shot, then Video Stitch to combine independent shots. Reanchor needs a first-frame image and the FL2VA model. Rerolling that shot needs the anchor image again.
+
+## Long music and performance videos
+
+Open [**06 · Studio**](example_workflows/primary/06_studio.json). It runs the whole long-video process in one graph: identity image + full master song → scenes → take review → final video.
+
+1. Upload the identity image and the full master audio, select the Ref2VA models and enter a project name.
+2. Set the resolution, steps and scene length. Describe the performance in the prompt; `<Picture 1>` is the image and `@master_audio` is the current song slice.
+3. Choose **Generate next** and run. Review the preview, then **Accept take**, or **Reroll** for another take of the same scene. Pick an earlier take in the dropdown before accepting it.
+4. Repeat until every scene is accepted, then choose **Assemble**.
+
+The project is saved under `output/<project>`: sources, render settings, takes and the ledger. Reuse the name to resume; choose a new name for different inputs or settings. Audio is resampled to 32 kHz once for generation; the final video uses the original master. After a cancelled or failed run use **Recover** before retrying. **Refresh** rereads the saved state.
+
+**Open Project Manager** shows Studio and continuation projects in one selector. Edit unfinished scenes' prompts and active reference cards, or change durations in a never-rendered pending suffix. Saving a scene records a settings revision; every generated take keeps its own source snapshot. Accepted scenes stay locked, and duration changes retain exact master-audio ownership. Connect an optional References packet to Studio before creating a project to freeze a reusable reference library. See the [primary workflow guide](example_workflows/primary/README.md).
+
+For an unattended pass on a new project, turn `review_takes` off and `auto_continue` on before the first run. Scenes are independent shots that share identity and audio timing; use the continuation workflows when one visually continuous take must span several generations.
+
+Batch stitching, video-reference lipsync and the command-line runner (pause, cancel, recovery) are described in the [automation guide](automation/workflows/README.md).
 
 ## Advanced controls
 
@@ -180,7 +209,17 @@ Creative source LoRAs retain their order during refinement. FastH3 uses its own 
 
 **H3 Optimizations** separates Attention, **SageAttention (KJ)** and **FP16 accumulation**. Default attention uses the host settings. Sage needs ComfyUI-KJNodes and its dependencies; it supplies dense attention without replacing sparse kernels. H3 SLA requires its external backend; Sage composition uses SLA's `auto` dense backend.
 
-**VDN-H3 is experimental.** Install `Saganaki22/ComfyUI-VDN-H3`, place its compatible stages in `models/vdn/`, and match FL2VA/Ref2VA with the DMD 8-step or Stage-B 50-step preset. Do not stack ordinary Turbo/FastH3 adapters, Sol or SLA with VDN. Upscale + Stitch does not support VDN. Custom LoRAs replace VDN's built-in Turbo adapter; extension mode retains it.
+**VDN-H3 is experimental.** Install [ComfyUI-VDN-H3-Plus](https://github.com/xmarre/ComfyUI-VDN-H3-Plus), place its compatible stages in `models/vdn/`, and match FL2VA/Ref2VA with the DMD 8-step or Stage-B 50-step preset. Do not stack ordinary Turbo/FastH3 adapters, Sol or SLA with VDN. Upscale + Stitch does not support VDN. Custom LoRAs replace VDN's built-in Turbo adapter; extension mode retains it. Branch placement uses `auto`, `stream` or `resident`; select `resident` again in workflows saved with the removed `cache_gpu` option.
+
+Compatibility checked on 2026-10-08: Load LoRAs filters installed filenames by case-insensitive substring; typing a filter does not change the saved selection until a result is chosen. H3 SLA accepts the current additive provider schema and block size 32, while explicitly retaining the Triton engine with experimental QK quantization and tail correction off. Provider settings are recorded with the execution profile. Existing MMH3 sampling defaults are preserved.
+
+[ComfyUI-SolAttn_triton is deprecated upstream](https://github.com/kijai/ComfyUI-SolAttn_triton). Its `Sol (Kijai)` integration has been removed; use `Sol (ComfyUI)`. Load LoRAs now uses only the ordered list editor, with searchable filenames and no fixed legacy slots. Re-import the updated shipped workflows when migrating old graphs.
+
+The [LightX2V model repository](https://huggingface.co/lightx2v/Minimax-h3-Turbo/tree/main) now also lists FL2VA 4-step v1.2 768p and Ref2VA 8-step v1.0 768p adapters. These are available through Custom/Extension LoRA selection; automatic presets still use their existing recipes until the new artifacts' sampling schedules have been verified.
+
+**FastH3 V2:** put a complete [Comfy checkpoint](https://huggingface.co/FastVideo/FastVideo-FastH3-Comfy) (`fastvideo_fasth3_8step_v2_pruned_bf16.safetensors` or the INT8 ConvRot variant) in `models/diffusion_models`. In Generate, select it as the FL2VA checkpoint and choose `FastH3 V2 - 8 steps`. Use text-to-audio-video without reference conditioning. In advanced graphs, connect **H3 FastH3 V2 Model → H3 Sampling (FastH3 V2)** and leave attention in Optimizations at Default: Sampling automatically installs native VSA and checks all 50 gate blocks. Keep Load LoRAs in auto mode.
+
+This follows the [native Comfy-Org recipe](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/video_fastvideo_fasth3_t2v.json): 8 steps, video/audio shifts 10/3, `res_multistep`, `simple`, VSA keep 10%, start 0.2 and minimum 12288 tokens. The native scheduler recipe is distinct from FastVideo's original timestep ladder. Ref2VA, ordinary Turbo adapters and the experimental dense FastH3 preset cannot substitute for this checkpoint. Schema and CPU integration checks do not establish GPU quality or speed; the profile remains marked `runtime_validated=false`.
 
 **TaoMate presets are experimental:** FL2VA 3/6-step and Ref2VA 8-step. They need `taomate_3step_lora_avg_rank_19_bf16.safetensors`; the 6-step preset also uses `Motion_BoosterV2.safetensors`. Keep **H3 Scheduler**, the preset step count and `denoise=1` for fixed schedules. Automatic upscale/refine schedule derivation rejects explicit-sigma source trajectories. No quality or speed benchmark is claimed.
 
@@ -251,5 +290,20 @@ Aliases bind to resource IDs and content revisions. Reconfigure an alias when re
 | Inputs look wrong after an update? | Restart ComfyUI, refresh the browser and reopen the current example JSON. |
 | Can I open old archives? | The package reads schema-2 `.mmh3` archives. Pre-v0.3 archives are not converted automatically. |
 | How do I remove a resource? | Use **MMH3 Remove**, then save the returned packet. The original archive stays unchanged. |
+| Which video formats can I export? | **MMH3 Save Video** writes MP4, MKV or WebM with codec `auto`, `h264` or `av1`. Format `auto` gives MP4, or WebM for AV1. |
+| How do I free RAM after many rerolls? | Use **Clear conditioning memory** in Project Manager, or restart ComfyUI. |
 
-See all [canvas examples](example_workflows), the [F18 automation guide](automation/workflows/README.md), or [AGENTS.md](AGENTS.md) for code ownership and development checks.
+See all [canvas examples](example_workflows) and the [F18 automation guide](automation/workflows/README.md).
+
+## Development
+
+The package has no extra pip dependencies; it uses the Python environment, PyTorch and PyAV of your ComfyUI installation. Basic checks for a source checkout:
+
+```console
+python -m compileall -q mmh3_media
+python -c "import json,pathlib; [json.loads(p.read_text(encoding='utf-8')) for d in ('example_workflows','automation/workflows','schema') for p in pathlib.Path(d).glob('*.json')]"
+```
+
+Archives follow the schema in [schema/mmh3_media.schema.json](schema/mmh3_media.schema.json). Bug reports are most useful with the ComfyUI version, the workflow JSON and the first error from the console.
+
+Licensed under the terms in [LICENSE](LICENSE).

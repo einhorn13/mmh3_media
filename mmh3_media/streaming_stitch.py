@@ -19,6 +19,7 @@ from .constants import AUDIO_SAMPLE_RATE, FPS
 from .core import MMH3Media
 from .errors import MMH3ResourceError
 from .stitch import StitchPlan, _normalize_audio_length, pcm_boundary
+from .pcm_storage import allocate_pcm, copy_pcm, pcm_blocks, PCM_BLOCK_SAMPLES
 
 
 @dataclass(frozen=True)
@@ -428,11 +429,17 @@ def _streaming_audio_plan(
         raise MMH3ResourceError("Streaming crossfade requires overlap_frames>=1")
     tolerance = math.ceil(AUDIO_SAMPLE_RATE / FPS)
     first = segments[0]
+    output_frames = sum(s.frame_count for s in segments) - overlap_frames * (len(segments) - 1)
+    dtype = first.waveform.dtype
+    for segment in segments[1:]:
+        dtype = torch.promote_types(dtype, segment.waveform.dtype)
+    output_audio = allocate_pcm(int(first.waveform.shape[-2]), pcm_boundary(output_frames), dtype=dtype)
     total_frames = first.frame_count
     first_end = pcm_boundary(total_frames)
-    output_audio, adjustment, delta = _normalize_audio_length(
+    normalized, adjustment, delta = _normalize_audio_length(
         first.waveform, first_end, tolerance_samples=tolerance
     )
+    copy_pcm(output_audio, 0, normalized)
     segment_map: list[dict[str, Any]] = [
         {
             "index": 0,
@@ -462,26 +469,16 @@ def _streaming_audio_plan(
             tolerance_samples=tolerance,
         )
         if video_mode == "cut":
-            output_audio = torch.cat((output_audio, normalized), dim=-1)
+            copy_pcm(output_audio, sample_start, normalized)
         else:
-            overlap_samples = int(output_audio.shape[-1]) - sample_start
-            ramp = 0.5 - 0.5 * torch.cos(
-                torch.linspace(
-                    0.0,
-                    math.pi,
-                    overlap_samples + 2,
-                    dtype=output_audio.dtype,
-                    device=output_audio.device,
-                )[1:-1]
-            )
-            blended = (
-                output_audio[..., -overlap_samples:] * (1.0 - ramp)
-                + normalized[..., :overlap_samples] * ramp
-            )
-            output_audio = torch.cat(
-                (output_audio[..., :-overlap_samples], blended, normalized[..., overlap_samples:]),
-                dim=-1,
-            )
+            overlap_samples = pcm_boundary(total_frames) - sample_start
+            for position, block in pcm_blocks(normalized, end=overlap_samples):
+                count = block.shape[-1]
+                ramp = 0.5 - 0.5 * torch.cos(torch.arange(position + 1, position + count + 1,
+                    dtype=output_audio.dtype) * (math.pi / (overlap_samples + 1)))
+                target = output_audio[..., sample_start + position:sample_start + position + count]
+                target.copy_(target * (1.0 - ramp) + block.to(device="cpu", dtype=target.dtype) * ramp)
+            copy_pcm(output_audio, sample_start + overlap_samples, normalized[..., overlap_samples:])
         total_frames = frame_end
         segment_map.append(
             {
@@ -678,7 +675,7 @@ class StreamingStitchedVideo:
         width, height = self.dimensions
         if width % 2 or height % 2:
             raise MMH3ResourceError(f"Streaming H.264 output requires even dimensions; got {width}x{height}")
-        stats: dict[str, Any] = {"max_buffered_frames": 0, "encoded_frames": 0}
+        stats: dict[str, Any] = {"max_buffered_frames": 0, "encoded_frames": 0, "max_buffered_audio_samples": 0}
         with av.open(path, **open_kwargs) as output:
             if metadata:
                 for key, value in metadata.items():
@@ -691,11 +688,34 @@ class StreamingStitchedVideo:
                 video_stream.options = {"crf": str(crf)}
             audio_stream = None
             if self.audio is not None:
+                channels = int(self.audio["waveform"].shape[-2])
+                if channels not in (1, 2):
+                    raise MMH3ResourceError("Streaming video delivery requires mono/stereo PCM")
+                layout = "mono" if channels == 1 else "stereo"
                 audio_stream = output.add_stream(
                     "libopus" if format_value == "webm" else "aac",
                     rate=AUDIO_SAMPLE_RATE,
-                    layout="stereo",
+                    layout=layout,
                 )
+            audio_position = 0
+
+            def write_audio(until):
+                nonlocal audio_position
+                if audio_stream is None:
+                    return
+                waveform = self.audio["waveform"]
+                if waveform.shape[-1] < self.plan.output_audio_samples:
+                    raise MMH3ResourceError("Streaming audio is shorter than its ownership plan")
+                end = min(until, self.plan.output_audio_samples)
+                while audio_position < end:
+                    stop = min(audio_position + PCM_BLOCK_SAMPLES, end)
+                    data = waveform[0, :, audio_position:stop].float().cpu().contiguous().numpy()
+                    frame = av.AudioFrame.from_ndarray(data, format="fltp", layout=layout)
+                    frame.sample_rate, frame.pts, frame.time_base = AUDIO_SAMPLE_RATE, audio_position, Fraction(1, AUDIO_SAMPLE_RATE)
+                    for packet in audio_stream.encode(frame):
+                        output.mux(packet)
+                    stats["max_buffered_audio_samples"] = max(stats["max_buffered_audio_samples"], stop - audio_position)
+                    audio_position = stop
             for index, image in enumerate(self._iter_frames(stats)):
                 frame = av.VideoFrame.from_ndarray(image, format="rgb24")
                 frame.pts = index
@@ -703,20 +723,12 @@ class StreamingStitchedVideo:
                 for packet in video_stream.encode(frame):
                     output.mux(packet)
                 stats["encoded_frames"] += 1
+                write_audio(pcm_boundary(index + 1))
             for packet in video_stream.encode(None):
                 output.mux(packet)
 
             if audio_stream is not None:
-                waveform = self.audio["waveform"][0, :, : self.plan.output_audio_samples]
-                audio_frame = av.AudioFrame.from_ndarray(
-                    waveform.float().cpu().contiguous().numpy(),
-                    format="fltp",
-                    layout="stereo",
-                )
-                audio_frame.sample_rate = AUDIO_SAMPLE_RATE
-                audio_frame.pts = 0
-                for packet in audio_stream.encode(audio_frame):
-                    output.mux(packet)
+                write_audio(self.plan.output_audio_samples)
                 for packet in audio_stream.encode(None):
                     output.mux(packet)
         if stats["encoded_frames"] != self.plan.output_frames:

@@ -29,7 +29,8 @@ H3_SLA_INPUTS = (
     "stabilize_motion",
 )
 H3_SLA_OPTIONAL_INPUTS = ("reference_protection",)
-H3_SLA_BLOCK_SIZES = ("64", "128")
+H3_SLA_EXTENDED_INPUTS = H3_SLA_OPTIONAL_INPUTS + ("tail_correction", "use_int8_qk", "engine")
+H3_SLA_BLOCK_SIZES = ("32", "64", "128")
 H3_SLA_DENSE_BACKENDS = (
     "pytorch",
     "comfy_kitchen",
@@ -95,11 +96,12 @@ def require_h3_sla_node_contract(node_class: type[Any]) -> tuple[str, ...]:
         input_ids = tuple(item.id for item in schema.inputs)
     except Exception as exc:
         raise MMH3ResourceError("Could not inspect external H3SLAAttention schema") from exc
-    supported_inputs = (H3_SLA_INPUTS, H3_SLA_INPUTS + H3_SLA_OPTIONAL_INPUTS)
+    supported_inputs = tuple(H3_SLA_INPUTS + H3_SLA_EXTENDED_INPUTS[:count]
+                             for count in range(len(H3_SLA_EXTENDED_INPUTS) + 1))
     if node_id != H3_SLA_NODE_ID or input_ids not in supported_inputs:
         raise MMH3ResourceError(
             "Unsupported H3SLAAttention schema; MMH3 requires the validated core inputs "
-            f"{H3_SLA_INPUTS} with only the optional suffix {H3_SLA_OPTIONAL_INPUTS}, "
+            f"{H3_SLA_INPUTS} with only the known optional suffix {H3_SLA_EXTENDED_INPUTS}, "
             f"got node_id={node_id!r}, inputs={input_ids!r}"
         )
     return input_ids
@@ -154,10 +156,11 @@ def build_h3_sla_execution_profile(
     return {
         "version": 1,
         "contract": H3_SLA_PROFILE_CONTRACT,
-        "name": "plaguekind_h3_sla_v1_3_6",
+        "name": "plaguekind_h3_sla_compat_v1",
         "source": {
             "repository": H3_SLA_SOURCE_REPOSITORY,
             "commit": H3_SLA_SOURCE_COMMIT,
+            "commit_role": "compatibility_baseline",
             "node_id": H3_SLA_NODE_ID,
         },
         "optimization": {
@@ -196,7 +199,14 @@ def apply_external_h3_sla(
     if "reference_protection" in input_ids:
         # Preserve the pre-v1.4 MMH3 behavior until reference-aware SLA becomes
         # an explicit, separately validated optimization option.
-        external_settings["reference_protection"] = False
+        reference_input = next(item for item in node_class.define_schema().inputs if item.id == "reference_protection")
+        # Older providers used a boolean; current releases use Off/Light/Heavy.
+        external_settings["reference_protection"] = "Off" if hasattr(reference_input, "options") else False
+    # New provider defaults switch the sparse implementation and enable an
+    # experimental QK path. Preserve the existing MMH3 trajectory explicitly.
+    for key, value in (("tail_correction", False), ("use_int8_qk", False), ("engine", "triton")):
+        if key in input_ids:
+            external_settings[key] = value
     output = node_class.execute(model=model, **external_settings)
     patched = _extract_model(output)
     wrappers = _sla_wrappers(patched)
@@ -240,7 +250,9 @@ def apply_external_h3_sla(
 
     record_optimization(patched, "h3_sla", fp16)
     profile = build_h3_sla_execution_profile(settings, patch_materialized=True)
-    return patched, profile, "READY · H3 SLA v1.3.6 hooks materialized · kernel execution pending"
+    profile["optimization"]["provider_settings"] = external_settings
+    profile["source"]["input_ids"] = list(input_ids)
+    return patched, profile, "READY · H3 SLA compatible hooks materialized · kernel execution pending"
 
 
 __all__ = [

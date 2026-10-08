@@ -8,9 +8,9 @@ from .errors import MMH3ResourceError
 
 STATE_KEY = "mmh3_optimization_state"
 CONTRACT = "mmh3_optimization_state_v1"
-SPARSE_MODES = {"vsa_native", "sol_native", "sol_attn", "sla_native", "h3_sla"}
+SPARSE_MODES = {"vsa_native", "sol_native", "sla_native", "h3_sla"}
 ATTENTION_MODES = (
-    "inherit", "pytorch", "comfy_kitchen", "sage_attention_kj", "sol_attn",
+    "inherit", "pytorch", "comfy_kitchen", "sage_attention_kj",
     "vsa_native", "sol_native", "sla_native", "h3_sla", "vdn_h3",
 )
 FP16_ACCUMULATION_MODES = ("inherit", "enabled", "disabled")

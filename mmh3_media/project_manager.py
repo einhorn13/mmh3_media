@@ -18,6 +18,7 @@ from .project_actions import (
     prepare_project_reopen, preview_chain_mutation, publish_project_segment,
 )
 from .project_review import build_project_review_state
+from .project_index import load_project_archive, save_project_index
 from .segment_plan import prepare_segment
 from .util import deep_copy_json, json_dumps_canonical, sha256_file
 
@@ -100,7 +101,7 @@ class ProjectManager:
     def candidate(self, project_id, candidate_id):
         if not isinstance(candidate_id, str) or not re.fullmatch(r"[0-9a-f]{64}", candidate_id):
             raise MMH3ResourceError("Invalid candidate ID")
-        current = load_archive(self.current(project_id), verify="manifest")
+        current = load_project_archive(self.current(project_id), verify="manifest")
         if not any(item["id"] == candidate_id for item in self._records(current)):
             raise MMH3ResourceError("Candidate does not belong to this project")
         path = self.directory(project_id) / "candidates" / (candidate_id + ".mmh3")
@@ -111,7 +112,7 @@ class ProjectManager:
         return path
 
     def state(self, project_id):
-        packet = load_archive(self.current(project_id), verify="manifest")
+        packet = load_project_archive(self.current(project_id), verify="manifest")
         view = build_project_review_state(packet).to_dict()
         chain = packet.manifest["extensions"]["mmh3_media"]["chain"]
         chain_hash = hashlib.sha256(json_dumps_canonical(chain).encode()).hexdigest()
@@ -121,18 +122,20 @@ class ProjectManager:
             if item["status"] == "accepted" and not any(s["segment_id"] == item.get("accepted_segment_id")
                     and s["revision"] == item.get("accepted_revision") and s["status"] == "active" for s in chain["segments"]):
                 item["stale"] = True
+        from .project_timeline import project_timeline
         return {"id": project_id, "state": view, "candidates": records,
+                "timeline": project_timeline(self, project_id, packet=packet),
                 "current_file": self.selector(self.current(project_id))}
 
     def _edit(self, project_id, expected, edit):
         path = self.current(project_id)
         with project_archive_lock(path):
-            packet = load_archive(path, verify="full")
+            packet = load_project_archive(path, verify="manifest")
             _require_digest(build_project_review_state(packet).state_digest, expected)
             records = self._records(packet)
             edit(packet, records)
             updated = packet.set_extension_value("mmh3_media", "project_candidates", records)
-            save_archive(updated, path)
+            save_project_index(path, updated)
         return self.state(project_id)
 
     def add_candidate(self, project_id, selector, expected):
@@ -193,7 +196,7 @@ class ProjectManager:
         return self.state(project_id)
 
     def impact(self, project_id, candidate_id, expected):
-        packet = load_archive(self.current(project_id), verify="manifest")
+        packet = load_project_archive(self.current(project_id), verify="manifest")
         _require_digest(build_project_review_state(packet).state_digest, expected)
         candidate = load_archive(self.candidate(project_id, candidate_id), verify="manifest")
         accept_project_segment(packet, candidate, expected_state_digest=expected)
@@ -203,7 +206,7 @@ class ProjectManager:
         return {"action": plan["action"], "affected_segment_ids": [], "invalidated_segment_ids": []}
 
     def handoff(self, project_id, expected, target_segment_id="", parent_file="", prompts="", seed=0):
-        packet = load_archive(self.current(project_id), verify="manifest")
+        packet = load_project_archive(self.current(project_id), verify="manifest")
         _require_digest(build_project_review_state(packet).state_digest, expected)
         if type(seed) is not int or not 0 <= seed <= 0xFFFFFFFF:
             raise MMH3ResourceError("Seed must be an integer between 0 and 4294967295")
@@ -226,7 +229,7 @@ class ProjectManager:
 
     def attach_segment(self, project_id, selector, expected):
         with project_archive_lock(self.current(project_id)):
-            packet = load_archive(self.current(project_id), verify="full")
+            packet = load_project_archive(self.current(project_id), verify="manifest")
             _require_digest(build_project_review_state(packet).state_digest, expected)
             source = self._branch_source(project_id, source_file=selector)
             load_archive(source, verify="full")
@@ -244,7 +247,7 @@ class ProjectManager:
             _require_digest(sha256_file(destination)[0], digest, "Saved segment")
             refs = packet.manifest["extensions"]["mmh3_media"].get("project_segment_sources", [])
             packet = packet.set_extension_value("mmh3_media", "project_segment_sources", list(dict.fromkeys([*refs, digest])))
-            save_archive(packet, self.current(project_id))
+            save_project_index(self.current(project_id), packet)
         return self.state(project_id)
 
     def _branch_source(self, project_id, candidate_id="", source_file=""):
@@ -259,7 +262,7 @@ class ProjectManager:
             return self.current(project_id)
         path = self.resolve(source_file)
         source = build_project_review_state(load_archive(path, verify="manifest"))
-        current = build_project_review_state(load_archive(self.current(project_id), verify="manifest"))
+        current = build_project_review_state(load_project_archive(self.current(project_id), verify="manifest"))
         if not source.head_state_matches or source.chain_id != current.chain_id:
             raise MMH3ResourceError("Saved branch source does not belong to this chain")
         head = next((segment for segment in source.segments if segment.segment_id == source.head_segment_id), None)
@@ -274,7 +277,7 @@ class ProjectManager:
         return path
 
     def branch_preview(self, project_id, expected, candidate_id="", source_file=""):
-        current = load_archive(self.current(project_id), verify="manifest")
+        current = load_project_archive(self.current(project_id), verify="manifest")
         _require_digest(build_project_review_state(current).state_digest, expected)
         path = self._branch_source(project_id, candidate_id, source_file)
         digest, size = sha256_file(path)
@@ -311,7 +314,8 @@ class ProjectManager:
             preview = self.branch_preview(project_id, expected, candidate_id, source_file)
             _require_digest(preview["source_sha256"], source_sha256, "Branch source")
             source_path = self._branch_source(project_id, candidate_id, source_file)
-            source = load_archive(source_path, verify="full")
+            source = (load_project_archive(source_path, verify="full") if source_path == self.current(project_id)
+                      else load_archive(source_path, verify="full"))
             branch = build_project_branch(source, source_project_id=project_id,
                                           source_candidate_id=candidate_id, name=name)
             branch = branch.set_extension_value("mmh3_media", "branch_request", request)
@@ -324,3 +328,25 @@ class ProjectManager:
                 # The complete project directory appears in one rename; no half project is listed.
                 os.rename(directory, destination)
         return self.state(target_id)
+
+    def snapshot(self, project_id, expected):
+        """Materialize index metadata only when a portable snapshot is requested."""
+        with project_archive_lock(self.current(project_id)):
+            packet = load_project_archive(self.current(project_id), verify="full")
+            _require_digest(build_project_review_state(packet).state_digest, expected)
+            directory = _managed_directory(self.directory(project_id), "portable")
+            target = directory / (expected + ".mmh3")
+            if target.resolve() != target:
+                raise MMH3ResourceError("Unsafe snapshot destination")
+            if not target.exists():
+                save_archive(packet, target)
+            _require_digest(build_project_review_state(load_archive(target, verify="full")).state_digest, expected)
+        return {"snapshot_id": expected, "file": self.selector(target)}
+
+    def snapshot_path(self, project_id, snapshot_id):
+        if not isinstance(snapshot_id, str) or not re.fullmatch(r"[0-9a-f]{64}", snapshot_id):
+            raise MMH3ResourceError("Invalid snapshot ID")
+        path = self.directory(project_id) / "portable" / (snapshot_id + ".mmh3")
+        if path.resolve() != path or not path.is_file():
+            raise MMH3ResourceError("Snapshot is missing or unsafe")
+        return path

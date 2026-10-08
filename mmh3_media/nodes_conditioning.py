@@ -776,7 +776,7 @@ class MMH3H3AutoCondition(io.ComfyNode):
         resolved = resolve_packet(
             packet,
             intent="condition/generate",
-            mode="auto",
+            mode="ref2va" if packet.manifest.get("generation", {}).get("task") == "ref2va" else "auto",
             policy="auto",
             reference_preset="all",
             ref_image_size=native_ref_image_size,
@@ -803,6 +803,7 @@ class MMH3H3AutoCondition(io.ComfyNode):
         expansion = build_h3_expansion(
             packet,
             resolved,
+            reuse_conditioning=True,
             clip=clip,
             video_vae=video_vae,
             audio_vae=audio_vae,
@@ -963,6 +964,7 @@ class MMH3H3ContinuationCondition(io.ComfyNode):
         expansion = build_h3_expansion(
             packet,
             resolved,
+            reuse_conditioning=True,
             clip=clip,
             video_vae=video_vae,
             audio_vae=audio_vae,

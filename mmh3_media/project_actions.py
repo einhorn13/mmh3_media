@@ -236,7 +236,8 @@ def publish_project_segment(
     root = project_history_directory(target)
     with project_archive_lock(target):
         current_sha, _ = sha256_file(target)
-        current = load_archive(target, verify="full")
+        from .project_index import load_project_archive
+        current = load_project_archive(target, verify="full")
         if sha256_file(target)[0] != current_sha:
             raise ProjectStateConflict("Authoritative archive changed while reading its state")
         report = validate_chain(current, require_head_state=True)

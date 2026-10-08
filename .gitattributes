@@ -1,0 +1,19 @@
+# Repository text is stored and checked out with LF on every platform.
+* text=auto eol=lf
+
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.mp4 binary
+*.webm binary
+*.wav binary
+*.mp3 binary
+*.zip binary
+*.mmh3 binary
+*.safetensors binary

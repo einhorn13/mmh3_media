@@ -8,12 +8,12 @@
       "id": 1,
       "type": "MMH3Load",
       "pos": [
-        40,
-        80
+        90,
+        125
       ],
       "size": [
         380,
-        470
+        490
       ],
       "flags": {},
       "order": 0,
@@ -67,12 +67,12 @@
       "id": 2,
       "type": "MMH3Load",
       "pos": [
-        40,
-        620
+        90,
+        690
       ],
       "size": [
         380,
-        470
+        490
       ],
       "flags": {},
       "order": 1,
@@ -126,12 +126,12 @@
       "id": 3,
       "type": "MMH3Load",
       "pos": [
-        40,
-        1160
+        90,
+        1255
       ],
       "size": [
         380,
-        470
+        490
       ],
       "flags": {},
       "order": 2,
@@ -185,8 +185,8 @@
       "id": 4,
       "type": "MMH3H3LatentStitch",
       "pos": [
-        500,
-        150
+        1230,
+        125
       ],
       "size": [
         390,
@@ -253,11 +253,11 @@
       "id": 5,
       "type": "VAELoader",
       "pos": [
-        980,
-        80
+        660,
+        125
       ],
       "size": [
-        360,
+        380,
         120
       ],
       "flags": {},
@@ -294,11 +294,11 @@
       "id": 6,
       "type": "VAELoader",
       "pos": [
-        980,
-        250
+        660,
+        320
       ],
       "size": [
-        360,
+        380,
         120
       ],
       "flags": {},
@@ -335,11 +335,11 @@
       "id": 8,
       "type": "VAEDecodeAudio",
       "pos": [
-        1390,
-        300
+        1230,
+        500
       ],
       "size": [
-        300,
+        380,
         120
       ],
       "flags": {},
@@ -376,11 +376,11 @@
       "id": 9,
       "type": "MMH3H3DecodeVideo",
       "pos": [
-        1800,
-        100
+        1230,
+        695
       ],
       "size": [
-        330,
+        380,
         220
       ],
       "flags": {},
@@ -455,8 +455,8 @@
       "id": 10,
       "type": "MMH3PackH3Result",
       "pos": [
-        2200,
-        80
+        1230,
+        990
       ],
       "size": [
         410,
@@ -588,12 +588,12 @@
         {
           "name": "summary",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "result_info_json",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -617,12 +617,12 @@
       "type": "MMH3SaveVideo",
       "title": "Save Video · encode once",
       "pos": [
-        2680,
-        80
+        1800,
+        125
       ],
       "size": [
-        360,
-        420
+        380,
+        490
       ],
       "flags": {},
       "order": 10,
@@ -691,12 +691,12 @@
       "type": "MMH3Save",
       "title": "Save MMH3",
       "pos": [
-        2680,
-        560
+        1800,
+        690
       ],
       "size": [
         380,
-        470
+        490
       ],
       "flags": {},
       "order": 11,
@@ -713,7 +713,8 @@
           "link": null,
           "widget": {
             "name": "filename_prefix"
-          }
+          },
+          "label": "Filename"
         },
         {
           "name": "target",
@@ -736,12 +737,12 @@
         {
           "name": "packet",
           "type": "MMH3_MEDIA",
-          "links": null
+          "links": []
         },
         {
           "name": "path",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -757,12 +758,12 @@
       "id": 13,
       "type": "MarkdownNote",
       "pos": [
-        500,
-        500
+        1800,
+        1255
       ],
       "size": [
-        880,
-        240
+        480,
+        340
       ],
       "flags": {},
       "order": 12,
@@ -915,7 +916,60 @@
       "MMH3_MEDIA"
     ]
   ],
-  "groups": [],
+  "groups": [
+    {
+      "id": 1,
+      "title": "01 · SOURCE / REFERENCES",
+      "bounding": [
+        65,
+        65,
+        430,
+        1755
+      ],
+      "color": "#355070",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 2,
+      "title": "02 · MODELS / SAMPLING",
+      "bounding": [
+        635,
+        65,
+        430,
+        450
+      ],
+      "color": "#4f5d75",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 4,
+      "title": "04 · GENERATION / EDIT",
+      "bounding": [
+        1205,
+        65,
+        460,
+        1560
+      ],
+      "color": "#8d6a4a",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 5,
+      "title": "05 · REVIEW / SAVE",
+      "bounding": [
+        1775,
+        65,
+        530,
+        1605
+      ],
+      "color": "#52796f",
+      "font_size": 24,
+      "flags": {}
+    }
+  ],
   "config": {},
   "extra": {
     "ds": {

@@ -8,7 +8,8 @@ from __future__ import annotations
 import hashlib
 import os
 
-from .archive import load_archive, save_archive
+from .archive import load_archive
+from .project_index import load_project_archive, save_project_index
 from .errors import MMH3ResourceError
 from .project_actions import _managed_directory, _require_digest, project_archive_lock
 from .project_review import build_project_review_state
@@ -18,7 +19,7 @@ from .util import json_dumps_canonical, sha256_file
 def storage_report(manager, project_id):
     directory = manager.directory(project_id)
     current = manager.current(project_id)
-    packet = load_archive(current, verify="manifest")
+    packet = load_project_archive(current, verify="manifest")
     records = manager._records(packet)
     namespace = packet.manifest["extensions"]["mmh3_media"]
     protected = {item["id"] for item in records if item.get("selected") or item["status"] == "accepted"}
@@ -43,7 +44,8 @@ def storage_report(manager, project_id):
                 continue  # OS coordination, not project data; its first byte may be locked.
             category = ("current" if path == current else "candidates" if path.parent == directory / "candidates"
                         else "trash" if path.parent == directory / "trash"
-                        else "snapshots" if relative.startswith(".mmh3_review/") and path.suffix == ".mmh3" else "other")
+                        else "snapshots" if (relative.startswith(".mmh3_review/") or path.parent == directory / "portable")
+                        and path.suffix == ".mmh3" else "other")
             digest, size = sha256_file(path)
             totals[category] += size
             files.append({"file": relative, "sha256": digest, "bytes": size, "category": category})
@@ -84,7 +86,7 @@ def move_candidate(manager, project_id, candidate_id, expected, expected_storage
         destination = _managed_directory(directory, "candidates" if restore else "trash") / source.name
         if destination.exists() or destination.is_symlink():
             raise MMH3ResourceError("Storage destination already exists")
-        packet = load_archive(current, verify="full")
+        packet = load_project_archive(current, verify="manifest")
         records = manager._records(packet)
         record = next(record for record in records if record["id"] == candidate_id)
         record.update(status="rejected" if restore else "trashed", selected=False)
@@ -92,5 +94,5 @@ def move_candidate(manager, project_id, candidate_id, expected, expected_storage
         # inventory inspect both locations so Restore remains available after restart.
         os.rename(source, destination)
         packet = packet.set_extension_value("mmh3_media", "project_candidates", records)
-        save_archive(packet, current)
+        save_project_index(current, packet)
     return manager.state(project_id)

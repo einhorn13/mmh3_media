@@ -6,6 +6,7 @@ from typing import Any
 from .errors import MMH3ResourceError
 from .util import deep_copy_json
 from .fasth3 import FASTH3_PROFILE
+from .fasth3_v2 import FASTH3_V2_PROFILE
 
 
 STANDARD_PROFILE = "standard (20 steps)"
@@ -31,12 +32,19 @@ SAMPLING_PROFILES = (
     TURBO_4_PROFILE,
     TURBO_8_PROFILE,
     FASTH3_PROFILE,
+    FASTH3_V2_PROFILE,
     VDN_DMD_PROFILE,
     VDN_STAGE_B_PROFILE,
     *TAOMATE_RECIPES,
     CUSTOM_PROFILE,
 )
 PROFILE_PRESETS: dict[str, dict[str, Any]] = {
+    FASTH3_V2_PROFILE: {
+        "steps": 8, "video_shift": 10.0, "audio_shift": 3.0,
+        "sampler": "res_multistep", "scheduler": "simple",
+        "sigma_preset": "scheduler_generated", "runtime_validated": False,
+        "trajectory": "fasth3_v2_comfy_native8", "supported_task_families": ["fl2va"],
+    },
     FASTH3_PROFILE: {
         "steps": 6, "video_shift": 12.0, "audio_shift": 3.0,
         "sampler": "res_multistep", "scheduler": "simple",

@@ -16,10 +16,29 @@ from .automation_execution import (
     commit_execution_artifact,
     commit_execution_candidate,
     save_execution_ledger,
+    load_execution_ledger,
     transition_execution_job,
 )
 from .errors import MMH3ResourceError
 from .util import deep_copy_json
+
+
+class RemoteJobFailed(MMH3ResourceError):
+    """History proves the remote execution is terminal."""
+
+
+class RunnerCancelled(MMH3ResourceError):
+    """The owned prompt has left the remote queue after targeted cancellation."""
+
+
+class RemoteStateUncertain(MMH3ResourceError):
+    """A dispatched request must not become retryable after a local failure."""
+
+
+class QueueHTTPError(MMH3ResourceError):
+    def __init__(self, status, message):
+        super().__init__(message)
+        self.status = status
 
 
 PLACEHOLDERS = {
@@ -139,6 +158,47 @@ def find_saved_mmh3(history_entry: Mapping[str, Any], save_node_id: str = "") ->
     return unique[0]
 
 
+def stamp_submission_workflow(workflow, receipt):
+    """Persist attempt ownership inside saved packets without changing media state."""
+    workflow = deep_copy_json(workflow)
+    for node_id, node in list(workflow.items()):
+        if not isinstance(node, dict) or node.get("class_type") != "MMH3Save":
+            continue
+        packet = node.get("inputs", {}).get("packet")
+        if not isinstance(packet, list) or len(packet) != 2:
+            raise MMH3ResourceError("Automation Save must receive a linked packet")
+        receipt_id = "_mmh3_receipt_" + str(node_id)
+        if receipt_id in workflow:
+            raise MMH3ResourceError("Reserved automation receipt node ID already exists")
+        workflow[receipt_id] = {"class_type": "MMH3Metadata", "inputs": {
+            "packet": packet, "name": "", "tags_action": "keep", "tags": "",
+            "notes_action": "keep", "notes": "",
+            "custom_json_merge_patch": json.dumps({"extensions": {"mmh3_media": {"execution_receipt": receipt}}})}}
+        node["inputs"]["packet"] = [receipt_id, 0]
+    return workflow
+
+
+def recover_saved_artifact(output_root, submission):
+    from .archive import load_archive
+    root = Path(output_root).resolve()
+    prefix = (root / submission["filename_prefix"]).resolve()
+    if not prefix.is_relative_to(root):
+        raise MMH3ResourceError("Recovery prefix is outside the selected output root")
+    matches = []
+    for index, path in enumerate(prefix.parent.glob(prefix.name + "*.mmh3")):
+        if index >= 100:
+            raise MMH3ResourceError("Too many recovery artifacts; inspect this attempt manually")
+        if path.resolve() != path:
+            continue
+        packet = load_archive(path, verify="full")
+        receipt = packet.manifest.get("extensions", {}).get("mmh3_media", {}).get("execution_receipt")
+        if receipt == submission["receipt"]:
+            matches.append(str(path))
+    if len(matches) > 1:
+        raise MMH3ResourceError("Multiple saved artifacts own this attempt; select the intended result manually")
+    return matches[0] if matches else None
+
+
 class ComfyQueueClient:
     def __init__(self, server: str, *, timeout: float = 30.0):
         self.server = server.rstrip("/")
@@ -156,6 +216,8 @@ class ComfyQueueClient:
         try:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 return json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            raise QueueHTTPError(exc.code, f"ComfyUI HTTP {exc.code} for {path}") from exc
         except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
             raise MMH3ResourceError(f"ComfyUI request failed for {path}: {exc}") from exc
 
@@ -165,6 +227,73 @@ class ComfyQueueClient:
         if not prompt_id:
             raise MMH3ResourceError(f"ComfyUI rejected prompt: {response}")
         return str(prompt_id)
+
+    def queue_owned(self, workflow, submission):
+        try:
+            response = self._json("/prompt", {"prompt": workflow, "client_id": self.client_id,
+                "prompt_id": submission["prompt_id"], "extra_data": {"mmh3_submission": submission["token"]}})
+        except QueueHTTPError as exc:
+            if 400 <= exc.status < 500 and exc.status not in {408, 429}:
+                raise RemoteJobFailed(str(exc)) from exc
+            raise
+        if not isinstance(response, Mapping) or not response.get("prompt_id"):
+            raise RemoteJobFailed(f"ComfyUI rejected prompt: {response}")
+        return str(response["prompt_id"])
+
+    def locate_submission(self, submission):
+        if submission.get("server") != self.server:
+            raise MMH3ResourceError("Checkpoint belongs to another ComfyUI server")
+        # Queue tuples and history both retain extra_data. The intent token survives
+        # a lost POST response even on hosts that assign their own prompt IDs.
+        queue = self._json("/queue")
+        items = [("running", item) for item in queue.get("queue_running", [])]
+        items += [("pending", item) for item in queue.get("queue_pending", [])]
+        history = self._json("/history")
+        items += [("history", entry.get("prompt")) for entry in history.values() if isinstance(entry, Mapping)]
+        matches = [(state, str(item[1])) for state, item in items
+                   if isinstance(item, (list, tuple)) and len(item) > 3
+                   and isinstance(item[3], Mapping) and item[3].get("mmh3_submission") == submission["token"]]
+        ids = {pid for _, pid in matches}
+        if len(ids) > 1:
+            raise MMH3ResourceError("Multiple remote prompts match this attempt; refusing automatic retry")
+        if matches:
+            state, pid = matches[0]
+            return state, pid
+        return "missing", submission["prompt_id"]
+
+    def wait_owned(self, submission, *, poll_seconds, timeout_seconds, control=None):
+        deadline = time.monotonic() + timeout_seconds
+        cancelling = bool(submission.get("cancel_requested"))
+        prompt_id = submission["prompt_id"]
+        while time.monotonic() < deadline:
+            response = self._json(f"/history/{prompt_id}")
+            entry = response.get(prompt_id)
+            if entry is not None:
+                status = entry.get("status", {})
+                # Completed output wins a cancellation race and is preserved.
+                if status.get("status_str") == "error" or status.get("completed") is False:
+                    if cancelling:
+                        raise RunnerCancelled("Owned prompt cancelled")
+                    raise RemoteJobFailed(f"ComfyUI job failed: {status}")
+                return entry
+            if control and control() == "cancel":
+                cancelling = True
+            if cancelling:
+                # Never use global /interrupt: old hosts could cancel another project.
+                self._json(f"/api/jobs/{prompt_id}/cancel", {})
+            queue = self._json("/queue")
+            present = any(isinstance(item, (list, tuple)) and len(item) > 1 and str(item[1]) == prompt_id
+                          for key in ("queue_running", "queue_pending") for item in queue.get(key, []))
+            if not present:
+                # Recheck history after the queue snapshot to cover completion races.
+                response = self._json(f"/history/{prompt_id}")
+                if prompt_id in response:
+                    continue
+                if cancelling:
+                    raise RunnerCancelled("Owned prompt removed from queue")
+                raise MMH3ResourceError("Prompt is absent from queue/history; keep checkpoint for reconciliation")
+            time.sleep(max(0.1, poll_seconds))
+        raise MMH3ResourceError(f"Remote state retained after {timeout_seconds:g}s timeout; resume this checkpoint")
 
     def wait(self, prompt_id: str, *, poll_seconds: float, timeout_seconds: float) -> Mapping[str, Any]:
         deadline = time.monotonic() + timeout_seconds
@@ -192,24 +321,123 @@ def run_execution_ledger(
     poll_seconds: float = 1.0,
     timeout_seconds: float = 86400.0,
     on_event: Callable[[str], None] = print,
+    control: Callable[[], str] | None = None,
+    output_root: str | Path | None = None,
 ) -> dict[str, Any]:
+    from .project_actions import _publication_lock
+    path = Path(checkpoint_path).resolve()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    # Two runner processes must not submit the same immutable attempt concurrently.
+    with _publication_lock(path.with_name(path.name + ".runner.lock")):
+        if path.exists():
+            saved = load_execution_ledger(path)
+            if any(saved.get(key) != ledger.get(key) for key in ("plan_sha256", "effective_settings_sha256", "operation")):
+                raise MMH3ResourceError("Checkpoint belongs to another plan/settings; use a separate checkpoint")
+            if saved["revision"] >= ledger["revision"]:
+                ledger = saved
+        return _run_execution_ledger(ledger, workflow_template, checkpoint_path=path, client=client,
+            save_node_id=save_node_id, resume_mode=resume_mode, continue_on_error=continue_on_error,
+            poll_seconds=poll_seconds, timeout_seconds=timeout_seconds, on_event=on_event, control=control,
+            output_root=output_root)
+
+
+def _run_execution_ledger(ledger, workflow_template, *, checkpoint_path, client, save_node_id,
+                          resume_mode, continue_on_error, poll_seconds, timeout_seconds, on_event, control, output_root):
     current = deep_copy_json(dict(ledger))
     attempted: set[str] = set()
+
+    def record(job_id, submission):
+        entry = next(job for job in current["jobs"] if job["job_id"] == job_id)
+        entry["submission"] = deep_copy_json(submission)
+        current["revision"] += 1
+        save_execution_ledger(current, checkpoint_path)
+
     while True:
-        current, lease = acquire_next_execution_job(
-            current, mode=resume_mode, exclude_job_ids=tuple(attempted), lease_timeout_seconds=timeout_seconds
-        )
+        running = [job for job in current["jobs"] if job["state"] == "running"]
+        recovering = bool(running)
+        if len(running) > 1:
+            raise MMH3ResourceError("Multiple running jobs require reconciliation before sequential execution")
+        if recovering:
+            entry = running[0]
+            submission = entry.get("submission")
+            if not submission:
+                raise MMH3ResourceError("Legacy running job has no queue receipt; inspect ComfyUI before resetting it")
+            lease = {"job_id": entry["job_id"], "lease_id": entry["lease_id"], "attempt": entry["attempts"]}
+        else:
+            if control and control() in {"pause", "cancel"}:
+                on_event("PAUSED before next segment")
+                return current
+            current, lease = acquire_next_execution_job(
+                current, mode=resume_mode, exclude_job_ids=tuple(attempted), lease_timeout_seconds=timeout_seconds
+            )
         if lease is None:
             return current
-        save_execution_ledger(current, checkpoint_path)
         job_id = lease["job_id"]
         attempted.add(job_id)
+        owned_client = callable(getattr(client, "queue_owned", None))
+        dispatched = recovering
+        if not recovering:
+            try:
+                workflow = materialize_job_workflow(workflow_template, current, lease)
+                submission = {"contract": "mmh3_queue_submission_v1", "prompt_id": str(uuid.uuid4()),
+                    "token": uuid.uuid4().hex, "server": getattr(client, "server", ""),
+                    "lease_id": lease["lease_id"], "attempt": lease["attempt"], "filename_prefix": lease["filename_prefix"]}
+                submission["receipt"] = {"token": submission["token"], "job_id": job_id, "lease_id": lease["lease_id"],
+                    "attempt": lease["attempt"], "plan_sha256": current["plan_sha256"],
+                    "settings_sha256": current["effective_settings_sha256"]}
+                workflow = stamp_submission_workflow(workflow, submission["receipt"])
+                submission["workflow_sha256"] = hashlib.sha256(json.dumps(workflow, sort_keys=True).encode()).hexdigest()
+            except Exception as exc:
+                current = transition_execution_job(current, job_id, "fail", error=str(exc), lease_id=lease["lease_id"])
+                save_execution_ledger(current, checkpoint_path)
+                if continue_on_error:
+                    continue
+                return current
+            record(job_id, submission)  # Durable intent precedes POST.
         try:
-            workflow = materialize_job_workflow(workflow_template, current, lease)
-            on_event(f"QUEUE {job_id} attempt={lease['attempt']}")
-            prompt_id = client.queue(workflow)
-            history = client.wait(prompt_id, poll_seconds=poll_seconds, timeout_seconds=timeout_seconds)
-            packet_path = find_saved_mmh3(history, save_node_id)
+            if recovering and owned_client and submission.get("server") != client.server:
+                raise MMH3ResourceError("Checkpoint belongs to another ComfyUI server")
+            if recovering and not submission.get("artifact_path") and owned_client:
+                state, prompt_id = client.locate_submission(submission)
+                if state == "missing":
+                    artifact = (recover_saved_artifact(output_root, submission)
+                                if output_root and submission.get("receipt") else None)
+                    if not artifact:
+                        on_event(f"RECONCILE {job_id}: remote queue/history has no receipt; no duplicate was submitted")
+                        return current
+                    submission["artifact_path"] = artifact
+                else:
+                    submission["prompt_id"] = prompt_id
+                record(job_id, submission)
+                on_event(f"RESUME {job_id} prompt={prompt_id}")
+            elif not recovering:
+                on_event(f"QUEUE {job_id} attempt={lease['attempt']}")
+                dispatched = True  # A lost response is not evidence of rejection.
+                submission["prompt_id"] = (client.queue_owned(workflow, submission) if owned_client else client.queue(workflow))
+                # Persist outside failure handling: a disk error must keep a running
+                # intent, never mark an already queued prompt as retryable.
+                try:
+                    record(job_id, submission)
+                except Exception:
+                    # Disk persistence failed after dispatch, even with a legacy
+                    # client. Keep the durable pre-POST intent recoverable.
+                    on_event(f"RECONCILE {job_id}: queue receipt could not be persisted")
+                    raise RemoteStateUncertain("Queue receipt persistence failed after dispatch")
+            if submission.get("artifact_path"):
+                packet_path = submission["artifact_path"]
+            else:
+                def check_control():
+                    action = control() if control else "run"
+                    if action == "cancel" and not submission.get("cancel_requested"):
+                        submission["cancel_requested"] = True
+                        record(job_id, submission)
+                    return action
+                history = (client.wait_owned(submission, poll_seconds=poll_seconds, timeout_seconds=timeout_seconds,
+                    control=check_control) if owned_client else
+                    client.wait(submission["prompt_id"], poll_seconds=poll_seconds, timeout_seconds=timeout_seconds))
+                packet_path = find_saved_mmh3(history, save_node_id)
+                submission["artifact_path"] = packet_path
+                record(job_id, submission)
             if (current.get("effective_settings") or {}).get("review_policy") == "candidate_required":
                 current = commit_execution_candidate(
                     current, job_id, lease_id=lease["lease_id"], packet_path=packet_path
@@ -219,12 +447,21 @@ def run_execution_ledger(
                     current, job_id, lease_id=lease["lease_id"], packet_path=packet_path
                 )
         except (Exception, KeyboardInterrupt) as exc:
+            if isinstance(exc, (KeyboardInterrupt, RemoteStateUncertain)) or (owned_client and dispatched
+                    and not isinstance(exc, (RemoteJobFailed, RunnerCancelled))):
+                # Network errors, timeout, disk failure and process interruption are
+                # uncertainty, not remote failure. Never blindly queue another attempt.
+                on_event(f"RECONCILE {job_id}: {exc}; running receipt retained")
+                if isinstance(exc, KeyboardInterrupt):
+                    raise
+                return current
             current = transition_execution_job(
-                current, job_id, "fail", error=f"{type(exc).__name__}: {exc}", lease_id=lease["lease_id"]
+                current, job_id, "cancel" if isinstance(exc, RunnerCancelled) else "fail",
+                error=f"{type(exc).__name__}: {exc}", lease_id=lease["lease_id"]
             )
             save_execution_ledger(current, checkpoint_path)
             on_event(f"FAILED {job_id}: {exc}")
-            if not continue_on_error or isinstance(exc, KeyboardInterrupt):
+            if not continue_on_error or isinstance(exc, (KeyboardInterrupt, RunnerCancelled)):
                 if isinstance(exc, KeyboardInterrupt):
                     raise
                 return current

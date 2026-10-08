@@ -31,10 +31,11 @@ def validate_vsa_model(model) -> dict:
 
 
 def validate_vsa_sampling(profile, adapter=None):
+    from .fasth3_v2 import FASTH3_V2_PROFILE
     # Kernel selection cannot manufacture a trained sampling recipe. Allow a
     # caller-managed recipe or explicit Custom, but never silently reuse our
     # ordinary Standard/Turbo/FastH3-dense/VDN profiles.
     if adapter or (profile and (profile.get("adapter") or profile.get("recommended_lora"))):
         raise MMH3ResourceError("Native VSA requires VSA model weights, not an ordinary acceleration adapter")
-    if profile and (profile.get("profile") != "custom" or profile.get("task_family") == "ref2va"):
+    if profile and (profile.get("profile") not in {"custom", FASTH3_V2_PROFILE} or profile.get("task_family") == "ref2va"):
         raise MMH3ResourceError("Native VSA requires a checkpoint-specific external or Custom sampling recipe; built-in dense/Turbo/VDN and Ref2VA recipes are unsupported")

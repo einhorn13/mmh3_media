@@ -268,23 +268,37 @@ class MMH3H3TurboLoRAs(io.ComfyNode):
         return io.Schema(node_id="MMH3H3TurboLoRAs", display_name="Load LoRAs", category=CATEGORY,
             description="Add LoRA files and strengths with + Add LoRA. Sampling or Refine Source LoRAs loads the ordered model-only list. Custom replaces preset LoRAs; Extension adds to them; Auto preserves the preset/source. Actual files and strengths are recorded in MMH3.",
             inputs=[io.Combo.Input("mode", display_name="LoRA mode", options=["auto", "custom", "extension", "disabled"], default="auto", tooltip="auto: use preset/source LoRAs. custom: replace preset LoRAs with your selection. extension: keep preset LoRAs and add your selection. disabled: no preset LoRAs."),
-                io.Combo.Input("lora_1", options=["None"] + folder_paths.get_filename_list("loras"), default="None"),
-                io.Float.Input("strength_1", default=1.0, min=-10.0, max=10.0, step=0.05),
-                io.Combo.Input("lora_2", options=["None"] + folder_paths.get_filename_list("loras"), default="None"),
-                io.Float.Input("strength_2", default=1.0, min=-10.0, max=10.0, step=0.05),
-                io.Combo.Input("lora_3", options=["None"] + folder_paths.get_filename_list("loras"), default="None"),
-                io.Float.Input("strength_3", default=1.0, min=-10.0, max=10.0, step=0.05),
-                io.String.Input("lora_entries_json", default="", optional=True, multiline=True, advanced=True,
-                                tooltip="Internal ordered list managed by the Load LoRAs editor. Empty retains legacy slots."),
+                io.String.Input("lora_entries_json", default="[]", multiline=True, advanced=True,
+                                tooltip="Ordered list managed by the Load LoRAs editor."),
+                io.Combo.Input("lora_catalog", options=["None"] + folder_paths.get_filename_list("loras"), default="None", advanced=True,
+                               tooltip="Installed filename catalog for the searchable editor."),
             ],
             outputs=[io.String.Output("turbo_loras_json", display_name="LoRAs")])
 
     @classmethod
-    def execute(cls, mode="auto", lora_1="None", strength_1=1.0, lora_2="None", strength_2=1.0, lora_3="None", strength_3=1.0, lora_entries_json=""):
+    def execute(cls, mode="auto", lora_entries_json="[]", lora_catalog="None"):
         from .turbo_loras import build_lora_selection
-        config = build_lora_selection(mode, lora_entries_json,
-            ((lora_1, strength_1), (lora_2, strength_2), (lora_3, strength_3)))
+        config = build_lora_selection(mode, lora_entries_json)
         return io.NodeOutput(config)
+
+
+def fasth3_v2_checkpoint_options():
+    from .fasth3_v2 import is_fasth3_v2_checkpoint
+    return [name for name in folder_paths.get_filename_list("diffusion_models") if is_fasth3_v2_checkpoint(name)] or ["(install FastH3 V2 Comfy checkpoint)"]
+
+
+class MMH3FastH3V2Model(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(node_id="MMH3FastH3V2Model", display_name="H3 FastH3 V2 Model", category=CATEGORY,
+            description="Load a complete FastH3 V2 Comfy checkpoint and validate all 50 VSA gates. Use FastH3 V2 Sampling for text-to-audio-video. No base-model LoRA substitution.",
+            inputs=[io.Combo.Input("checkpoint", options=fasth3_v2_checkpoint_options())],
+            outputs=[io.Model.Output("model")])
+
+    @classmethod
+    def execute(cls, checkpoint):
+        from .fasth3_v2 import load_fasth3_v2
+        return io.NodeOutput(load_fasth3_v2(checkpoint))
 
 
 class MMH3H3SamplingPreset(io.ComfyNode):
@@ -304,6 +318,7 @@ class MMH3H3SamplingPreset(io.ComfyNode):
                         io.DynamicCombo.Option("Turbo - 4 steps", []),
                         io.DynamicCombo.Option("Standard - 20 steps", []),
                         io.DynamicCombo.Option("Turbo - 8 steps", []),
+                        io.DynamicCombo.Option("FastH3 V2 - 8 steps", []),
                         io.DynamicCombo.Option("Taomate - 3 steps (experimental)", []),
                         io.DynamicCombo.Option("Taomate - 6 steps (experimental)", []),
                         io.DynamicCombo.Option("Taomate Ref2VA - 8 steps (experimental)", []),
@@ -360,6 +375,7 @@ class MMH3H3SamplingPreset(io.ComfyNode):
             "Standard - 20 steps": "standard (20 steps)",
             "Turbo - 4 steps": "turbo (4 steps)",
             "Turbo - 8 steps": "turbo (8 steps)",
+            "FastH3 V2 - 8 steps": "fasth3 v2 native (8 steps)",
             "FastH3 dense - 6 steps (experimental)": "fasth3 dense experimental (6 steps)",
             "VDN-H3 DMD - 8 steps (experimental)": "vdn-h3 dmd (8 steps)",
             "VDN-H3 Stage-B - 50 steps (experimental)": "vdn-h3 stage-b (50 steps)",
@@ -381,6 +397,13 @@ class MMH3H3SamplingPreset(io.ComfyNode):
         from .turbo_loras import parse_turbo_loras, turbo_lora_mode
         turbo_selection = parse_turbo_loras(turbo_loras_json)
         lora_mode = turbo_lora_mode(turbo_loras_json)
+        from .fasth3_v2 import FASTH3_V2_PROFILE, FASTH3_V2_SOURCE, apply_fasth3_v2_recipe
+        if getattr(model, "get_attachment", lambda key: None)(FASTH3_V2_SOURCE) and preset.profile != FASTH3_V2_PROFILE:
+            raise MMH3ResourceError("FastH3 V2 Model requires the matching FastH3 V2 sampling preset")
+        if preset.profile == FASTH3_V2_PROFILE:
+            if turbo_selection is not None:
+                raise MMH3ResourceError("FastH3 V2 uses its complete checkpoint; keep Load LoRAs in auto mode")
+            model = apply_fasth3_v2_recipe(model, info)
         if turbo_selection is not None and preset.profile == FASTH3_PROFILE:
             raise MMH3ResourceError("FastH3 owns its architecture adapter; keep Load LoRAs in auto mode")
         if turbo_selection is not None and lora_mode != "extension":
@@ -440,15 +463,15 @@ class MMH3H3SamplingPreset(io.ComfyNode):
         )
 
 
-def _sol_attention_inputs(native=False):
+def _sol_attention_inputs():
     return [
         io.Float.Input("sol_tau", display_name="Tau", default=1.0, min=0.0, max=4.0, step=0.05, advanced=True),
         io.Float.Input("sol_start_percent", display_name="Start fraction", default=0.2, min=0.0, max=1.0, step=0.01, advanced=True),
         io.Float.Input("sol_end_percent", display_name="End fraction", default=0.9, min=0.0, max=1.0, step=0.01, advanced=True),
         io.Int.Input("sol_min_tokens", display_name="Minimum tokens", default=4096, min=0, max=1048576, step=512, advanced=True),
-        *([io.Int.Input("sol_extra_tokens", display_name="Extra exact tokens", default=256, min=0, max=256, step=64, advanced=True)] if native else [io.Boolean.Input("sol_int8_qk", display_name="INT8 QK", default=True, advanced=True)]),
+        io.Int.Input("sol_extra_tokens", display_name="Extra exact tokens", default=256, min=0, max=256, step=64, advanced=True),
         io.Combo.Input("sol_sink_conditioning", display_name="Conditioning protection", options=["exact_kv", "exact_kv_and_rows", "off"], default="exact_kv_and_rows", advanced=True),
-        io.String.Input("sol_dense_blocks", display_name="Dense blocks", default="", tooltip=("Non-negative block indices, e.g. 0-2,47-49." if native else "Blocks excluded from Sol, e.g. 0-2,-1. Blank applies Sol to all blocks."), advanced=True),
+        io.String.Input("sol_dense_blocks", display_name="Dense blocks", default="", tooltip="Non-negative block indices, e.g. 0-2,47-49.", advanced=True),
     ]
 
 
@@ -469,7 +492,7 @@ def _native_sla_attention_inputs():
     return [
         io.Float.Input("native_sla_keep_percent", display_name="Keep blocks (%)", default=15.0, min=0.5, max=95.0, step=0.5,
                        tooltip="Percentage kept exact, not sparsity. Core SLA-style routing; not identical to PlagueKind SLA."),
-        *_sol_attention_inputs(native=True)[1:],
+        *_sol_attention_inputs()[1:],
     ]
 
 
@@ -512,12 +535,12 @@ def h3_optimization_inputs(*, optional=False):
             "attention",
             display_name="Attention",
             optional=optional,
+            tooltip="Sol (ComfyUI) uses the native sparse backend.",
             options=[
                 io.DynamicCombo.Option("Default", []),
                 io.DynamicCombo.Option("PyTorch", []),
                 io.DynamicCombo.Option("Comfy Kitchen", []),
-                io.DynamicCombo.Option("Sol (ComfyUI)", _sol_attention_inputs(native=True)),
-                io.DynamicCombo.Option("Sol (Kijai)", _sol_attention_inputs()),
+                io.DynamicCombo.Option("Sol (ComfyUI)", _sol_attention_inputs()),
                 io.DynamicCombo.Option("VSA (ComfyUI)", _vsa_attention_inputs()),
                 io.DynamicCombo.Option("SLA (ComfyUI)", _native_sla_attention_inputs()),
                 io.DynamicCombo.Option("H3 SLA", _sla_attention_inputs()),
@@ -561,7 +584,6 @@ class MMH3H3ModelOptimizations(io.ComfyNode):
             "PyTorch": "pytorch",
             "Comfy Kitchen": "comfy_kitchen",
             "SageAttention (KJ)": "sage_attention_kj",
-            "Sol (Kijai)": "sol_attn",
             "Sol (ComfyUI)": "sol_native",
             "SLA (ComfyUI)": "sla_native",
             "VSA (ComfyUI)": "vsa_native",

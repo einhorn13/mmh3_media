@@ -8,12 +8,12 @@
       "id": 1,
       "type": "MMH3Create",
       "pos": [
-        60,
-        100
+        90,
+        125
       ],
       "size": [
-        360,
-        430
+        380,
+        500
       ],
       "flags": {},
       "order": 0,
@@ -64,12 +64,14 @@
         {
           "name": "first_frame",
           "type": "IMAGE",
-          "link": null
+          "link": null,
+          "label": "First frame"
         },
         {
           "name": "last_frame",
           "type": "IMAGE",
-          "link": null
+          "link": null,
+          "label": "Last frame"
         }
       ],
       "outputs": [
@@ -97,12 +99,12 @@
       "id": 2,
       "type": "LoadImage",
       "pos": [
-        70,
-        660.0
+        90,
+        700
       ],
       "size": [
-        350,
-        360
+        380,
+        490
       ],
       "flags": {},
       "order": 1,
@@ -142,8 +144,8 @@
       "id": 3,
       "type": "MMH3Put",
       "pos": [
-        500,
-        190
+        90,
+        1265
       ],
       "size": [
         390,
@@ -160,7 +162,7 @@
         },
         {
           "name": "resource",
-          "type": "IMAGE",
+          "type": "*",
           "link": 2
         },
         {
@@ -271,8 +273,8 @@
       "id": 4,
       "type": "MMH3ReferenceConfigure",
       "pos": [
-        970,
-        190
+        660,
+        125
       ],
       "size": [
         430,
@@ -298,42 +300,45 @@
         {
           "name": "inclusion",
           "type": "COMBO",
+          "link": null,
           "widget": {
             "name": "inclusion"
-          },
-          "link": null
+          }
         },
         {
           "name": "order",
           "type": "INT",
+          "link": null,
           "widget": {
             "name": "order"
-          },
-          "link": null
+          }
         },
         {
           "name": "purposes_json",
           "type": "STRING",
+          "link": null,
           "widget": {
             "name": "purposes_json"
           },
-          "link": null
+          "label": "purposes (JSON)"
         },
         {
           "name": "binding_action",
           "type": "COMBO",
+          "link": null,
           "widget": {
             "name": "binding_action"
           },
-          "link": null
+          "label": "soundtrack binding"
         },
         {
           "name": "video_resource_id",
           "type": "STRING",
+          "link": null,
           "widget": {
             "name": "video_resource_id"
           },
-          "link": null
+          "label": "bind to video resource ID"
         }
       ],
       "outputs": [
@@ -354,12 +359,12 @@
         {
           "name": "summary",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "info_json",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -378,8 +383,8 @@
       "id": 6,
       "type": "MMH3ReferenceReport",
       "pos": [
-        2500,
-        190
+        1230,
+        125
       ],
       "size": [
         460,
@@ -397,84 +402,84 @@
         {
           "name": "preset",
           "type": "COMBO",
+          "link": null,
           "widget": {
             "name": "preset"
-          },
-          "link": null
+          }
         },
         {
           "name": "target_width_override",
           "type": "INT",
+          "link": null,
           "widget": {
             "name": "target_width_override"
-          },
-          "link": null
+          }
         },
         {
           "name": "target_height_override",
           "type": "INT",
+          "link": null,
           "widget": {
             "name": "target_height_override"
-          },
-          "link": null
+          }
         },
         {
           "name": "target_frames_override",
           "type": "INT",
+          "link": null,
           "widget": {
             "name": "target_frames_override"
-          },
-          "link": null
+          }
         },
         {
           "name": "ref_image_size",
           "type": "COMBO",
+          "link": null,
           "widget": {
             "name": "ref_image_size"
-          },
-          "link": null
+          }
         }
       ],
       "outputs": [
         {
           "name": "packet",
           "type": "MMH3_MEDIA",
-          "links": null
+          "links": []
         },
         {
           "name": "ready",
           "type": "BOOLEAN",
-          "links": null
+          "links": []
         },
         {
           "name": "active_count",
           "type": "INT",
-          "links": null
+          "links": []
         },
         {
           "name": "prompt_tags_json",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "binding_map_json",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "summary",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "info_json",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "cost_json",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -492,8 +497,8 @@
       "id": 7,
       "type": "MMH3ReferenceAlias",
       "pos": [
-        1480,
-        190
+        660,
+        680
       ],
       "size": [
         430,
@@ -551,8 +556,8 @@
       "id": 8,
       "type": "MMH3SceneReferences",
       "pos": [
-        1980,
-        190
+        660,
+        1235
       ],
       "size": [
         430,
@@ -627,7 +632,7 @@
       0,
       3,
       1,
-      "IMAGE"
+      "*"
     ],
     [
       3,
@@ -678,7 +683,47 @@
       "MMH3_MEDIA"
     ]
   ],
-  "groups": [],
+  "groups": [
+    {
+      "id": 1,
+      "title": "01 · SOURCE / REFERENCES",
+      "bounding": [
+        65,
+        65,
+        440,
+        1705
+      ],
+      "color": "#355070",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 3,
+      "title": "03 · SETTINGS / PLAN",
+      "bounding": [
+        635,
+        65,
+        480,
+        1725
+      ],
+      "color": "#6d597a",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 5,
+      "title": "05 · REVIEW / SAVE",
+      "bounding": [
+        1205,
+        65,
+        510,
+        565
+      ],
+      "color": "#52796f",
+      "font_size": 24,
+      "flags": {}
+    }
+  ],
   "config": {},
   "extra": {},
   "version": 0.4

@@ -40,6 +40,7 @@ def build_h3_expansion(
     ref_image_short_edge: int | None = None,
     contract: NativeH3Contract | None = None,
     graph_builder_factory: Callable[[], Any] | None = None,
+    reuse_conditioning: bool = False,
 ) -> H3Expansion:
     if not resolved.ready:
         raise MMH3ResourceError(resolved.summary())
@@ -49,6 +50,14 @@ def build_h3_expansion(
 
         graph_builder_factory = GraphBuilder
     graph = graph_builder_factory()
+    if reuse_conditioning:
+        inputs = dict(packet=packet, resolved=resolved, clip=clip, video_vae=video_vae,
+                      ref_image_size=ref_image_size,
+                      ref_image_short_edge=ref_image_short_edge if ref_image_short_edge is not None else -1)
+        if audio_vae is not None:
+            inputs["audio_vae"] = audio_vae
+        cached = graph.node("MMH3H3ReuseConditioning", **inputs)
+        return H3Expansion(cached.out(0), cached.out(1), graph.finalize(), contract.fingerprint)
     common = {
         "clip": clip,
         "vae": video_vae,
@@ -67,7 +76,17 @@ def build_h3_expansion(
         native = graph.node(contract.node_id, **common)
         return H3Expansion(native.out(0), native.out(1), graph.finalize(), contract.fingerprint)
 
-    if audio_vae is None:
+    encoder_only = packet.manifest.get("extensions", {}).get("minimax_h3", {}).get("reference_conditioning") == "encoder_only"
+    if encoder_only:
+        # Newer native contracts accept encoder-only refs. Never silently degrade on an older host.
+        import nodes
+        schema = nodes.NODE_CLASS_MAPPINGS[contract.node_id].define_schema()
+        for name in ("vae", "audio_vae"):
+            field = next((i for i in schema.inputs if i.id == name), None)
+            if field is None or not field.optional:
+                raise MMH3ResourceError("This H3 runtime does not support encoder-only references")
+        common.pop("vae", None)
+    if audio_vae is None and not encoder_only:
         raise MMH3ResourceError("Ref2VA requires audio_vae because the native H3 reference node requires that input")
     pictures = sorted((item for item in resolved.selected_resources if item.kind == "image"), key=lambda r: (r.order is None, r.order or 0))
     videos = sorted((item for item in resolved.selected_resources if item.kind == "video"), key=lambda r: (r.order is None, r.order or 0))
@@ -114,10 +133,11 @@ def build_h3_expansion(
         audio_node = _get_node(graph, "MMH3GetAudio", packet, descriptor)
         dynamic[audio_group.input_path(index)] = audio_node.out(0)
 
+    audio_inputs = {} if encoder_only else {"audio_vae": preserve_h3_audio_onset(audio_vae)}
     native = graph.node(
         contract.node_id,
         **common,
-        audio_vae=preserve_h3_audio_onset(audio_vae),
+        **audio_inputs,
         ref_image_size=ref_image_size,
         **dynamic,
     )

@@ -2,18 +2,18 @@
   "id": "fe67cfc7-1254-5727-999b-303986cf64df",
   "revision": 0,
   "last_node_id": 107,
-  "last_link_id": 59,
+  "last_link_id": 61,
   "nodes": [
     {
       "id": 1,
       "type": "MMH3Load",
       "pos": [
         90,
-        110
+        125
       ],
       "size": [
         380,
-        470
+        490
       ],
       "flags": {},
       "order": 0,
@@ -67,12 +67,12 @@
       "type": "UNETLoader",
       "title": "Diffusion Model",
       "pos": [
-        590,
-        110
+        660,
+        125
       ],
       "size": [
-        360,
-        136
+        380,
+        155
       ],
       "flags": {},
       "order": 1,
@@ -117,12 +117,12 @@
       "type": "CLIPLoader",
       "title": "Text Encoder",
       "pos": [
-        590,
-        316
+        660,
+        355
       ],
       "size": [
-        360,
-        160
+        380,
+        190
       ],
       "flags": {},
       "order": 4,
@@ -175,11 +175,11 @@
       "id": 8,
       "type": "VAELoader",
       "pos": [
-        590,
-        546
+        660,
+        620
       ],
       "size": [
-        360,
+        380,
         120
       ],
       "flags": {},
@@ -218,11 +218,11 @@
       "id": 9,
       "type": "VAELoader",
       "pos": [
-        590,
-        736
+        660,
+        815
       ],
       "size": [
-        360,
+        380,
         120
       ],
       "flags": {},
@@ -260,11 +260,11 @@
       "id": 2,
       "type": "MMH3H3LatentUpscalePrepare",
       "pos": [
-        1590,
-        110
+        1800,
+        125
       ],
       "size": [
-        360,
+        380,
         424
       ],
       "flags": {},
@@ -362,7 +362,8 @@
           "type": "INT",
           "links": [
             11,
-            49
+            49,
+            60
           ]
         },
         {
@@ -370,7 +371,8 @@
           "type": "INT",
           "links": [
             12,
-            50
+            50,
+            61
           ]
         },
         {
@@ -384,12 +386,12 @@
         {
           "name": "source_resource_id",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "summary",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "process_info_json",
@@ -416,12 +418,12 @@
       "id": 100,
       "type": "MMH3ControlConfigure",
       "pos": [
-        1090,
-        110
+        1230,
+        125
       ],
       "size": [
-        360,
-        772
+        380,
+        995
       ],
       "flags": {},
       "order": 9,
@@ -653,12 +655,12 @@
         {
           "name": "summary",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "control_json",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -695,36 +697,47 @@
     },
     {
       "id": 3,
-      "type": "MinimaxH3LatentUpscaler3D",
+      "type": "MMH3H3LearnedUpscale",
       "pos": [
-        590,
-        1116
+        1800,
+        624
       ],
       "size": [
-        360,
-        256
+        380,
+        365
       ],
       "flags": {},
       "order": 10,
       "mode": 0,
       "inputs": [
         {
-          "name": "latent",
-          "type": "*",
+          "name": "video_latent",
+          "type": "LATENT",
           "link": 2
         },
         {
           "name": "model_name",
-          "type": "COMBO",
+          "type": "STRING",
           "link": null,
           "widget": {
             "name": "model_name"
           }
         },
         {
-          "name": "mode",
-          "type": "COMFY_DYNAMICCOMBO_V3",
-          "link": null
+          "name": "target_width",
+          "type": "INT",
+          "link": 60,
+          "widget": {
+            "name": "target_width"
+          }
+        },
+        {
+          "name": "target_height",
+          "type": "INT",
+          "link": 61,
+          "widget": {
+            "name": "target_height"
+          }
         },
         {
           "name": "align",
@@ -732,14 +745,6 @@
           "link": null,
           "widget": {
             "name": "align"
-          }
-        },
-        {
-          "name": "enable_chunking",
-          "type": "BOOLEAN",
-          "link": null,
-          "widget": {
-            "name": "enable_chunking"
           }
         },
         {
@@ -757,37 +762,56 @@
           "widget": {
             "name": "precision"
           }
+        },
+        {
+          "name": "offload_after_upscale",
+          "type": "BOOLEAN",
+          "link": null,
+          "widget": {
+            "name": "offload_after_upscale"
+          }
+        },
+        {
+          "name": "legacy_temporal_chunking",
+          "type": "BOOLEAN",
+          "link": null,
+          "widget": {
+            "name": "legacy_temporal_chunking"
+          }
         }
       ],
       "outputs": [
         {
-          "name": "latent",
-          "type": "*",
+          "name": "video_latent",
+          "type": "LATENT",
           "links": [
             3
           ]
         }
       ],
       "properties": {
-        "Node name for S&R": "MinimaxH3LatentUpscaler3D"
+        "Node name for S&R": "MMH3H3LearnedUpscale"
       },
       "widgets_values": [
         "minimax_h3_latent_upscaler_3d_bf16.safetensors",
+        1344,
+        768,
         32,
-        true,
         "cuda",
-        "bf16"
+        "bf16",
+        true,
+        false
       ]
     },
     {
       "id": 7,
       "type": "MMH3H3RefineLoRAs",
       "pos": [
-        590,
-        1442
+        660,
+        1010
       ],
       "size": [
-        360,
+        380,
         298
       ],
       "flags": {},
@@ -826,10 +850,25 @@
           }
         },
         {
+          "name": "turbo_override",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "turbo_override"
+          }
+        },
+        {
+          "name": "acceleration_policy",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "acceleration_policy"
+          }
+        },
+        {
           "name": "turbo_loras_json",
           "type": "STRING",
           "link": 59,
-          "shape": 7,
           "label": "LoRAs"
         }
       ],
@@ -851,12 +890,12 @@
         {
           "name": "applied_count",
           "type": "INT",
-          "links": null
+          "links": []
         },
         {
           "name": "summary",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "process_info_json",
@@ -868,7 +907,7 @@
         {
           "name": "applied_loras_json",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -876,18 +915,20 @@
       },
       "widgets_values": [
         "error",
-        "error"
+        "error",
+        "",
+        "preserve"
       ]
     },
     {
       "id": 4,
       "type": "MMH3H3LatentUpscaleTarget",
       "pos": [
-        1590,
-        604
+        1800,
+        1064
       ],
       "size": [
-        360,
+        380,
         154
       ],
       "flags": {},
@@ -916,7 +957,7 @@
         {
           "name": "summary",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -929,11 +970,11 @@
       "type": "MMH3H3AutoCondition",
       "title": "Prepare H3 Generation",
       "pos": [
-        1090,
-        952
+        1800,
+        1293
       ],
       "size": [
-        360,
+        380,
         330
       ],
       "flags": {},
@@ -975,12 +1016,6 @@
           "label": "Video VAE"
         },
         {
-          "name": "audio_vae",
-          "type": "VAE",
-          "link": 14,
-          "label": "Audio VAE"
-        },
-        {
           "name": "width_override",
           "type": "INT",
           "link": 11,
@@ -997,6 +1032,12 @@
           "type": "INT",
           "link": 13,
           "label": "Frames"
+        },
+        {
+          "name": "audio_vae",
+          "type": "VAE",
+          "link": 14,
+          "label": "Audio VAE"
         }
       ],
       "outputs": [
@@ -1010,7 +1051,7 @@
         {
           "name": "latent",
           "type": "LATENT",
-          "links": null
+          "links": []
         },
         {
           "name": "seed",
@@ -1029,17 +1070,22 @@
         {
           "name": "mode",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "status",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "info_json",
           "type": "STRING",
-          "links": null
+          "links": []
+        },
+        {
+          "name": "task_family",
+          "type": "COMBO",
+          "links": []
         }
       ],
       "properties": {
@@ -1054,12 +1100,12 @@
       "id": 21,
       "type": "MMH3H3LatentUpscaleReport",
       "pos": [
-        1090,
-        1530
+        2370,
+        125
       ],
       "size": [
-        360,
-        412
+        380,
+        610
       ],
       "flags": {},
       "order": 14,
@@ -1160,6 +1206,30 @@
           "widget": {
             "name": "sigma_profile"
           }
+        },
+        {
+          "name": "refine_sampling_json",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "refine_sampling_json"
+          }
+        },
+        {
+          "name": "preflight_json",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "preflight_json"
+          }
+        },
+        {
+          "name": "audio_delivery_json",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "audio_delivery_json"
+          }
         }
       ],
       "outputs": [
@@ -1200,18 +1270,21 @@
         "minimax_h3_latent_upscaler_3d_bf16.safetensors",
         "cuda",
         "bf16",
-        "3_steps"
+        "3_steps",
+        "",
+        "",
+        ""
       ]
     },
     {
       "id": 101,
       "type": "MMH3ControlVideo",
       "pos": [
-        1090,
-        2012
+        1800,
+        1698
       ],
       "size": [
-        360,
+        380,
         274
       ],
       "flags": {},
@@ -1259,12 +1332,12 @@
         {
           "name": "resource_id",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "info_json",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "frame_count",
@@ -1274,12 +1347,12 @@
         {
           "name": "width",
           "type": "INT",
-          "links": null
+          "links": []
         },
         {
           "name": "height",
           "type": "INT",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -1295,8 +1368,8 @@
       "id": 104,
       "type": "MMH3H3FunControl",
       "pos": [
-        1090,
-        2856
+        1800,
+        2047
       ],
       "size": [
         390,
@@ -1387,7 +1460,7 @@
         {
           "name": "summary",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "process_info_json",
@@ -1406,17 +1479,17 @@
         768,
         124
       ],
-      "title": "H3 Fun Control · MODEL_PATCH"
+      "title": "H3 Fun Control Â· MODEL_PATCH"
     },
     {
       "id": 16,
       "type": "MMH3H3AVSeparate",
       "pos": [
-        1590,
-        828
+        1800,
+        2482
       ],
       "size": [
-        360,
+        380,
         130
       ],
       "flags": {},
@@ -1440,7 +1513,7 @@
         {
           "name": "audio_latent",
           "type": "LATENT",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -1452,11 +1525,11 @@
       "id": 17,
       "type": "MMH3H3AVCombine",
       "pos": [
-        1590,
-        1028
+        1800,
+        2687
       ],
       "size": [
-        360,
+        380,
         136
       ],
       "flags": {},
@@ -1495,11 +1568,11 @@
       "type": "MMH3PackH3Result",
       "title": "Build MMH3 Result",
       "pos": [
-        3090,
-        110
+        1800,
+        2898
       ],
       "size": [
-        360,
+        380,
         484
       ],
       "flags": {
@@ -1589,10 +1662,10 @@
         {
           "name": "sampling_profile_json",
           "type": "STRING",
+          "link": null,
           "widget": {
             "name": "sampling_profile_json"
-          },
-          "link": null
+          }
         },
         {
           "name": "optimization_profile_json",
@@ -1630,12 +1703,12 @@
         {
           "name": "summary",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "result_info_json",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -1657,14 +1730,14 @@
     {
       "id": 25,
       "type": "MMH3SaveVideo",
-      "title": "Save Video · encode once",
+      "title": "Save Video Â· encode once",
       "pos": [
-        3090,
-        664
+        2370,
+        810
       ],
       "size": [
-        360,
-        420
+        380,
+        490
       ],
       "flags": {},
       "order": 27,
@@ -1733,12 +1806,12 @@
       "type": "MMH3Save",
       "title": "Save MMH3",
       "pos": [
-        3090,
-        1154.0
+        2370,
+        1375
       ],
       "size": [
         380,
-        470
+        490
       ],
       "flags": {},
       "order": 28,
@@ -1755,7 +1828,8 @@
           "link": null,
           "widget": {
             "name": "filename_prefix"
-          }
+          },
+          "label": "Filename"
         },
         {
           "name": "target",
@@ -1778,12 +1852,12 @@
         {
           "name": "packet",
           "type": "MMH3_MEDIA",
-          "links": null
+          "links": []
         },
         {
           "name": "path",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -1799,11 +1873,11 @@
       "id": 105,
       "type": "2ef0a082-2171-585a-94f2-82942073b155",
       "pos": [
-        2090,
-        110
+        1800,
+        3457
       ],
       "size": [
-        360,
+        380,
         402
       ],
       "flags": {},
@@ -1902,12 +1976,12 @@
       "type": "MMH3H3TurboLoRAs",
       "title": "Load LoRAs",
       "pos": [
-        590,
-        -250
+        660,
+        1383
       ],
       "size": [
         400,
-        270
+        365
       ],
       "flags": {},
       "order": 0,
@@ -1922,61 +1996,20 @@
           }
         },
         {
-          "name": "lora_1",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "lora_1"
-          }
-        },
-        {
-          "name": "strength_1",
-          "type": "FLOAT",
-          "link": null,
-          "widget": {
-            "name": "strength_1"
-          }
-        },
-        {
-          "name": "lora_2",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "lora_2"
-          }
-        },
-        {
-          "name": "strength_2",
-          "type": "FLOAT",
-          "link": null,
-          "widget": {
-            "name": "strength_2"
-          }
-        },
-        {
-          "name": "lora_3",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "lora_3"
-          }
-        },
-        {
-          "name": "strength_3",
-          "type": "FLOAT",
-          "link": null,
-          "widget": {
-            "name": "strength_3"
-          }
-        },
-        {
           "name": "lora_entries_json",
           "type": "STRING",
           "link": null,
           "widget": {
             "name": "lora_entries_json"
-          },
-          "shape": 7
+          }
+        },
+        {
+          "name": "lora_catalog",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "lora_catalog"
+          }
         }
       ],
       "outputs": [
@@ -1985,9 +2018,7 @@
           "type": "STRING",
           "links": [
             59
-          ],
-          "slot_index": 0,
-          "label": "LoRAs"
+          ]
         }
       ],
       "properties": {
@@ -1995,13 +2026,8 @@
       },
       "widgets_values": [
         "auto",
-        "None",
-        1.0,
-        "None",
-        1.0,
-        "None",
-        1.0,
-        ""
+        "[]",
+        "None"
       ]
     }
   ],
@@ -2091,7 +2117,7 @@
       2,
       3,
       10,
-      6,
+      5,
       "INT"
     ],
     [
@@ -2099,7 +2125,7 @@
       2,
       4,
       10,
-      7,
+      6,
       "INT"
     ],
     [
@@ -2107,7 +2133,7 @@
       2,
       5,
       10,
-      8,
+      7,
       "INT"
     ],
     [
@@ -2115,7 +2141,7 @@
       9,
       0,
       10,
-      5,
+      8,
       "VAE"
     ],
     [
@@ -2387,19 +2413,35 @@
       107,
       0,
       7,
-      5,
+      7,
       "STRING"
+    ],
+    [
+      60,
+      2,
+      3,
+      3,
+      2,
+      "INT"
+    ],
+    [
+      61,
+      2,
+      4,
+      3,
+      3,
+      "INT"
     ]
   ],
   "groups": [
     {
       "id": 1,
-      "title": "01 · INPUTS / ASSETS",
+      "title": "01 · SOURCE / REFERENCES",
       "bounding": [
-        55,
-        55,
+        65,
+        65,
         430,
-        560.0
+        625
       ],
       "color": "#355070",
       "font_size": 24,
@@ -2407,12 +2449,12 @@
     },
     {
       "id": 2,
-      "title": "02 · MODEL / ENCODERS / OPTIMIZATION",
+      "title": "02 · MODELS / SAMPLING",
       "bounding": [
-        555,
-        55,
-        430,
-        1720
+        635,
+        65,
+        450,
+        1758
       ],
       "color": "#4f5d75",
       "font_size": 24,
@@ -2420,12 +2462,12 @@
     },
     {
       "id": 3,
-      "title": "03 · SETTINGS / CONDITIONING / CONTROL",
+      "title": "03 · SETTINGS / PLAN",
       "bounding": [
-        1055,
-        55,
+        1205,
+        65,
         430,
-        3170
+        1130
       ],
       "color": "#6d597a",
       "font_size": 24,
@@ -2433,12 +2475,12 @@
     },
     {
       "id": 4,
-      "title": "04 · LATENT / TIMELINE PREP",
+      "title": "04 · GENERATION / EDIT",
       "bounding": [
-        1555,
-        55,
-        430,
-        1144
+        1775,
+        65,
+        440,
+        3869
       ],
       "color": "#8d6a4a",
       "font_size": 24,
@@ -2446,27 +2488,14 @@
     },
     {
       "id": 5,
-      "title": "05 · H3 SAMPLING + AV DECODE",
+      "title": "05 · REVIEW / SAVE",
       "bounding": [
-        2055,
-        55,
+        2345,
+        65,
         430,
-        1092
+        1875
       ],
-      "color": "#9c6644",
-      "font_size": 24,
-      "flags": {}
-    },
-    {
-      "id": 7,
-      "title": "06 · PREVIEW / PACK / SAVE",
-      "bounding": [
-        3055,
-        55,
-        430,
-        1604.0
-      ],
-      "color": "#2a9d8f",
+      "color": "#52796f",
       "font_size": 24,
       "flags": {}
     }

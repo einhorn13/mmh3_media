@@ -112,6 +112,16 @@ def _validate_ledger(ledger: Mapping[str, Any]) -> None:
         if not isinstance(attempts, int) or isinstance(attempts, bool) or attempts < 0:
             raise MMH3ResourceError("Execution ledger contains an invalid attempt count")
         lease = job.get("lease_id")
+        submission = job.get("submission")
+        if submission is not None and (not isinstance(submission, Mapping)
+                or submission.get("contract") != "mmh3_queue_submission_v1"
+                or not isinstance(submission.get("prompt_id"), str)
+                or not submission.get("prompt_id")
+                or not isinstance(submission.get("token"), str) or not submission.get("token")
+                or not isinstance(submission.get("lease_id"), str) or not submission.get("lease_id")
+                or (job["state"] == "running" and submission.get("lease_id") != lease)
+                or submission.get("attempt") != attempts):
+            raise MMH3ResourceError("Malformed execution queue submission")
         if job["state"] == "running" and (not isinstance(lease, str) or not lease):
             raise MMH3ResourceError("Running execution job is missing its lease")
         if job["state"] != "running" and lease is not None:
@@ -201,6 +211,7 @@ def transition_execution_job(
             "lease_id": lease,
             "lease_acquired_at": now.isoformat().replace("+00:00", "Z"),
             "lease_expires_at": (now + timedelta(seconds=timeout)).isoformat().replace("+00:00", "Z"),
+            "submission": None,
         })
     elif action == "candidate":
         if str(lease_id) != str(job.get("lease_id") or ""):
@@ -254,6 +265,8 @@ def transition_execution_job(
             "lease_acquired_at": None,
             "lease_expires_at": None,
         })
+        # An older candidate can be selected after a later attempt failed. Its
+        # submission receipt describes the attempt, not the accepted artifact.
     elif action == "reroll":
         job.update({
             "state": "pending",

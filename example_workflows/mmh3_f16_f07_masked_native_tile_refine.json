@@ -2,18 +2,18 @@
   "id": "7e47f21c-089f-55d8-a695-5792b8224790",
   "revision": 0,
   "last_node_id": 107,
-  "last_link_id": 59,
+  "last_link_id": 61,
   "nodes": [
     {
       "id": 1,
       "type": "MMH3Load",
       "pos": [
         90,
-        110
+        125
       ],
       "size": [
         380,
-        470
+        490
       ],
       "flags": {},
       "order": 0,
@@ -67,11 +67,11 @@
       "id": 5,
       "type": "VAELoader",
       "pos": [
-        590,
-        110
+        660,
+        125
       ],
       "size": [
-        360,
+        380,
         120
       ],
       "flags": {},
@@ -112,11 +112,11 @@
       "id": 6,
       "type": "VAELoader",
       "pos": [
-        590,
-        300
+        660,
+        320
       ],
       "size": [
-        360,
+        380,
         120
       ],
       "flags": {},
@@ -155,12 +155,12 @@
       "type": "UNETLoader",
       "title": "Diffusion Model",
       "pos": [
-        590,
-        490
+        660,
+        515
       ],
       "size": [
-        360,
-        136
+        380,
+        155
       ],
       "flags": {},
       "order": 5,
@@ -205,12 +205,12 @@
       "type": "CLIPLoader",
       "title": "Text Encoder",
       "pos": [
-        590,
-        696
+        660,
+        745
       ],
       "size": [
-        360,
-        160
+        380,
+        190
       ],
       "flags": {},
       "order": 6,
@@ -263,12 +263,12 @@
       "id": 2,
       "type": "MMH3Preflight",
       "pos": [
-        1090,
-        110
+        1230,
+        125
       ],
       "size": [
-        360,
-        364
+        380,
+        400
       ],
       "flags": {},
       "order": 8,
@@ -356,17 +356,17 @@
         {
           "name": "ready",
           "type": "BOOLEAN",
-          "links": null
+          "links": []
         },
         {
           "name": "summary",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "info_json",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -388,11 +388,11 @@
       "id": 3,
       "type": "MMH3H3LatentUpscalePrepare",
       "pos": [
-        1590,
-        110
+        1800,
+        125
       ],
       "size": [
-        360,
+        380,
         424
       ],
       "flags": {},
@@ -488,14 +488,16 @@
           "name": "target_width",
           "type": "INT",
           "links": [
-            12
+            12,
+            60
           ]
         },
         {
           "name": "target_height",
           "type": "INT",
           "links": [
-            13
+            13,
+            61
           ]
         },
         {
@@ -509,12 +511,12 @@
         {
           "name": "source_resource_id",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "summary",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "process_info_json",
@@ -541,12 +543,12 @@
       "id": 100,
       "type": "MMH3ControlConfigure",
       "pos": [
-        1090,
-        544
+        1230,
+        600
       ],
       "size": [
-        360,
-        772
+        380,
+        995
       ],
       "flags": {},
       "order": 10,
@@ -781,12 +783,12 @@
         {
           "name": "summary",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "control_json",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -823,36 +825,47 @@
     },
     {
       "id": 4,
-      "type": "MinimaxH3LatentUpscaler3D",
+      "type": "MMH3H3LearnedUpscale",
       "pos": [
-        590,
-        1116
+        1800,
+        624
       ],
       "size": [
-        360,
-        256
+        380,
+        365
       ],
       "flags": {},
       "order": 11,
       "mode": 0,
       "inputs": [
         {
-          "name": "latent",
-          "type": "*",
+          "name": "video_latent",
+          "type": "LATENT",
           "link": 3
         },
         {
           "name": "model_name",
-          "type": "COMBO",
+          "type": "STRING",
           "link": null,
           "widget": {
             "name": "model_name"
           }
         },
         {
-          "name": "mode",
-          "type": "COMFY_DYNAMICCOMBO_V3",
-          "link": null
+          "name": "target_width",
+          "type": "INT",
+          "link": 60,
+          "widget": {
+            "name": "target_width"
+          }
+        },
+        {
+          "name": "target_height",
+          "type": "INT",
+          "link": 61,
+          "widget": {
+            "name": "target_height"
+          }
         },
         {
           "name": "align",
@@ -860,14 +873,6 @@
           "link": null,
           "widget": {
             "name": "align"
-          }
-        },
-        {
-          "name": "enable_chunking",
-          "type": "BOOLEAN",
-          "link": null,
-          "widget": {
-            "name": "enable_chunking"
           }
         },
         {
@@ -885,37 +890,56 @@
           "widget": {
             "name": "precision"
           }
+        },
+        {
+          "name": "offload_after_upscale",
+          "type": "BOOLEAN",
+          "link": null,
+          "widget": {
+            "name": "offload_after_upscale"
+          }
+        },
+        {
+          "name": "legacy_temporal_chunking",
+          "type": "BOOLEAN",
+          "link": null,
+          "widget": {
+            "name": "legacy_temporal_chunking"
+          }
         }
       ],
       "outputs": [
         {
-          "name": "latent",
-          "type": "*",
+          "name": "video_latent",
+          "type": "LATENT",
           "links": [
             4
           ]
         }
       ],
       "properties": {
-        "Node name for S&R": "MinimaxH3LatentUpscaler3D"
+        "Node name for S&R": "MMH3H3LearnedUpscale"
       },
       "widgets_values": [
         "minimax_h3_latent_upscaler_3d_bf16.safetensors",
+        1344,
+        768,
         32,
-        true,
         "cuda",
-        "bf16"
+        "bf16",
+        true,
+        false
       ]
     },
     {
       "id": 10,
       "type": "MMH3H3RefineLoRAs",
       "pos": [
-        590,
-        1442
+        660,
+        1010
       ],
       "size": [
-        360,
+        380,
         298
       ],
       "flags": {},
@@ -954,10 +978,25 @@
           }
         },
         {
+          "name": "turbo_override",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "turbo_override"
+          }
+        },
+        {
+          "name": "acceleration_policy",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "acceleration_policy"
+          }
+        },
+        {
           "name": "turbo_loras_json",
           "type": "STRING",
           "link": 59,
-          "shape": 7,
           "label": "LoRAs"
         }
       ],
@@ -979,12 +1018,12 @@
         {
           "name": "applied_count",
           "type": "INT",
-          "links": null
+          "links": []
         },
         {
           "name": "summary",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "process_info_json",
@@ -996,7 +1035,7 @@
         {
           "name": "applied_loras_json",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -1004,7 +1043,9 @@
       },
       "widgets_values": [
         "error",
-        "error"
+        "error",
+        "",
+        "preserve"
       ]
     },
     {
@@ -1012,11 +1053,11 @@
       "type": "MMH3H3AutoCondition",
       "title": "Prepare H3 Generation",
       "pos": [
-        1090,
-        1386
+        1800,
+        1064
       ],
       "size": [
-        360,
+        380,
         330
       ],
       "flags": {},
@@ -1058,12 +1099,6 @@
           "label": "Video VAE"
         },
         {
-          "name": "audio_vae",
-          "type": "VAE",
-          "link": 15,
-          "label": "Audio VAE"
-        },
-        {
           "name": "width_override",
           "type": "INT",
           "link": 12,
@@ -1080,6 +1115,12 @@
           "type": "INT",
           "link": 14,
           "label": "Frames"
+        },
+        {
+          "name": "audio_vae",
+          "type": "VAE",
+          "link": 15,
+          "label": "Audio VAE"
         }
       ],
       "outputs": [
@@ -1094,7 +1135,7 @@
         {
           "name": "latent",
           "type": "LATENT",
-          "links": null
+          "links": []
         },
         {
           "name": "seed",
@@ -1106,22 +1147,27 @@
         {
           "name": "packet",
           "type": "MMH3_MEDIA",
-          "links": null
+          "links": []
         },
         {
           "name": "mode",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "status",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "info_json",
           "type": "STRING",
-          "links": null
+          "links": []
+        },
+        {
+          "name": "task_family",
+          "type": "COMBO",
+          "links": []
         }
       ],
       "properties": {
@@ -1136,11 +1182,11 @@
       "id": 101,
       "type": "MMH3ControlVideo",
       "pos": [
-        1090,
-        1964
+        1800,
+        1469
       ],
       "size": [
-        360,
+        380,
         274
       ],
       "flags": {},
@@ -1188,12 +1234,12 @@
         {
           "name": "resource_id",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "info_json",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "frame_count",
@@ -1203,12 +1249,12 @@
         {
           "name": "width",
           "type": "INT",
-          "links": null
+          "links": []
         },
         {
           "name": "height",
           "type": "INT",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -1224,11 +1270,11 @@
       "id": 102,
       "type": "MMH3GetMask",
       "pos": [
-        1090,
-        2308
+        1800,
+        1818
       ],
       "size": [
-        360,
+        380,
         286
       ],
       "flags": {},
@@ -1284,17 +1330,17 @@
         {
           "name": "exists",
           "type": "BOOLEAN",
-          "links": null
+          "links": []
         },
         {
           "name": "resource_id",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "descriptor_json",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -1311,8 +1357,8 @@
       "id": 15,
       "type": "MMH3H3NativeTileRefine",
       "pos": [
-        2090,
-        696
+        1800,
+        2179
       ],
       "size": [
         390,
@@ -1497,7 +1543,7 @@
         {
           "name": "video",
           "type": "IMAGE",
-          "links": null
+          "links": []
         },
         {
           "name": "tile_plan_json",
@@ -1523,7 +1569,7 @@
         {
           "name": "summary",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "control_process_info_json",
@@ -1551,18 +1597,18 @@
         "minimax_h3_fun_controlnet_union_pruned_int8_convrot.safetensors",
         "{}"
       ],
-      "title": "Native Tile Refine · H3 Fun MODEL_PATCH"
+      "title": "Native Tile Refine Â· H3 Fun MODEL_PATCH"
     },
     {
       "id": 20,
       "type": "MMH3H3LatentUpscaleReport",
       "pos": [
-        1090,
-        3164
+        2370,
+        125
       ],
       "size": [
-        360,
-        412
+        380,
+        610
       ],
       "flags": {},
       "order": 22,
@@ -1663,6 +1709,30 @@
           "widget": {
             "name": "sigma_profile"
           }
+        },
+        {
+          "name": "refine_sampling_json",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "refine_sampling_json"
+          }
+        },
+        {
+          "name": "preflight_json",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "preflight_json"
+          }
+        },
+        {
+          "name": "audio_delivery_json",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "audio_delivery_json"
+          }
         }
       ],
       "outputs": [
@@ -1703,7 +1773,10 @@
         "minimax_h3_latent_upscaler_3d_bf16.safetensors",
         "cuda",
         "bf16",
-        "3_steps"
+        "3_steps",
+        "",
+        "",
+        ""
       ]
     },
     {
@@ -1711,11 +1784,11 @@
       "type": "MMH3PackH3Result",
       "title": "Build MMH3 Result",
       "pos": [
-        3090,
-        110
+        1800,
+        3054
       ],
       "size": [
-        360,
+        380,
         484
       ],
       "flags": {
@@ -1805,10 +1878,10 @@
         {
           "name": "sampling_profile_json",
           "type": "STRING",
+          "link": null,
           "widget": {
             "name": "sampling_profile_json"
-          },
-          "link": null
+          }
         },
         {
           "name": "optimization_profile_json",
@@ -1846,12 +1919,12 @@
         {
           "name": "summary",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "result_info_json",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -1873,14 +1946,14 @@
     {
       "id": 23,
       "type": "MMH3SaveVideo",
-      "title": "Save Video · encode once",
+      "title": "Save Video Â· encode once",
       "pos": [
-        3090,
-        664
+        2370,
+        810
       ],
       "size": [
-        360,
-        420
+        380,
+        490
       ],
       "flags": {},
       "order": 25,
@@ -1949,12 +2022,12 @@
       "type": "MMH3Save",
       "title": "Save MMH3",
       "pos": [
-        3090,
-        1154.0
+        2370,
+        1375
       ],
       "size": [
         380,
-        470
+        490
       ],
       "flags": {},
       "order": 26,
@@ -1971,7 +2044,8 @@
           "link": null,
           "widget": {
             "name": "filename_prefix"
-          }
+          },
+          "label": "Filename"
         },
         {
           "name": "target",
@@ -1994,12 +2068,12 @@
         {
           "name": "packet",
           "type": "MMH3_MEDIA",
-          "links": null
+          "links": []
         },
         {
           "name": "path",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -2015,11 +2089,11 @@
       "id": 105,
       "type": "767d4a17-7e89-5cf7-9fdb-2e201540527d",
       "pos": [
-        2090,
-        110
+        1800,
+        3613
       ],
       "size": [
-        360,
+        380,
         474
       ],
       "flags": {},
@@ -2139,12 +2213,12 @@
       "type": "MMH3H3TurboLoRAs",
       "title": "Load LoRAs",
       "pos": [
-        590,
-        -250
+        660,
+        1383
       ],
       "size": [
         400,
-        270
+        365
       ],
       "flags": {},
       "order": 0,
@@ -2159,61 +2233,20 @@
           }
         },
         {
-          "name": "lora_1",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "lora_1"
-          }
-        },
-        {
-          "name": "strength_1",
-          "type": "FLOAT",
-          "link": null,
-          "widget": {
-            "name": "strength_1"
-          }
-        },
-        {
-          "name": "lora_2",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "lora_2"
-          }
-        },
-        {
-          "name": "strength_2",
-          "type": "FLOAT",
-          "link": null,
-          "widget": {
-            "name": "strength_2"
-          }
-        },
-        {
-          "name": "lora_3",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "lora_3"
-          }
-        },
-        {
-          "name": "strength_3",
-          "type": "FLOAT",
-          "link": null,
-          "widget": {
-            "name": "strength_3"
-          }
-        },
-        {
           "name": "lora_entries_json",
           "type": "STRING",
           "link": null,
           "widget": {
             "name": "lora_entries_json"
-          },
-          "shape": 7
+          }
+        },
+        {
+          "name": "lora_catalog",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "lora_catalog"
+          }
         }
       ],
       "outputs": [
@@ -2222,9 +2255,7 @@
           "type": "STRING",
           "links": [
             59
-          ],
-          "slot_index": 0,
-          "label": "LoRAs"
+          ]
         }
       ],
       "properties": {
@@ -2232,13 +2263,8 @@
       },
       "widgets_values": [
         "auto",
-        "None",
-        1.0,
-        "None",
-        1.0,
-        "None",
-        1.0,
-        ""
+        "[]",
+        "None"
       ]
     }
   ],
@@ -2336,7 +2362,7 @@
       3,
       3,
       11,
-      6,
+      5,
       "INT"
     ],
     [
@@ -2344,7 +2370,7 @@
       3,
       4,
       11,
-      7,
+      6,
       "INT"
     ],
     [
@@ -2352,7 +2378,7 @@
       3,
       5,
       11,
-      8,
+      7,
       "INT"
     ],
     [
@@ -2360,7 +2386,7 @@
       6,
       0,
       11,
-      5,
+      8,
       "VAE"
     ],
     [
@@ -2672,19 +2698,35 @@
       107,
       0,
       10,
-      5,
+      7,
       "STRING"
+    ],
+    [
+      60,
+      3,
+      3,
+      4,
+      2,
+      "INT"
+    ],
+    [
+      61,
+      3,
+      4,
+      4,
+      3,
+      "INT"
     ]
   ],
   "groups": [
     {
       "id": 1,
-      "title": "01 · INPUTS / ASSETS",
+      "title": "01 · SOURCE / REFERENCES",
       "bounding": [
-        55,
-        55,
+        65,
+        65,
         430,
-        560.0
+        625
       ],
       "color": "#355070",
       "font_size": 24,
@@ -2692,12 +2734,12 @@
     },
     {
       "id": 2,
-      "title": "02 · MODEL / ENCODERS / OPTIMIZATION",
+      "title": "02 · MODELS / SAMPLING",
       "bounding": [
-        555,
-        55,
-        430,
-        1720
+        635,
+        65,
+        450,
+        1758
       ],
       "color": "#4f5d75",
       "font_size": 24,
@@ -2705,12 +2747,12 @@
     },
     {
       "id": 3,
-      "title": "03 · SETTINGS / CONDITIONING / CONTROL",
+      "title": "03 · SETTINGS / PLAN",
       "bounding": [
-        1055,
-        55,
+        1205,
+        65,
         430,
-        3556
+        1605
       ],
       "color": "#6d597a",
       "font_size": 24,
@@ -2718,12 +2760,12 @@
     },
     {
       "id": 4,
-      "title": "04 · LATENT / TIMELINE PREP",
+      "title": "04 · GENERATION / EDIT",
       "bounding": [
-        1555,
-        55,
-        430,
-        514
+        1775,
+        65,
+        440,
+        4097
       ],
       "color": "#8d6a4a",
       "font_size": 24,
@@ -2731,27 +2773,14 @@
     },
     {
       "id": 5,
-      "title": "05 · H3 SAMPLING + AV DECODE",
+      "title": "05 · REVIEW / SAVE",
       "bounding": [
-        2055,
-        55,
+        2345,
+        65,
         430,
-        1448
+        1875
       ],
-      "color": "#9c6644",
-      "font_size": 24,
-      "flags": {}
-    },
-    {
-      "id": 7,
-      "title": "06 · PREVIEW / PACK / SAVE",
-      "bounding": [
-        3055,
-        55,
-        430,
-        1604.0
-      ],
-      "color": "#2a9d8f",
+      "color": "#52796f",
       "font_size": 24,
       "flags": {}
     }

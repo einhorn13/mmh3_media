@@ -1,5 +1,7 @@
 import { app } from "/scripts/app.js";
 import { api } from "/scripts/api.js";
+import { formatTime, takesForSegment, timelineLayout } from "./mmh3_project_view.js";
+import { renderStudioProject } from "./mmh3_studio_view.js";
 
 // Retain saved results while the dialog is closed; backend still validates every import.
 const savedResults = new Map();
@@ -64,10 +66,16 @@ export async function openProjectManager(origin, initialFile = "") {
         .mmh3-project-manager h2,.mmh3-project-manager h3{margin:0 0 12px}.mmh3-project-manager button,.mmh3-project-manager select,.mmh3-project-manager input,.mmh3-project-manager textarea{background:#303945;color:inherit;border:1px solid #64748b;border-radius:6px;padding:8px;font:inherit;max-width:100%}
         .mmh3-project-manager button{cursor:pointer}.mmh3-project-manager button:disabled{opacity:.45;cursor:default}.mmh3-project-manager button:focus-visible{outline:2px solid #8ac9ff;outline-offset:2px}
         .mmh3-project-toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center}.mmh3-project-toolbar select{flex:1;min-width:170px}
-        .mmh3-project-grid{display:grid;grid-template-columns:240px 1fr;gap:18px}.mmh3-project-list{display:grid;gap:8px;align-content:start}.mmh3-project-list button{text-align:left;overflow-wrap:anywhere}.mmh3-project-list .selected{border-color:#8ac9ff;background:#284665}
+        .mmh3-project-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:18px}.mmh3-project-list{display:grid;gap:8px;align-content:start}.mmh3-project-list button{text-align:left;overflow-wrap:anywhere}.mmh3-project-list .selected{border-color:#8ac9ff;background:#284665}
+        .mmh3-project-grid>*{min-width:0}.mmh3-project-previews>*{min-width:0}
+        .mmh3-timeline-scroll{overflow-x:auto;border:1px solid #596575;border-radius:8px;padding:12px;background:#161c24}
+        .mmh3-timeline-track{display:flex;width:max-content;gap:4px;align-items:stretch}.mmh3-timeline-clip{position:relative;flex:none;height:116px;overflow:hidden;text-align:left;padding:8px!important;background:#254639!important;border-color:#529b7d!important}
+        .mmh3-timeline-clip[aria-pressed=true]{outline:2px solid #8ac9ff;outline-offset:1px}.mmh3-timeline-clip.invalidated{background:#45332f!important;border-color:#c9916c!important}.mmh3-timeline-clip.unknown{border-style:dashed!important}
+        .mmh3-timeline-clip strong,.mmh3-timeline-clip small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mmh3-timeline-clip img{width:100%;height:42px;object-fit:cover;margin-top:5px;border-radius:3px}.mmh3-timeline-axis{display:flex;width:max-content;margin-bottom:8px;color:#b7c7d9;font-size:12px}.mmh3-timeline-axis span{flex:none}
+        .mmh3-take-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:12px 0}.mmh3-take-card{min-width:0;border:1px solid #596575;border-radius:8px;padding:10px;background:#242d39}.mmh3-take-card.selected{border-color:#8ac9ff;background:#284665}.mmh3-take-card.comparing{box-shadow:inset 0 0 0 2px #bd9fff}.mmh3-take-card img{width:100%;height:108px;object-fit:contain;background:#10151b;border-radius:5px}.mmh3-take-card h4{margin:8px 0 4px;overflow-wrap:anywhere}.mmh3-take-card .mmh3-project-toolbar{margin:8px 0 0}.mmh3-take-card p{margin:5px 0}.mmh3-take-prompt{max-height:4.5em;overflow:auto;white-space:pre-wrap;font-size:12px}.mmh3-take-badge{font-size:12px;color:#b7c7d9}.mmh3-project-manager .mmh3-primary{background:#315577;border-color:#8ac9ff}
         .mmh3-project-previews{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mmh3-project-previews img,.mmh3-project-previews video{width:100%;height:190px;object-fit:contain;background:#10151b;border-radius:6px}
         .mmh3-project-manager label{display:block;margin:10px 0 4px}.mmh3-project-manager textarea{width:100%;height:85px}.mmh3-project-note{color:#b7c7d9;overflow-wrap:anywhere}.mmh3-project-error{color:#ffc09a}.mmh3-project-confirm{padding:14px;margin:12px 0;border:1px solid #d1a266;border-radius:8px;background:#3a3026}
-        @media(max-width:700px){.mmh3-project-grid,.mmh3-project-previews{grid-template-columns:1fr}.mmh3-project-manager{padding:12px}.mmh3-project-previews img,.mmh3-project-previews video{height:150px}}
+        @media(max-width:700px){.mmh3-project-grid,.mmh3-project-previews{grid-template-columns:minmax(0,1fr)}.mmh3-project-manager{padding:12px}.mmh3-project-previews img,.mmh3-project-previews video{height:150px}}
         `; document.head.append(style);
     }
     const dialog = el("dialog", null, "mmh3-project-manager"); dialog.setAttribute("aria-label", "MMH3 Project Manager");
@@ -76,7 +84,9 @@ export async function openProjectManager(origin, initialFile = "") {
     const projects = el("select"); projects.setAttribute("aria-label","Project");
     const files = el("select"); files.setAttribute("aria-label","Saved archive");
     let data = null, busy = false, closed = false, timer, confirmation = null;
+    const studioDrafts = new Map();
     const compose = {target:"",prompts:"",seed:Math.floor(Math.random()*4294967295)};
+    const view = {zoom:32, filter:"active", compare:[], preview:""};
     const pendingSaves = [];
     const operations = new Map();
     const message = (text, error = false) => { status.textContent = text; status.className = error ? "mmh3-project-error" : "mmh3-project-note"; };
@@ -89,13 +99,18 @@ export async function openProjectManager(origin, initialFile = "") {
     }
     async function run(action) {
         if (busy || closed) return;
-        busy = true; dialog.querySelectorAll("button,select,input,textarea").forEach(n => n.disabled = true);
+        const disabled = new Map([...dialog.querySelectorAll("button,select,input,textarea")].map(n=>[n,n.disabled]));
+        busy = true; disabled.forEach((_,n)=>n.disabled=true);
         try { await action(); }
         catch (error) {
+            if (error.status === 409 && data?.kind === "studio" && studioDrafts.size) {
+                message("Project changed elsewhere. Your scene edits are preserved; copy them before Refresh.", true);
+                return;
+            }
             if (error.status === 409 && data) { data = await request("state").catch(() => data); render(); }
             confirmation?.remove(); confirmation = null; message(error.message, true);
         } finally { busy = false; if (!closed) {
-            dialog.querySelectorAll("button,select,input,textarea").forEach(n => n.disabled = false);
+            disabled.forEach((wasDisabled,n)=>{if(n.isConnected)n.disabled=wasDisabled;});
             if (pendingSaves.length) queueMicrotask(importSaved);
         } }
     }
@@ -105,7 +120,8 @@ export async function openProjectManager(origin, initialFile = "") {
         if (saved.project_id !== data?.id) return;
         void run(async () => {
             data = await request("state");
-            data = await request("add",{file:saved.file}); render();
+            const before = data.candidates.map(c=>c.id);
+            data = await request("add",{file:saved.file}); showAddedTake(before); render();
             savedResults.set(saved.project_id,(savedResults.get(saved.project_id)||[]).filter(file=>file!==saved.file));
             message("New take added automatically. Select a candidate, render another take, or accept and continue.");
         });
@@ -116,57 +132,141 @@ export async function openProjectManager(origin, initialFile = "") {
         const [p,f] = await Promise.all([api.fetchApi("/mmh3_media/projects"),api.fetchApi("/mmh3_media/batch_files")]);
         if (!p.ok || !f.ok) throw new Error("Could not load projects and saved archives");
         projects.replaceChildren(new Option("Choose a project…", ""));
-        for (const item of await p.json()) projects.add(new Option(item.name + " · " + item.id.slice(0,8), item.id));
+        for (const item of await p.json()) projects.add(new Option(item.name + " · " + (item.kind === "studio" ? "Studio" : item.id.slice(0,8)), item.id));
         const previous = files.value || initialFile; files.replaceChildren(new Option("Choose a saved .mmh3…", ""));
         for (const item of (await f.json()).filter(x => x.endsWith(".mmh3") && !x.includes(".mmh3_review/"))) files.add(new Option(item,item));
         if ([...files.options].some(o => o.value === previous)) files.value = previous;
         projects.value = data?.id || origin.properties?.mmh3_project_id || "";
     }
-    function previewPane(label, candidateId) {
-        const pane = el("div"), media = el("img"); media.alt = label;
+    function mediaUrl(candidateId, segmentId = "") {
         const query = new URLSearchParams({project_id:data.id,v:data.state.state_digest});
         if (candidateId) query.set("candidate_id",candidateId);
+        else if (segmentId) query.set("segment_id",segmentId);
         const url = "/mmh3_media/project_media?" + query;
-        media.src = api.apiURL?.(url) ?? url;
+        return api.apiURL?.(url) ?? url;
+    }
+    function thumbnail(candidateId, segmentId, label) {
+        const img = el("img"); img.alt = label; img.loading = "lazy"; img.decoding = "async";
+        img.src = mediaUrl(candidateId, segmentId);
+        img.onerror = () => img.replaceWith(el("p","Preview unavailable","mmh3-project-note"));
+        return img;
+    }
+    function focusSegment(id) {
+        compose.target=id; compose.prompts=""; view.compare=[]; view.preview="";
+        render();
+        content.querySelector(`[data-segment-id="${CSS.escape(id)}"]`)?.scrollIntoView({block:"nearest",inline:"nearest"});
+    }
+    function showAddedTake(before) {
+        const added = data.candidates.find(c=>!before.includes(c.id));
+        if (!added) return;
+        compose.target=added.target_segment_id||"";view.preview=added.id;view.compare=[];view.filter="active";
+    }
+    function previewPane(label, candidateId, segmentId = "") {
+        const pane = el("div"), media = el("img"); media.alt = label;
+        const url = mediaUrl(candidateId, segmentId);
+        media.src = url;
         media.onerror = () => { media.replaceWith(el("p","No cached image preview.")); };
-        const play = button("Play saved video", () => {
+        pane.loadSavedVideo = () => {
+            const existing = pane.querySelector("video");
+            if (existing) return existing;
             const video = el("video"); video.controls = true; video.preload = "metadata";
-            video.src = api.apiURL?.(url + "&kind=video") ?? url + "&kind=video";
+            video.src = url + "&kind=video";
             video.onerror = () => video.replaceWith(el("p","No decoded video in this archive."));
             pane.replaceChildren(el("h3",label),video);
-        });
+            return video;
+        };
+        const play = button("Play saved video", () => pane.loadSavedVideo());
         pane.append(el("h3",label),media,play); return pane;
     }
     function render() {
+        content.querySelectorAll("video").forEach(v=>v.pause());
         confirmation = null; content.replaceChildren();
+        sourcebar.style.display = data?.kind === "studio" ? "none" : "";
         if (!data) { content.append(el("p","Choose an existing project or create one from a saved accepted segment.")); return; }
         origin.properties ??= {}; origin.properties.mmh3_project_id = data.id;
         projects.value = data.id;
-        const grid = el("div",null,"mmh3-project-grid"), timeline = el("div",null,"mmh3-project-list"), detail = el("div");
-        timeline.append(el("h3","Segments"));
+        if (data.kind === "studio") {
+            renderStudioProject(content, data, {request, run, drafts:studioDrafts, update(value){data=value;render();}, apiURL:url=>api.apiURL(url),
+                async generate(action){
+                    const studio=(origin.comfyClass==="MMH3LongVideoStudio" ? origin : app.graph._nodes.find(n=>n.comfyClass==="MMH3LongVideoStudio" && n.widgets?.find(w=>w.name==="project")?.value===data.name));
+                    if(!studio)throw new Error("Open the Studio workflow for this project to generate or assemble.");
+                    studio.widgets.find(w=>w.name==="project").value=data.name;
+                    studio.widgets.find(w=>w.name==="action").value=action;
+                    await app.queuePrompt(0,1);message("Studio operation submitted. Refresh after completion.");
+                }});
+            return;
+        }
+        if (compose.target && !data.state.segments.some(s=>s.segment_id===compose.target && s.status==="accepted")) compose.target="";
+        const grid = el("div",null,"mmh3-project-grid"), timeline = el("section"), detail = el("div");
+        timeline.setAttribute("aria-label","Visual segment timeline");
+        const timelineTools=el("div",null,"mmh3-project-toolbar");
+        const zoom=el("input"); zoom.type="range"; zoom.min="16"; zoom.max="96"; zoom.value=String(view.zoom); zoom.setAttribute("aria-label","Timeline zoom");
+        zoom.onchange=()=>{view.zoom=Number(zoom.value);render();};
+        timelineTools.append(el("h3","Timeline"),el("span",`${formatTime(data.timeline?.duration_seconds)} · ${data.state.segments.filter(s=>s.status==="accepted").length} accepted segments`),el("label","Zoom"),zoom);
+        const scroll=el("div",null,"mmh3-timeline-scroll"), axis=el("div",null,"mmh3-timeline-axis"),track=el("div",null,"mmh3-timeline-track");
+        track.setAttribute("role","group");track.setAttribute("aria-label","Segments in order");
+        const slots=timelineLayout(data.timeline?.slots || data.state.segments.map(s=>({...s,revision:s.active_revision})),view.zoom);
+        for(const s of slots){
+            const active=s.status==="accepted", count=takesForSegment(data.candidates,s.segment_id).filter(c=>!c.stale && c.status==="review").length;
+            const clip=button("",()=>{if(active)focusSegment(s.segment_id);else message("This segment was invalidated by a replacement. Its archives remain available in project storage.");});
+            clip.className=`mmh3-timeline-clip ${active?"":"invalidated"} ${s.timingKnown?"":"unknown"}`;clip.style.width=`${s.width}px`;
+            clip.dataset.segmentId=s.segment_id;clip.setAttribute("aria-pressed",String(compose.target===s.segment_id));
+            clip.title=`Segment ${s.index+1} · ${s.status} · revision ${s.revision} · ${formatTime(s.duration_seconds)} · ${s.scene_id}`;
+            clip.setAttribute("aria-label",clip.title);
+            clip.append(el("strong",`Segment ${s.index+1} · r${s.revision}`),el("small",`${s.status}${count?` · ${count} takes`:""}`));
+            if(s.available && active)clip.append(thumbnail("",s.segment_id,`Segment ${s.index+1}`));
+            else clip.append(el("small",active?"Attach archive for preview":"Invalidated"));
+            const tick=el("span",s.start_seconds!=null?formatTime(s.start_seconds):"—");tick.style.width=`${s.width+4}px`;axis.append(tick);track.append(clip);
+        }
+        const next=button("+ Next segment",()=>focusSegment(""));next.className="mmh3-timeline-clip unknown";next.style.width="150px";next.dataset.segmentId="";next.setAttribute("aria-pressed",String(!compose.target));track.append(next);
+        track.onkeydown=event=>{if(!["ArrowLeft","ArrowRight","Home","End"].includes(event.key))return;const buttons=[...track.querySelectorAll("button")],i=buttons.indexOf(document.activeElement);if(i<0)return;event.preventDefault();buttons[event.key==="Home"?0:event.key==="End"?buttons.length-1:Math.max(0,Math.min(buttons.length-1,i+(event.key==="ArrowRight"?1:-1)))].focus();};
+        scroll.append(axis,track);timeline.append(timelineTools,scroll,el("p","Click a segment to inspect its takes or prepare a replacement. Width shows new video duration; repeated context is removed. Dashed clips have unavailable timing.","mmh3-project-note"));
         const target = el("select"); target.setAttribute("aria-label","Render action"); target.add(new Option("Continue from accepted head", ""));
         for (const s of data.state.segments) {
-            const label = `${s.index + 1}. ${s.scene_id} · r${s.active_revision} · ${s.status}`;
-            timeline.append(s.status === "accepted" ? button(label,() => {compose.target=s.segment_id;compose.prompts="";render();message("Segment selected for a replacement take. Its saved parent will be located automatically.");}) : el("div",label,"mmh3-project-note"));
             if (s.status === "accepted") target.add(new Option(`Reopen segment ${s.index + 1}`,s.segment_id));
         }
-        target.value=compose.target; target.onchange=()=>{compose.target=target.value;};
-        const selected = data.candidates.find(c => c.selected && c.status === "review" && !c.stale);
+        target.value=compose.target; target.onchange=()=>focusSegment(target.value);
+        const scoped=takesForSegment(data.candidates,compose.target);
+        view.compare=view.compare.filter(id=>scoped.some(c=>c.id===id && c.status!=="trashed"));
+        const selected = scoped.find(c => c.selected && c.status === "review" && !c.stale);
+        const inspected = scoped.find(c=>c.id===view.preview && c.status!=="trashed") || selected;
+        const focused=data.state.segments.find(s=>s.segment_id===compose.target);
         detail.append(el("h3",data.state.name));
-        const previews = el("div",null,"mmh3-project-previews"); previews.append(previewPane("Accepted head"));
-        if (selected) previews.append(previewPane("Selected candidate",selected.id));
-        detail.append(previews,el("h3","Saved candidates"));
-        const candidates = el("div",null,"mmh3-project-list");
-        if (!data.candidates.length) candidates.append(el("p","Choose a saved draft above and add it to compare candidates."));
-        for (const c of data.candidates) {
+        detail.append(el("h3",focused?`Segment ${focused.index+1} · choose a take`:"Next segment · choose a take"));
+        const previews = el("div",null,"mmh3-project-previews");
+        if(view.compare.length===2){for(const [i,id] of view.compare.entries()){const c=scoped.find(c=>c.id===id);previews.append(previewPane(`${i?"B":"A"}: ${c.name} · seed ${c.seed}`,id));}}
+        else {previews.append(previewPane(focused?`Accepted segment ${focused.index+1}`:"Accepted head","",compose.target));if(inspected)previews.append(previewPane(`Preview: ${inspected.name} · seed ${inspected.seed}`,inspected.id));}
+        detail.append(previews);
+        const compareTools=el("div",null,"mmh3-project-toolbar");
+        compareTools.append(el("span",view.compare.length?`${view.compare.length}/2 takes pinned for A/B comparison`:"Pin two takes for A/B comparison."),
+            button("Clear A/B",()=>{view.compare=[];render();}),
+            button("Play together",()=>{
+                if(previews.children.length!==2){message("Preview or pin a second take to compare saved videos.");return;}
+                const videos=[...previews.children].map(pane=>pane.loadSavedVideo());
+                const time=Math.max(0,Math.min(...videos.map(v=>v.currentTime)));
+                for(const v of videos){v.currentTime=time;void v.play().catch(e=>{
+                    if(v.isConnected && e.name!=="AbortError"){
+                        videos.forEach(video=>video.pause());message("Saved video could not be played: "+e.message,true);
+                    }
+                });}
+            }),button("Pause both",()=>previews.querySelectorAll("video").forEach(v=>v.pause())));
+        detail.append(compareTools);
+        const filter=el("select");filter.setAttribute("aria-label","Take filter");for(const [value,label] of [["active","Usable takes"],["all","All takes · including history"],["rejected","Rejected takes"]])filter.add(new Option(label,value));filter.value=view.filter;filter.onchange=()=>{view.filter=filter.value;render();};detail.append(filter);
+        const candidates = el("div",null,"mmh3-take-grid");
+        const visible=scoped.filter(c=>view.filter==="all" || (view.filter==="rejected"?c.status==="rejected":!c.stale && ["review","accepted"].includes(c.status)));
+        if (!visible.length) candidates.append(el("p","No takes in this view. Render another take or add a saved draft."));
+        for (const c of visible) {
+            const card=el("article",null,`mmh3-take-card${c.selected?" selected":""}${view.compare.includes(c.id)?" comparing":""}`);card.dataset.candidateId=c.id;
+            if(c.status!=="trashed")card.append(thumbnail(c.id,"",c.name));
+            card.append(el("h4",c.name),el("span",`${c.selected?"Selected · ":""}${c.stale?"Stale · ":""}${c.status} · seed ${c.seed}`,"mmh3-take-badge"),el("p",c.prompt||"Inherited prompt","mmh3-take-prompt"));
             const row = el("div",null,"mmh3-project-toolbar");
-            row.append(el("span",`${c.name} · seed ${c.seed} · ${c.stale ? "stale" : c.status}`));
+            if(c.status!=="trashed")row.append(button("Preview",()=>{view.preview=c.id;view.compare=[];render();}),button(view.compare.includes(c.id)?"Unpin A/B":"Pin A/B",()=>{view.compare=view.compare.includes(c.id)?view.compare.filter(id=>id!==c.id):[...view.compare.slice(-1),c.id];render();}));
             if (!c.stale && !["accepted","trashed"].includes(c.status)) {
-                const choose = button(c.selected ? "Selected" : "Select",() => run(async () => { data = await request("select",{candidate_id:c.id}); render(); }));
-                if (c.selected) choose.className = "selected"; row.append(choose);
+                const choose = button(c.selected ? "Selected" : "Select",() => run(async () => { data = await request("select",{candidate_id:c.id});view.preview=c.id;view.compare=[]; render(); }));
+                choose.className="mmh3-primary"; row.append(choose);
                 if (c.status !== "rejected") row.append(button("Reject",() => run(async () => { data = await request("reject",{candidate_id:c.id}); render(); })));
             }
-            candidates.append(row);
+            card.append(row);candidates.append(card);
         }
         detail.append(candidates);
         const branchName = el("input"); branchName.placeholder = "Branch name (optional)"; branchName.setAttribute("aria-label","Branch name");
@@ -245,7 +345,13 @@ export async function openProjectManager(origin, initialFile = "") {
                 })));
                 detail.append(confirmation);
             })));
-        detail.append(el("h3","Project storage"),button("Inspect storage",() => run(async () => {
+        detail.append(el("h3","Project storage"),button("Clear conditioning memory",()=>run(async()=>{const response=await api.fetchApi("/mmh3_media/conditioning_memory",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});if(!response.ok)throw new Error("Could not clear conditioning memory");message("Conditioning memory cleared. The next render will prepare it again.");})),button("Save portable .mmh3 snapshot",() => run(async () => {
+            const snapshot = await request("snapshot");
+            const link = el("a", "Download project snapshot"); link.style.color = "#8ac9ff";
+            const url = "/mmh3_media/project_snapshot?" + new URLSearchParams({project_id:data.id,snapshot_id:snapshot.snapshot_id});
+            link.href = api.apiURL?.(url) ?? url; link.download = "project.mmh3";
+            detail.append(link); message("Portable snapshot saved with the current review state.");
+        })),button("Inspect storage",() => run(async () => {
             const report = await request("storage");
             confirmation?.remove(); confirmation = el("section",null,"mmh3-project-confirm");
             confirmation.append(el("strong","Storage report"),el("p",report.policy));
@@ -264,18 +370,18 @@ export async function openProjectManager(origin, initialFile = "") {
         })));
         grid.append(timeline,detail); content.append(grid);
     }
-    projects.onchange = () => run(async () => { if (!projects.value) return; data = await request("state",{project_id:projects.value}); render(); message("Project loaded."); });
-    top.append(projects,button("Refresh",() => run(async () => { await inventory(); if(data) data=await request("state"); render(); message("Refreshed."); })),button("Close",() => dialog.close()));
+    projects.onchange = () => run(async () => { if (!projects.value) return; compose.target="";view.preview="";view.compare=[]; data = await request("state",{project_id:projects.value}); studioDrafts.clear(); render(); message("Project loaded."); });
+    top.append(projects,button("Refresh",() => run(async () => { await inventory(); if(data) data=await request("state"); studioDrafts.clear(); render(); message("Refreshed."); })),button("Close",() => dialog.close()));
     const sourcebar = el("div",null,"mmh3-project-toolbar");
     sourcebar.append(files,button("Create from accepted archive",() => run(async () => { data=await request("create",{file:files.value}); await inventory(); render(); message("Project created. Original archive preserved."); })),
-        button("Add saved draft",() => run(async () => { if(!data) throw new Error("Choose a project first."); data=await request("add",{file:files.value}); render(); message("Candidate added. Select it to compare and accept."); })));
+        button("Add saved draft",() => run(async () => { if(!data) throw new Error("Choose a project first.");const before=data.candidates.map(c=>c.id); data=await request("add",{file:files.value});showAddedTake(before); render(); message("Candidate added. Select it to compare and accept."); })));
     dialog.append(title,top,sourcebar,status,content); document.body.append(dialog); dialog.showModal(); render();
     dialog.addEventListener("close",() => { closed=true;clearInterval(timer);window.removeEventListener("mmh3-project-saved",onSaved);dialog.querySelectorAll("video").forEach(v=>v.pause());dialog.remove(); },{once:true});
     await run(async () => {
         await inventory(); if(projects.value) data=await request("state",{project_id:projects.value}); render();
         for(const file of savedResults.get(data?.id)||[])pendingSaves.push({project_id:data.id,file});
     });
-    if (!closed) timer=setInterval(() => { if(!busy && data && !closed) void run(async () => {
+    if (!closed) timer=setInterval(() => { if(!busy && data && !closed && !studioDrafts.size) void run(async () => {
         const fresh=await request("state"); if(fresh.state.state_digest!==data.state.state_digest){data=fresh;render();message("Project changed elsewhere. Review the refreshed state before acting.");}
     }); },15000);
 }

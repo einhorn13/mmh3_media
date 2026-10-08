@@ -5,17 +5,14 @@ import math
 from .errors import MMH3ResourceError
 
 
-def build_lora_selection(mode, entries_json="", legacy=()):
-    """Keep the v1 wire contract and accept old three-slot API/workflow inputs."""
-    if entries_json:
-        try:
-            entries = json.loads(entries_json)
-        except (TypeError, ValueError) as exc:
-            raise MMH3ResourceError("Invalid Load LoRAs list") from exc
-        if not isinstance(entries, list) or any(not isinstance(e, dict) for e in entries):
-            raise MMH3ResourceError("Load LoRAs requires an ordered list of entries")
-    else:
-        entries = [{"name": name, "strength": strength} for name, strength in legacy]
+def build_lora_selection(mode, entries_json="[]"):
+    """Serialize the ordered editor list into the sampling wire contract."""
+    try:
+        entries = json.loads(entries_json)
+    except (TypeError, ValueError) as exc:
+        raise MMH3ResourceError("Invalid Load LoRAs list") from exc
+    if not isinstance(entries, list) or any(not isinstance(e, dict) for e in entries):
+        raise MMH3ResourceError("Load LoRAs requires an ordered list of entries")
     selected = []
     for entry in entries:
         name = entry.get('name')

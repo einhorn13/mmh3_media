@@ -22,6 +22,24 @@ The execution templates derive `__MMH3_ATTEMPT_SEED__` from the job ID and attem
 
 Chunk nodes receive the frozen `settings_json` and check primary audio ID/revision before conditioning. Replacing the master requires a new setup. The optional inputs preserve older API workflows; new audio-sync templates always connect them. Existing v2 proof records without the newer review/source fields remain readable only against their original legacy settings.
 
+## Runner recovery, pause and cancellation
+
+Run `automation_runner.py` with the same ledger/checkpoint when reconnecting. The runner saves a submission intent before contacting ComfyUI, then retains the returned prompt ID and exact attempt ownership. On restart it reconciles running jobs with the queue/history before submitting anything else. A lost response or timeout keeps the attempt running; it does not automatically reroll it. Only one runner may hold a checkpoint at a time. Legacy running entries without a submission receipt require inspecting the old queue before resetting them.
+
+Supply `--output-root <local ComfyUI output directory>` to recover finished `.mmh3` artifacts after history has been cleared. The runner inserts a metadata-only receipt before each MMH3 Save. Recovery accepts only one archive matching the exact token, job, attempt, lease, plan and settings; filenames alone are insufficient. Keep the output directory and checkpoint together. A missing/ambiguous result remains pending reconciliation rather than triggering duplicate GPU work.
+
+From a second terminal, send a control request using the same checkpoint:
+
+```console
+python automation_runner.py --ledger ledger.json --request pause
+python automation_runner.py --ledger ledger.json --request cancel
+python automation_runner.py --ledger ledger.json --request resume
+```
+
+With a separate checkpoint, also pass the original `--checkpoint` value. `pause` finishes and saves the current segment, then stops before the next. `cancel` targets only that runner's remote prompt and stops after reconciliation. Cancellation requires ComfyUI's `/api/jobs/<id>/cancel` endpoint; an older host never falls back to global interruption. A result that finished concurrently with cancellation is kept. `resume` clears the control request; rerun the original generation command if the runner has already exited. Ctrl+C requests pause; a second Ctrl+C requests targeted cancellation. An optional `--control` path overrides the default `<checkpoint>.control.json`.
+
+Decoded assembly PCM is backed by temporary disk storage. Copying, mixing, WAV read/write and final video encoding work in blocks of at most 32,768 samples, while preserving the regular ComfyUI AUDIO tensor interface. The files live until the last tensor storage reference is released; tensor consumers that explicitly materialize a full copy can still use proportional RAM. OS file caching is outside this block-buffer limit, and temporary disk space scales with audio length.
+
 Lipsync templates use **H3 Audio VAE · Preserve Onset** before the native audio guide. This prevents generic VAE center cropping on affected H3 runtimes, leaving H3's own right-padding behavior intact. The guard uses a private VAE wrapper; it does not alter the original song or the shared loader. MMH3 reference conditioning, decoded continuation, bridge and decoded latent-upscale encoding apply the same guard internally.
 
 ## Final audio modes
@@ -39,3 +57,13 @@ The mixer preserves the master channel count (mono/stereo), performs determinist
 The image-reference path treats separate shots as independent performance shots. It does not claim hidden-state continuity across cuts; use the project's continuation/latent-handoff tools when one visually continuous take must span several H3 generations.
 
 `mmh3_f18_chunk_runner_api.json` is the generic chunk-only execution template. `mmh3_f18_batch_stitch_setup_api.json` is the canonical batch-stitch pre-queue/setup template and is retained because it represents the unique preflight-estimate automation scenario.
+
+## Complete ComfyUI canvas
+
+Open [Long Video Studio](../../example_workflows/mmh3_f18_long_video_studio.json) for image-reference generation over the full master-audio timeline. The Studio node materializes the canonical image-lipsync and final-assembly templates as native ComfyUI expansions. There is no second queue client or manual JSON transfer.
+
+**Generate next → review the preview → Accept take → Generate next**, then **Assemble** when every scene is accepted. **Reroll** preserves earlier candidates; select a take in the dropdown before accepting it. **Refresh** reads the checkpoint. **Recover** checks prompt ownership and exact saved execution receipts; it refuses to restart a prompt still running or with an unknown outcome. The first run freezes the image, resampled stereo/mono master and render settings in `output/<project>`. Later runs resume this saved project; a new name starts different inputs/settings.
+
+For batch operation set `review_takes=false` and `auto_continue=true` before creating a project. The default review mode runs one scene per prompt; automatic operation expands successive scenes within one prompt and can retain more executor cache state. Shots share identity references and audio timing, while cuts remain independent shots. Use continuation workflows for uninterrupted visual motion.
+
+New node classes require a ComfyUI restart and browser refresh after updating this extension.

@@ -303,9 +303,8 @@ def _write_float32_wav(path: Path, waveform: torch.Tensor, sample_rate: int) -> 
     channels = int(waveform.shape[1])
     if channels < 1 or channels > 32:
         raise MMH3ResourceError(f"Unsupported audio channel count: {channels}")
-    pcm = waveform[0].detach().to(device="cpu", dtype=torch.float32).transpose(0, 1).contiguous().numpy().astype("<f4", copy=False)
-    data = pcm.tobytes(order="C")
-    data_size = len(data)
+    from .pcm_storage import pcm_blocks
+    data_size = int(waveform.shape[-1]) * channels * 4
     riff_size = 36 + data_size
     if riff_size > 0xFFFFFFFF:
         raise MMH3ResourceError("Audio is too large for RIFF WAV (>4 GiB); split it or use a video/container resource")
@@ -325,7 +324,9 @@ def _write_float32_wav(path: Path, waveform: torch.Tensor, sample_rate: int) -> 
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "wb") as f:
         f.write(header)
-        f.write(data)
+        for _, block in pcm_blocks(waveform):
+            pcm = block[0].detach().to(device="cpu", dtype=torch.float32).transpose(0, 1).contiguous().numpy().astype("<f4", copy=False)
+            f.write(pcm.tobytes(order="C"))
 
 
 def _read_float32_wav(path: Path) -> tuple[torch.Tensor, int]:
@@ -345,26 +346,40 @@ def _read_float32_wav(path: Path) -> tuple[torch.Tensor, int]:
             if len(raw_size) != 4:
                 break
             size = struct.unpack("<I", raw_size)[0]
-            payload = f.read(size)
-            if size & 1:
-                f.read(1)
             if chunk_id == b"fmt ":
-                fmt = payload
+                if size > 65536:
+                    raise MMH3ResourceError("Invalid WAV fmt size")
+                fmt = f.read(size)
             elif chunk_id == b"data":
-                data = payload
+                data = (f.tell(), size)
+                f.seek(size, 1)
+            else:
+                f.seek(size, 1)
+            if size & 1:
+                f.seek(1, 1)
         if fmt is None or data is None or len(fmt) < 16:
             raise MMH3ResourceError("Invalid WAV: missing fmt/data chunk")
         audio_format, channels, sample_rate, _, block_align, bits = struct.unpack("<HHIIHH", fmt[:16])
-        if audio_format != 3 or bits != 32 or block_align != channels * 4:
+        if audio_format != 3 or bits != 32 or not 1 <= channels <= 32 or sample_rate < 1 or block_align != channels * 4:
             raise MMH3ResourceError(
                 "This MMH3 audio loader expects the plugin's IEEE float32 WAV. "
                 f"Got format={audio_format}, bits={bits}."
             )
-        arr = np.frombuffer(data, dtype="<f4")
-        if arr.size % channels:
+        offset, size = data
+        if size % block_align or offset + size > path.stat().st_size:
             raise MMH3ResourceError("Invalid WAV data length")
-        arr = arr.reshape(-1, channels).copy()
-        waveform = torch.from_numpy(arr).transpose(0, 1).contiguous().unsqueeze(0)
+        if size == 0:
+            return torch.empty((1, channels, 0), dtype=torch.float32), int(sample_rate)
+        from .pcm_storage import allocate_pcm, PCM_BLOCK_SAMPLES
+        waveform = allocate_pcm(channels, size // block_align)
+        f.seek(offset)
+        for position in range(0, waveform.shape[-1], PCM_BLOCK_SAMPLES):
+            count = min(PCM_BLOCK_SAMPLES, waveform.shape[-1] - position)
+            body = f.read(count * block_align)
+            if len(body) != count * block_align:
+                raise MMH3ResourceError("Truncated WAV data")
+            arr = np.frombuffer(body, dtype="<f4").reshape(count, channels).copy()
+            waveform[0, :, position:position + count].copy_(torch.from_numpy(arr).transpose(0, 1))
         return waveform, int(sample_rate)
 
 

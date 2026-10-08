@@ -8,6 +8,7 @@ import tempfile
 from pathlib import Path
 
 from .archive import load_archive
+from .project_index import load_project_archive
 from .errors import MMH3Error, MMH3ResourceError
 from .project_actions import _managed_directory, _require_digest, project_archive_lock
 from .project_review import build_project_review_state
@@ -15,9 +16,9 @@ from .stitch import inspect_stitch_packet, pcm_boundary
 from .util import json_dumps_canonical, sha256_file
 
 
-def accepted_sources(manager, project_id):
+def accepted_sources(manager, project_id, *, packet=None):
     current = manager.current(project_id)
-    packet = load_archive(current, verify="manifest")
+    packet = packet or load_project_archive(current, verify="manifest")
     namespace = packet.manifest["extensions"]["mmh3_media"]
     token = hashlib.sha256(os.path.normcase(str(current)).encode()).hexdigest()[:24]
     history = current.parent / ".mmh3_review" / token
@@ -49,18 +50,52 @@ def accepted_sources(manager, project_id):
     return packet, view, sources
 
 
-def project_timeline(manager, project_id):
-    packet, view, sources = accepted_sources(manager, project_id)
-    items = []
+def project_timeline(manager, project_id, *, packet=None):
+    packet, view, sources = accepted_sources(manager, project_id, packet=packet)
+    items, slots = [], []
+    cursor = 0
+    complete = True
     for segment in sorted(view.segments, key=lambda s: s.index):
-        if segment.status != "accepted":
-            continue
+        record = segment.to_dict()["record"]
         path = sources.get((segment.segment_id, segment.active_revision, segment.packet_state_fingerprint))
-        items.append({"segment_id": segment.segment_id, "revision": segment.active_revision,
+        timing = (record.get("segment_plan") or {}).get("timing") or {}
+        context = timing.get("context_frames", 0) if items and record.get("handover") == "continuation" else 0
+        count = None
+        fps = None
+        if path:
+            source = load_archive(path, verify="manifest")
+            fact, _ = inspect_stitch_packet(source, index=segment.index)
+            count = fact.get("frame_count")
+            fps = fact.get("fps")
+        known = (fps == 24 and type(count) is int and count > 0 and type(context) is int and 0 <= context < count
+                 and (not items or record.get("handover") != "continuation" or "context_frames" in timing))
+        owned = count - context if known else None
+        item = {"segment_id": segment.segment_id, "revision": segment.active_revision,
             "index": segment.index, "scene_id": segment.scene_id,
             "parent_segment_id": segment.parent_segment_id,
-            "file": manager.selector(path) if path else None, "available": path is not None})
-    return {"state_digest": view.state_digest, "segments": items}
+            "file": manager.selector(path) if path else None, "available": path is not None,
+            "status": segment.status, "handover": record.get("handover"),
+            "context_frames": context if known else None, "owned_frames": owned,
+            "duration_seconds": owned / 24 if known else None,
+            "start_seconds": cursor / 24 if complete and known and segment.status == "accepted" else None}
+        slots.append(item)
+        if segment.status == "accepted":
+            items.append(item)
+            if known:
+                cursor += owned
+            else:
+                complete = False
+    return {"state_digest": view.state_digest, "segments": items, "slots": slots,
+            "duration_seconds": cursor / 24 if complete else None, "timing_complete": complete}
+
+
+def segment_media_path(manager, project_id, segment_id):
+    _, view, sources = accepted_sources(manager, project_id)
+    segment = next((s for s in view.segments if s.segment_id == segment_id and s.status == "accepted"), None)
+    path = sources.get((segment.segment_id, segment.active_revision, segment.packet_state_fingerprint)) if segment else None
+    if path is None:
+        raise MMH3ResourceError("Attach this accepted segment archive to preview it")
+    return path
 
 
 def assembly_preview(manager, project_id, expected):

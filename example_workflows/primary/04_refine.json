@@ -1,0 +1,385 @@
+{
+  "groups": [],
+  "nodes": [
+    {
+      "pos": [
+        80,
+        80
+      ],
+      "size": [
+        420,
+        530
+      ],
+      "properties": {
+        "Node name for S&R": "MMH3Load"
+      },
+      "id": 1,
+      "type": "MMH3Load",
+      "inputs": [
+        {
+          "name": "file",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "file"
+          }
+        },
+        {
+          "name": "verify",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "verify"
+          }
+        },
+        {
+          "name": "path_override",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "path_override"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "links": [
+            1
+          ]
+        }
+      ],
+      "widgets_values": [
+        "__runtime_asset_catalog__",
+        "on_access",
+        ""
+      ]
+    },
+    {
+      "pos": [
+        550,
+        80
+      ],
+      "size": [
+        420,
+        530
+      ],
+      "properties": {
+        "Node name for S&R": "MMH3H3Refine"
+      },
+      "id": 2,
+      "type": "MMH3H3Refine",
+      "inputs": [
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "link": 1
+        },
+        {
+          "name": "method",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "method"
+          }
+        },
+        {
+          "name": "scale",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "scale"
+          }
+        },
+        {
+          "name": "checkpoint",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "checkpoint"
+          }
+        },
+        {
+          "name": "clip_name",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "clip_name"
+          }
+        },
+        {
+          "name": "video_vae_name",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "video_vae_name"
+          }
+        },
+        {
+          "name": "audio_vae_name",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "audio_vae_name"
+          }
+        },
+        {
+          "name": "denoise",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "denoise"
+          }
+        },
+        {
+          "name": "steps",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "steps"
+          }
+        },
+        {
+          "name": "audio_policy",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "audio_policy"
+          }
+        },
+        {
+          "name": "tile_width",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "tile_width"
+          }
+        },
+        {
+          "name": "tile_height",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "tile_height"
+          }
+        },
+        {
+          "name": "overlap",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "overlap"
+          }
+        },
+        {
+          "name": "mask",
+          "type": "MASK",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "links": [
+            3
+          ]
+        },
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": [
+            2
+          ]
+        }
+      ],
+      "widgets_values": [
+        "full_frame",
+        1.5,
+        "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+        "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+        "minimax_h3_video_vae_int8_convrot.safetensors",
+        "minimax_h3_audio_vae_fp32.safetensors",
+        0.25,
+        0,
+        "source_pcm",
+        640,
+        384,
+        64
+      ]
+    },
+    {
+      "pos": [
+        1020,
+        80
+      ],
+      "size": [
+        420,
+        530
+      ],
+      "properties": {
+        "Node name for S&R": "MMH3SaveVideo"
+      },
+      "id": 3,
+      "type": "MMH3SaveVideo",
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 2
+        },
+        {
+          "name": "filename_prefix",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "filename_prefix"
+          }
+        },
+        {
+          "name": "format",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "format"
+          }
+        },
+        {
+          "name": "codec",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "codec"
+          }
+        },
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "link": 3
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": []
+        },
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "links": [
+            4
+          ]
+        }
+      ],
+      "widgets_values": [
+        "video/MMH3_Refine",
+        "auto",
+        "auto"
+      ]
+    },
+    {
+      "pos": [
+        80,
+        730
+      ],
+      "size": [
+        420,
+        530
+      ],
+      "properties": {
+        "Node name for S&R": "MMH3Save"
+      },
+      "id": 4,
+      "type": "MMH3Save",
+      "inputs": [
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "link": 4
+        },
+        {
+          "name": "filename_prefix",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "filename_prefix"
+          }
+        },
+        {
+          "name": "target",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "target"
+          }
+        },
+        {
+          "name": "overwrite",
+          "type": "BOOLEAN",
+          "link": null,
+          "widget": {
+            "name": "overwrite"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "packet",
+          "type": "MMH3_MEDIA",
+          "links": []
+        },
+        {
+          "name": "path",
+          "type": "STRING",
+          "links": []
+        }
+      ],
+      "widgets_values": [
+        "mmh3/MMH3_Refine",
+        "output",
+        false
+      ]
+    }
+  ],
+  "links": [
+    [
+      1,
+      1,
+      0,
+      2,
+      0,
+      "MMH3_MEDIA"
+    ],
+    [
+      2,
+      2,
+      1,
+      3,
+      0,
+      "VIDEO"
+    ],
+    [
+      3,
+      2,
+      0,
+      3,
+      4,
+      "MMH3_MEDIA"
+    ],
+    [
+      4,
+      3,
+      1,
+      4,
+      0,
+      "MMH3_MEDIA"
+    ]
+  ],
+  "last_node_id": 4,
+  "last_link_id": 4,
+  "definitions": {
+    "subgraphs": []
+  }
+}

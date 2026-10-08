@@ -9,11 +9,11 @@
       "type": "MMH3Load",
       "pos": [
         90,
-        110
+        125
       ],
       "size": [
         380,
-        470
+        490
       ],
       "flags": {},
       "order": 0,
@@ -67,12 +67,12 @@
       "type": "CLIPLoader",
       "title": "Text Encoder",
       "pos": [
-        590,
-        110
+        660,
+        125
       ],
       "size": [
-        360,
-        160
+        380,
+        190
       ],
       "flags": {},
       "order": 1,
@@ -125,11 +125,11 @@
       "id": 4,
       "type": "VAELoader",
       "pos": [
-        590,
-        340
+        660,
+        390
       ],
       "size": [
-        360,
+        380,
         120
       ],
       "flags": {},
@@ -168,11 +168,11 @@
       "id": 5,
       "type": "VAELoader",
       "pos": [
-        590,
-        530
+        660,
+        585
       ],
       "size": [
-        360,
+        380,
         120
       ],
       "flags": {},
@@ -211,12 +211,12 @@
       "type": "UNETLoader",
       "title": "Diffusion Model",
       "pos": [
-        590,
-        720
+        660,
+        780
       ],
       "size": [
-        360,
-        136
+        380,
+        155
       ],
       "flags": {},
       "order": 5,
@@ -260,12 +260,12 @@
       "id": 2,
       "type": "MMH3Metadata",
       "pos": [
-        90,
-        650.0
+        1230,
+        125
       ],
       "size": [
-        360,
-        260
+        380,
+        295
       ],
       "flags": {},
       "order": 7,
@@ -351,11 +351,11 @@
       "type": "MMH3H3SamplingPreset",
       "title": "Sampling",
       "pos": [
-        590,
-        1236
+        660,
+        1010
       ],
       "size": [
-        360,
+        380,
         260
       ],
       "flags": {},
@@ -375,6 +375,9 @@
           "name": "task_family",
           "type": "COMBO",
           "link": 70,
+          "widget": {
+            "name": "task_family"
+          },
           "label": "Task family"
         },
         {
@@ -386,7 +389,6 @@
           "name": "turbo_loras_json",
           "type": "STRING",
           "link": 92,
-          "shape": 7,
           "label": "LoRAs"
         }
       ],
@@ -460,11 +462,11 @@
       "id": 24,
       "type": "MMH3ChainStart",
       "pos": [
-        1090,
-        714
+        1230,
+        495
       ],
       "size": [
-        360,
+        380,
         244
       ],
       "flags": {},
@@ -520,12 +522,12 @@
         {
           "name": "summary",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "info_json",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -542,11 +544,11 @@
       "id": 26,
       "type": "MMH3ChainValidate",
       "pos": [
-        1090,
-        1028
+        1230,
+        814
       ],
       "size": [
-        360,
+        380,
         232
       ],
       "flags": {},
@@ -586,22 +588,22 @@
         {
           "name": "ready",
           "type": "BOOLEAN",
-          "links": null
+          "links": []
         },
         {
           "name": "should_reanchor",
           "type": "BOOLEAN",
-          "links": null
+          "links": []
         },
         {
           "name": "summary",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "info_json",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -616,12 +618,12 @@
       "id": 100,
       "type": "MMH3ControlConfigure",
       "pos": [
-        1090,
-        1330
+        1230,
+        1121
       ],
       "size": [
-        360,
-        772
+        380,
+        995
       ],
       "flags": {},
       "order": 16,
@@ -855,12 +857,12 @@
         {
           "name": "summary",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "control_json",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -899,11 +901,11 @@
       "id": 23,
       "type": "MMH3H3ContinuationHandover",
       "pos": [
-        1590,
-        110
+        1800,
+        125
       ],
       "size": [
-        360,
+        380,
         262
       ],
       "flags": {},
@@ -962,7 +964,7 @@
         {
           "name": "packet",
           "type": "MMH3_MEDIA",
-          "links": null
+          "links": []
         },
         {
           "name": "latent",
@@ -1001,11 +1003,11 @@
       "type": "MMH3H3GenerationSettings",
       "title": "Video Settings",
       "pos": [
-        1090,
-        2172
+        1230,
+        2191
       ],
       "size": [
-        360,
+        380,
         210
       ],
       "flags": {},
@@ -1091,11 +1093,11 @@
       "id": 99,
       "type": "MMH3Inspect",
       "pos": [
-        1090,
-        2606
+        2370,
+        125
       ],
       "size": [
-        360,
+        380,
         328
       ],
       "flags": {},
@@ -1112,17 +1114,17 @@
         {
           "name": "summary",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "info_json",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "notes",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "width",
@@ -1135,44 +1137,59 @@
           "links": []
         },
         {
+          "name": "aspect_ratio",
+          "type": "STRING",
+          "links": []
+        },
+        {
+          "name": "aspect_ratio_value",
+          "type": "FLOAT",
+          "links": []
+        },
+        {
           "name": "frames",
           "type": "INT",
-          "links": null
+          "links": []
         },
         {
           "name": "fps",
           "type": "FLOAT",
-          "links": null
+          "links": []
         },
         {
           "name": "duration",
           "type": "FLOAT",
-          "links": null
+          "links": []
         },
         {
           "name": "has_latent",
           "type": "BOOLEAN",
-          "links": null
+          "links": []
         },
         {
           "name": "prompt",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "task",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "seed",
           "type": "INT",
-          "links": null
+          "links": []
+        },
+        {
+          "name": "seed_recorded",
+          "type": "BOOLEAN",
+          "links": []
         },
         {
           "name": "name",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -1184,11 +1201,11 @@
       "id": 101,
       "type": "MMH3ControlVideo",
       "pos": [
-        1090,
-        3004
+        1800,
+        462
       ],
       "size": [
-        360,
+        380,
         274
       ],
       "flags": {},
@@ -1236,12 +1253,12 @@
         {
           "name": "resource_id",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "info_json",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "frame_count",
@@ -1251,12 +1268,12 @@
         {
           "name": "width",
           "type": "INT",
-          "links": null
+          "links": []
         },
         {
           "name": "height",
           "type": "INT",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -1273,11 +1290,11 @@
       "type": "MMH3H3AutoCondition",
       "title": "Prepare H3 Generation",
       "pos": [
-        1090,
-        3348
+        1800,
+        811
       ],
       "size": [
-        360,
+        380,
         330
       ],
       "flags": {},
@@ -1319,12 +1336,6 @@
           "label": "Video VAE"
         },
         {
-          "name": "audio_vae",
-          "type": "VAE",
-          "link": 8,
-          "label": "Audio VAE"
-        },
-        {
           "name": "width_override",
           "type": "INT",
           "link": 73,
@@ -1341,6 +1352,12 @@
           "type": "INT",
           "link": 75,
           "label": "Frames"
+        },
+        {
+          "name": "audio_vae",
+          "type": "VAE",
+          "link": 8,
+          "label": "Audio VAE"
         }
       ],
       "outputs": [
@@ -1354,7 +1371,7 @@
         {
           "name": "latent",
           "type": "LATENT",
-          "links": null
+          "links": []
         },
         {
           "name": "seed",
@@ -1380,12 +1397,12 @@
         {
           "name": "status",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "info_json",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "task_family",
@@ -1407,8 +1424,8 @@
       "id": 104,
       "type": "MMH3H3FunControl",
       "pos": [
-        1090,
-        4426
+        1800,
+        1216
       ],
       "size": [
         390,
@@ -1499,7 +1516,7 @@
         {
           "name": "summary",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "process_info_json",
@@ -1525,12 +1542,12 @@
       "type": "MMH3SaveVideo",
       "title": "Save Video · encode once",
       "pos": [
-        3090,
-        110
+        2370,
+        528
       ],
       "size": [
-        360,
-        420
+        380,
+        490
       ],
       "flags": {},
       "order": 30,
@@ -1599,11 +1616,11 @@
       "type": "MMH3PackH3Result",
       "title": "Build MMH3 Result",
       "pos": [
-        3090,
-        600.0
+        1800,
+        1651
       ],
       "size": [
-        360,
+        380,
         484
       ],
       "flags": {
@@ -1734,12 +1751,12 @@
         {
           "name": "summary",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "result_info_json",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -1762,11 +1779,11 @@
       "id": 25,
       "type": "MMH3ChainCommit",
       "pos": [
-        1090,
-        4830
+        1800,
+        2210
       ],
       "size": [
-        360,
+        380,
         316
       ],
       "flags": {},
@@ -1819,17 +1836,17 @@
         {
           "name": "segment_id",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "scene_id",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "revision",
           "type": "INT",
-          "links": null
+          "links": []
         },
         {
           "name": "filename_prefix",
@@ -1841,12 +1858,12 @@
         {
           "name": "summary",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "info_json",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -1863,12 +1880,12 @@
       "type": "MMH3Save",
       "title": "Save MMH3",
       "pos": [
-        3090,
-        1154.0
+        2370,
+        1093
       ],
       "size": [
         380,
-        470
+        490
       ],
       "flags": {},
       "order": 33,
@@ -1885,7 +1902,8 @@
           "link": 43,
           "widget": {
             "name": "filename_prefix"
-          }
+          },
+          "label": "Filename"
         },
         {
           "name": "target",
@@ -1908,12 +1926,12 @@
         {
           "name": "packet",
           "type": "MMH3_MEDIA",
-          "links": null
+          "links": []
         },
         {
           "name": "path",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -1929,11 +1947,11 @@
       "id": 105,
       "type": "25de663b-53dd-5342-8645-40c3361458c4",
       "pos": [
-        2090,
-        110
+        1800,
+        2601
       ],
       "size": [
-        360,
+        380,
         474
       ],
       "flags": {},
@@ -2046,12 +2064,12 @@
       "id": 107,
       "type": "MarkdownNote",
       "pos": [
-        590,
-        2206.0
+        2370,
+        1658
       ],
       "size": [
-        360,
-        40
+        380,
+        340
       ],
       "flags": {
         "collapsed": true
@@ -2073,12 +2091,12 @@
       "type": "MMH3H3ModelOptimizations",
       "title": "Optimizations",
       "pos": [
-        590,
-        1646.0
+        660,
+        1345
       ],
       "size": [
-        360,
-        198
+        380,
+        260
       ],
       "flags": {},
       "order": 36,
@@ -2113,7 +2131,8 @@
           "link": null,
           "widget": {
             "name": "sage_attention"
-          }
+          },
+          "label": "SageAttention (KJ)"
         },
         {
           "name": "sage_allow_compile",
@@ -2121,6 +2140,15 @@
           "link": null,
           "widget": {
             "name": "sage_allow_compile"
+          },
+          "label": "Sage allow compile"
+        },
+        {
+          "name": "sampling_profile_json",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "sampling_profile_json"
           }
         }
       ],
@@ -2147,7 +2175,8 @@
         "Default",
         "Default",
         "disabled",
-        false
+        false,
+        ""
       ]
     },
     {
@@ -2155,12 +2184,12 @@
       "type": "MMH3H3TurboLoRAs",
       "title": "Load LoRAs",
       "pos": [
-        590,
-        -250
+        660,
+        1680
       ],
       "size": [
         400,
-        270
+        365
       ],
       "flags": {},
       "order": 0,
@@ -2175,61 +2204,20 @@
           }
         },
         {
-          "name": "lora_1",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "lora_1"
-          }
-        },
-        {
-          "name": "strength_1",
-          "type": "FLOAT",
-          "link": null,
-          "widget": {
-            "name": "strength_1"
-          }
-        },
-        {
-          "name": "lora_2",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "lora_2"
-          }
-        },
-        {
-          "name": "strength_2",
-          "type": "FLOAT",
-          "link": null,
-          "widget": {
-            "name": "strength_2"
-          }
-        },
-        {
-          "name": "lora_3",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "lora_3"
-          }
-        },
-        {
-          "name": "strength_3",
-          "type": "FLOAT",
-          "link": null,
-          "widget": {
-            "name": "strength_3"
-          }
-        },
-        {
           "name": "lora_entries_json",
           "type": "STRING",
           "link": null,
           "widget": {
             "name": "lora_entries_json"
-          },
-          "shape": 7
+          }
+        },
+        {
+          "name": "lora_catalog",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "lora_catalog"
+          }
         }
       ],
       "outputs": [
@@ -2238,9 +2226,7 @@
           "type": "STRING",
           "links": [
             92
-          ],
-          "slot_index": 0,
-          "label": "LoRAs"
+          ]
         }
       ],
       "properties": {
@@ -2248,13 +2234,8 @@
       },
       "widgets_values": [
         "auto",
-        "None",
-        1.0,
-        "None",
-        1.0,
-        "None",
-        1.0,
-        ""
+        "[]",
+        "None"
       ]
     }
   ],
@@ -2296,7 +2277,7 @@
       5,
       0,
       6,
-      5,
+      8,
       "VAE"
     ],
     [
@@ -2568,7 +2549,7 @@
       31,
       1,
       6,
-      6,
+      5,
       "INT"
     ],
     [
@@ -2576,7 +2557,7 @@
       31,
       2,
       6,
-      7,
+      6,
       "INT"
     ],
     [
@@ -2584,7 +2565,7 @@
       31,
       3,
       6,
-      8,
+      7,
       "INT"
     ],
     [
@@ -2719,12 +2700,12 @@
   "groups": [
     {
       "id": 1,
-      "title": "01 · INPUTS / ASSETS",
+      "title": "01 · SOURCE / REFERENCES",
       "bounding": [
-        55,
-        55,
+        65,
+        65,
         430,
-        1302.0
+        625
       ],
       "color": "#355070",
       "font_size": 24,
@@ -2732,12 +2713,12 @@
     },
     {
       "id": 2,
-      "title": "02 · MODEL / ENCODERS / OPTIMIZATION",
+      "title": "02 · MODELS / SAMPLING",
       "bounding": [
-        555,
-        55,
-        430,
-        2388.0
+        635,
+        65,
+        450,
+        2055
       ],
       "color": "#4f5d75",
       "font_size": 24,
@@ -2745,12 +2726,12 @@
     },
     {
       "id": 3,
-      "title": "03 · SETTINGS / CONDITIONING / CONTROL",
+      "title": "03 · SETTINGS / PLAN",
       "bounding": [
-        1055,
-        55,
+        1205,
+        65,
         430,
-        5126
+        2411
       ],
       "color": "#6d597a",
       "font_size": 24,
@@ -2758,12 +2739,12 @@
     },
     {
       "id": 4,
-      "title": "04 · LATENT / TIMELINE PREP",
+      "title": "04 · GENERATION / EDIT",
       "bounding": [
-        1555,
-        55,
-        430,
-        352
+        1775,
+        65,
+        440,
+        3085
       ],
       "color": "#8d6a4a",
       "font_size": 24,
@@ -2771,27 +2752,14 @@
     },
     {
       "id": 5,
-      "title": "05 · H3 SAMPLING + AV DECODE",
+      "title": "05 · REVIEW / SAVE",
       "bounding": [
-        2055,
-        55,
+        2345,
+        65,
         430,
-        1156
+        2008
       ],
-      "color": "#9c6644",
-      "font_size": 24,
-      "flags": {}
-    },
-    {
-      "id": 7,
-      "title": "06 · PREVIEW / PACK / SAVE",
-      "bounding": [
-        3055,
-        55,
-        430,
-        1604.0
-      ],
-      "color": "#2a9d8f",
+      "color": "#52796f",
       "font_size": 24,
       "flags": {}
     }

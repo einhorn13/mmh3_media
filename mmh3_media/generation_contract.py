@@ -95,6 +95,9 @@ def infer_h3_model_family(checkpoint_name: str) -> str:
         return "ref2va"
     if has_fl2va:
         return "fl2va"
+    from .fasth3_v2 import is_fasth3_v2_checkpoint
+    if is_fasth3_v2_checkpoint(checkpoint_name):
+        return "fl2va"
     return "unknown"
 
 

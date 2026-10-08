@@ -8,7 +8,8 @@ from .project_manager import ProjectManager
 from .archive import load_archive, materialize_resource_file
 from .archive_preview import read_archive_preview
 from .project_storage import storage_report, move_candidate
-from .project_timeline import project_timeline, assembly_preview, export_project, export_path
+from .project_timeline import project_timeline, assembly_preview, export_project, export_path, segment_media_path
+from . import studio_projects
 
 
 def register_project_routes(routes, input_root, output_root):
@@ -19,15 +20,20 @@ def register_project_routes(routes, input_root, output_root):
         async with slots:
             return await asyncio.to_thread(fn, *args, **kwargs)
 
+    def cross_origin(request):
+        # No cross-origin mutations, including form POSTs. Same-origin fetch sends JSON.
+        origin = request.headers.get("Origin")
+        return (origin and origin != f"{request.scheme}://{request.host}") or request.content_type != "application/json"
+
     @routes.get("/mmh3_media/projects")
     async def projects(request):
-        return web.json_response(await call(manager.list_projects), headers={"Cache-Control": "no-store"})
+        projects = await call(manager.list_projects)
+        projects.extend(await call(studio_projects.list_projects, output_root))
+        return web.json_response(projects, headers={"Cache-Control": "no-store"})
 
     @routes.post("/mmh3_media/project")
     async def action(request):
-        # No cross-origin mutations, including form POSTs. Same-origin fetch sends JSON.
-        origin = request.headers.get("Origin")
-        if (origin and origin != f"{request.scheme}://{request.host}") or request.content_type != "application/json":
+        if cross_origin(request):
             return web.json_response({"error": "Same-origin JSON request required"}, status=403)
         try:
             body = await request.json()
@@ -35,7 +41,18 @@ def register_project_routes(routes, input_root, output_root):
                 raise ValueError("Expected a JSON object")
             operation, project_id = body.get("action"), body.get("project_id")
             expected = body.get("expected_state_digest")
-            if operation == "create":
+            if isinstance(project_id, str) and project_id.startswith("studio::"):
+                if operation == "state":
+                    result = await call(studio_projects.state, output_root, project_id)
+                elif operation == "studio_edit":
+                    result = await call(studio_projects.edit, output_root, project_id, expected,
+                        body.get("job_id"), body.get("prompt"), body.get("duration"), body.get("references"))
+                elif operation in {"studio_accept", "studio_reroll"}:
+                    result = await call(studio_projects.review, output_root, project_id, expected,
+                        body.get("job_id"), operation.removeprefix("studio_"), body.get("candidate_id", ""))
+                else:
+                    raise ValueError("This action is unavailable for a Studio project")
+            elif operation == "create":
                 result = await call(manager.create, body.get("file"))
             elif operation == "state":
                 result = await call(manager.state, project_id)
@@ -66,6 +83,8 @@ def register_project_routes(routes, input_root, output_root):
                 result = await call(assembly_preview, manager, project_id, expected)
             elif operation == "export":
                 result = await call(export_project, manager, project_id, expected, body.get("assembly_digest"))
+            elif operation == "snapshot":
+                result = await call(manager.snapshot, project_id, expected)
             elif operation in {"trash", "restore"}:
                 result = await call(move_candidate, manager, project_id, body.get("candidate_id"), expected,
                     body.get("storage_digest"), restore=operation == "restore")
@@ -83,7 +102,10 @@ def register_project_routes(routes, input_root, output_root):
     async def media(request):
         try:
             project_id, candidate_id = request.query.get("project_id"), request.query.get("candidate_id")
-            path = await call(manager.candidate, project_id, candidate_id) if candidate_id else manager.current(project_id)
+            segment_id = request.query.get("segment_id")
+            path = (await call(manager.candidate, project_id, candidate_id) if candidate_id else
+                    await call(segment_media_path, manager, project_id, segment_id) if segment_id else
+                    await call(manager.current, project_id))
             if request.query.get("kind") == "video":
                 def video():
                     packet = load_archive(path, verify="on_access")
@@ -97,6 +119,14 @@ def register_project_routes(routes, input_root, output_root):
         except (MMH3Error, ValueError, OSError):
             return web.json_response({"error": "Preview unavailable; no generation or decoding was performed"}, status=404)
 
+    @routes.get("/mmh3_media/studio_reference")
+    async def studio_reference(request):
+        try:
+            content = await call(studio_projects.reference_thumbnail, output_root, request.query.get("project_id"), request.query.get("key"))
+            return web.Response(body=content, content_type="image/png", headers={"Cache-Control": "no-store"})
+        except (MMH3Error, ValueError, OSError):
+            return web.json_response({"error": "Reference thumbnail unavailable"}, status=404)
+
     @routes.get("/mmh3_media/project_export")
     async def download(request):
         try:
@@ -104,3 +134,24 @@ def register_project_routes(routes, input_root, output_root):
             return web.FileResponse(path, headers={"Content-Disposition": 'attachment; filename="final.mp4"', "Cache-Control": "no-store"})
         except (MMH3Error, ValueError, OSError):
             return web.json_response({"error": "Export unavailable"}, status=404)
+
+    @routes.get("/mmh3_media/project_snapshot")
+    async def snapshot(request):
+        try:
+            path = await call(manager.snapshot_path, request.query.get("project_id"), request.query.get("snapshot_id"))
+            return web.FileResponse(path, headers={"Content-Disposition": 'attachment; filename="project.mmh3"', "Cache-Control": "no-store"})
+        except (MMH3Error, ValueError, OSError):
+            return web.json_response({"error": "Snapshot unavailable"}, status=404)
+
+    @routes.get("/mmh3_media/conditioning_memory")
+    async def memory_stats(request):
+        from .conditioning_reuse import conditioning_memory
+        return web.json_response(conditioning_memory.stats(), headers={"Cache-Control": "no-store"})
+
+    @routes.post("/mmh3_media/conditioning_memory")
+    async def clear_memory(request):
+        if cross_origin(request):
+            return web.json_response({"error": "Same-origin JSON request required"}, status=403)
+        from .conditioning_reuse import conditioning_memory
+        conditioning_memory.clear()
+        return web.json_response(conditioning_memory.stats(), headers={"Cache-Control": "no-store"})

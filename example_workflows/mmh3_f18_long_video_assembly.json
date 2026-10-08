@@ -9,10 +9,10 @@
       "type": "MMH3AutomationAssemblyGate",
       "pos": [
         90,
-        110
+        125
       ],
       "size": [
-        360,
+        380,
         148
       ],
       "flags": {},
@@ -39,12 +39,12 @@
         {
           "name": "segments",
           "type": "INT",
-          "links": null
+          "links": []
         },
         {
           "name": "status",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -59,11 +59,11 @@
       "id": 2,
       "type": "MMH3AutomationAssembleChunks",
       "pos": [
-        1090,
-        110
+        90,
+        348
       ],
       "size": [
-        360,
+        380,
         184
       ],
       "flags": {},
@@ -97,17 +97,17 @@
         {
           "name": "audio",
           "type": "AUDIO",
-          "links": null
+          "links": []
         },
         {
           "name": "report_json",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "status",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -122,12 +122,12 @@
       "type": "MMH3SaveVideo",
       "title": "Save Video · encode once",
       "pos": [
-        3090,
-        110
+        660,
+        125
       ],
       "size": [
-        360,
-        420
+        380,
+        490
       ],
       "flags": {},
       "order": 2,
@@ -196,12 +196,12 @@
       "type": "MMH3Save",
       "title": "Save MMH3",
       "pos": [
-        3090,
-        600.0
+        660,
+        690
       ],
       "size": [
         380,
-        470
+        490
       ],
       "flags": {},
       "order": 3,
@@ -218,7 +218,8 @@
           "link": null,
           "widget": {
             "name": "filename_prefix"
-          }
+          },
+          "label": "Filename"
         },
         {
           "name": "target",
@@ -241,12 +242,12 @@
         {
           "name": "packet",
           "type": "MMH3_MEDIA",
-          "links": null
+          "links": []
         },
         {
           "name": "path",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -295,41 +296,28 @@
   ],
   "groups": [
     {
-      "id": 1,
-      "title": "01 · LEDGER / ASSEMBLY INPUT",
+      "id": 4,
+      "title": "04 · GENERATION / EDIT",
       "bounding": [
-        55,
-        55,
+        65,
+        65,
         430,
-        238
+        542
       ],
-      "color": "#355070",
+      "color": "#8d6a4a",
       "font_size": 24,
       "flags": {}
     },
     {
-      "id": 3,
-      "title": "02 · AV ASSEMBLY",
+      "id": 5,
+      "title": "05 · REVIEW / SAVE",
       "bounding": [
-        1055,
-        55,
+        635,
+        65,
         430,
-        274
+        1190
       ],
-      "color": "#6d597a",
-      "font_size": 24,
-      "flags": {}
-    },
-    {
-      "id": 7,
-      "title": "03 · PREVIEW / SAVE",
-      "bounding": [
-        3055,
-        55,
-        430,
-        1050.0
-      ],
-      "color": "#2a9d8f",
+      "color": "#52796f",
       "font_size": 24,
       "flags": {}
     }

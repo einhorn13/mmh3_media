@@ -1,7 +1,95 @@
 import { app } from "/scripts/app.js";
 
 const NODE = "MMH3H3TurboLoRAs";
-const legacyName = /^(lora|strength)_[123]$/;
+let comboId = 0;
+
+function searchableLoRA(names, selected, label, commit) {
+    const host = document.createElement("div");
+    host.style.cssText = "min-width:0;display:flex;flex-direction:column;gap:4px";
+    const input = document.createElement("input");
+    input.type = "search";
+    input.value = selected;
+    input.title = selected;
+    input.placeholder = "Filter LoRAs…";
+    input.setAttribute("aria-label", label);
+    input.setAttribute("role", "combobox");
+    input.setAttribute("aria-autocomplete", "list");
+    input.setAttribute("aria-expanded", "false");
+    input.style.cssText = "width:100%;min-width:0;box-sizing:border-box;min-height:32px";
+    const list = document.createElement("div");
+    list.id = `mmh3-lora-options-${++comboId}`;
+    list.setAttribute("role", "listbox");
+    list.setAttribute("aria-label", `${label} matches`);
+    list.style.cssText = "display:none;max-height:144px;overflow:auto;min-width:0;gap:2px";
+    input.setAttribute("aria-controls", list.id);
+    let matches = [], active = -1;
+    const close = () => {
+        list.style.display = "none";
+        input.setAttribute("aria-expanded", "false");
+        input.removeAttribute("aria-activedescendant");
+        input.value = selected;
+    };
+    const highlight = () => {
+        [...list.querySelectorAll('[role="option"]')].forEach((option, index) => {
+            option.setAttribute("aria-selected", String(index === active));
+            option.style.background = index === active ? "var(--comfy-input-bg, #444)" : "";
+            if (index === active) {
+                input.setAttribute("aria-activedescendant", option.id);
+                option.scrollIntoView({block: "nearest"});
+            }
+        });
+    };
+    const filter = (query) => {
+        const found = names.filter(name => name.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
+        matches = found.slice(0, 100);
+        active = -1;
+        input.removeAttribute("aria-activedescendant");
+        list.replaceChildren();
+        for (const [index, name] of matches.entries()) {
+            const option = document.createElement("button");
+            option.type = "button";
+            option.id = `${list.id}-${index}`;
+            option.setAttribute("role", "option");
+            option.setAttribute("aria-selected", "false");
+            option.textContent = name;
+            option.title = name;
+            option.style.cssText = "text-align:left;overflow-wrap:anywhere;min-width:0;padding:6px;cursor:pointer";
+            option.addEventListener("mousedown", event => event.preventDefault());
+            option.addEventListener("click", () => commit(name));
+            list.append(option);
+        }
+        if (!found.length || found.length > matches.length) {
+            const hint = document.createElement("div");
+            hint.textContent = found.length ? `${found.length} matches. Type more to narrow the list.` : "No matching LoRAs";
+            hint.setAttribute("role", "status");
+            list.append(hint);
+        }
+        list.style.display = "grid";
+        input.setAttribute("aria-expanded", "true");
+    };
+    input.addEventListener("focus", () => { input.select(); filter(""); });
+    input.addEventListener("input", () => filter(input.value));
+    input.addEventListener("keydown", event => {
+        if (["ArrowDown", "ArrowUp"].includes(event.key)) {
+            event.preventDefault();
+            if (list.style.display === "none") filter(input.value === selected ? "" : input.value);
+            if (matches.length) active = active < 0 ? (event.key === "ArrowDown" ? 0 : matches.length - 1)
+                : (active + (event.key === "ArrowDown" ? 1 : -1) + matches.length) % matches.length;
+            highlight();
+        } else if (event.key === "Enter") {
+            event.preventDefault();
+            const choice = matches[active] ?? matches.find(name => name === input.value) ?? (matches.length === 1 ? matches[0] : null);
+            if (choice) commit(choice);
+        } else if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            close();
+        }
+    });
+    host.addEventListener("focusout", event => { if (!host.contains(event.relatedTarget)) close(); });
+    host.append(input, list);
+    return host;
+}
 
 app.registerExtension({
     name: "mmh3.media.load_loras",
@@ -17,24 +105,20 @@ app.registerExtension({
         const state = widget("lora_entries_json");
         if (!state) return;
         const mode = widget("mode");
-        const originalWidgets = new Map();
-        for (const w of node.widgets) {
-            if (!legacyName.test(w.name) && w !== state) continue;
-            originalWidgets.set(w, { type: w.type, computeSize: w.computeSize, draw: w.draw, hidden: w.hidden });
-        }
+        const catalog = widget("lora_catalog");
         const root = document.createElement("div");
-        Object.assign(root.style, { display: "grid", gap: "8px", padding: "8px", boxSizing: "border-box",
+        Object.assign(root.style, { display: "flex", flexDirection: "column", gap: "8px", padding: "8px", boxSizing: "border-box",
             color: "var(--input-text, #ddd)", font: "12px sans-serif" });
         const rows = document.createElement("div");
-        Object.assign(rows.style, { display: "grid", gap: "6px", maxHeight: "300px", overflowY: "auto" });
+        Object.assign(rows.style, { display: "grid", gap: "6px", maxHeight: "300px", overflowY: "auto", flexShrink: "0" });
         const status = document.createElement("div");
         status.setAttribute("role", "status");
-        Object.assign(status.style, { lineHeight: "1.4", opacity: "0.8" });
+        Object.assign(status.style, { lineHeight: "1.4", opacity: "0.8", flexShrink: "0" });
         const add = document.createElement("button");
         add.type = "button";
         add.textContent = "+ Add LoRA";
         add.setAttribute("aria-label", "Add LoRA");
-        Object.assign(add.style, { padding: "7px", cursor: "pointer" });
+        Object.assign(add.style, { padding: "7px", cursor: "pointer", flexShrink: "0", minHeight: "32px" });
         root.append(rows, add, status);
         const read = () => {
             if (state.value) {
@@ -45,14 +129,10 @@ app.registerExtension({
                 }
                 return entries;
             }
-            const entries = [1, 2, 3].map(i => ({ name: widget(`lora_${i}`)?.value ?? "None",
-                strength: widget(`strength_${i}`)?.value ?? 1 })).filter(e => e.name !== "None");
-            return entries.length ? entries : [{ name: "None", strength: 1 }];
+            return [];
         };
-        const linkedLegacy = () => node.inputs?.some(p => legacyName.test(p.name) && p.link != null);
         const edit = action => {
             try {
-                if (linkedLegacy()) return;
                 const entries = read();
                 action(entries);
                 node.graph?.beforeChange?.();
@@ -69,51 +149,26 @@ app.registerExtension({
         const render = () => {
             labels();
             if (["H3 Turbo LoRAs", "Turbo LoRAs", "MMH3H3TurboLoRAs"].includes(node.title)) node.title = "Load LoRAs";
-            const linked = linkedLegacy();
-            for (const [w, original] of originalWidgets) {
-                const hide = w === state || !linked;
-                w.type = hide ? "converted-widget" : original.type;
-                w.computeSize = hide ? () => [0, -4] : original.computeSize;
-                w.draw = hide ? () => {} : original.draw;
-                w.hidden = hide ? true : original.hidden;
-                if (w.inputEl) w.inputEl.style.display = hide ? "none" : "";
-                if (w.element) w.element.hidden = hide;
+            for (const w of [state, catalog]) {
+                if (!w) continue;
+                w.type = "converted-widget";
+                w.computeSize = () => [0, 0];
+                w.draw = () => {};
+                w.hidden = true;
+                if (w.inputEl) w.inputEl.style.display = "none";
+                if (w.element) w.element.hidden = true;
             }
             rows.replaceChildren();
-            add.disabled = !!linked;
-            if (linked) {
-                status.textContent = "Using connected legacy slots. Disconnect them to edit the expandable list.";
-                return;
-            }
             let entries;
             try { entries = read(); }
             catch (error) { status.textContent = error.message; return; }
-            // Once migrated, obsolete hidden combo values must not block queue
-            // validation (e.g. a removed or renamed legacy LoRA file).
-            if (state.value) {
-                for (let i = 1; i <= 3; i++) {
-                    widget(`lora_${i}`).value = "None";
-                    widget(`strength_${i}`).value = 1;
-                }
-            }
-            let options = widget("lora_1")?.options?.values ?? ["None"];
+            let options = catalog?.options?.values ?? ["None"];
             if (typeof options === "function") options = options();
             entries.forEach((entry, index) => {
                 const row = document.createElement("div");
                 Object.assign(row.style, { display: "grid", gridTemplateColumns: "minmax(0, 1fr) 70px 28px", gap: "5px" });
-                const file = document.createElement("select");
-                file.setAttribute("aria-label", `LoRA ${index + 1}`);
-                file.style.minWidth = "0";
-                file.style.width = "100%";
-                for (const name of new Set([...options, entry.name])) {
-                    const option = document.createElement("option");
-                    option.value = name;
-                    option.textContent = name;
-                    file.append(option);
-                }
-                file.value = entry.name;
-                file.title = entry.name;
-                file.addEventListener("change", () => edit(items => { items[index].name = file.value; }));
+                const file = searchableLoRA([...new Set([...options, entry.name])], entry.name,
+                    `LoRA ${index + 1}`, name => edit(items => { items[index].name = name; }));
                 const strength = document.createElement("input");
                 strength.type = "number";
                 strength.min = "-10";
@@ -122,6 +177,7 @@ app.registerExtension({
                 strength.value = String(entry.strength);
                 strength.style.width = "100%";
                 strength.style.boxSizing = "border-box";
+                strength.style.height = "32px";
                 strength.setAttribute("aria-label", `Strength ${index + 1}`);
                 strength.addEventListener("change", () => edit(items => {
                     const value = Number(strength.value);
@@ -135,6 +191,7 @@ app.registerExtension({
                 remove.textContent = "×";
                 remove.title = `Remove LoRA ${index + 1}`;
                 remove.setAttribute("aria-label", remove.title);
+                remove.style.height = "32px";
                 remove.addEventListener("click", () => edit(items => { items.splice(index, 1); }));
                 row.append(file, strength, remove);
                 rows.append(row);
@@ -144,16 +201,28 @@ app.registerExtension({
                 : mode.value === "extension" ? "Adds this ordered list to preset/source LoRAs."
                 : "Replaces preset LoRAs with this ordered list.";
             status.textContent = hint;
-            const height = Math.min(300, Math.max(32, entries.length * 34)) + 95;
-            dom.options.getMinHeight = () => height;
-            dom.options.getMaxHeight = () => height;
+            resize();
+            node.graph?.setDirtyCanvas(true, true);
+        };
+        let height = 180;
+        node.addDOMWidget("mmh3_lora_editor", "LoRA list", root,
+            { serialize: false, hideOnZoom: false, getMinHeight: () => height, getMaxHeight: () => height });
+        const resize = () => {
+            // Measure the actual rows and wrapped hint, including the empty list.
+            // A fixed estimate squeezed the initial row beneath the Add button.
+            // 16px padding + two 8px gaps + the host's 20px DOM inset.
+            const measured = Math.ceil(rows.offsetHeight + add.offsetHeight + status.offsetHeight + 52);
+            if (!root.isConnected || measured === height) return;
+            height = measured;
             node.setSize?.([Math.max(node.size?.[0] ?? 400, 360), node.computeSize?.()[1] ?? height + 70]);
             node.graph?.setDirtyCanvas(true, true);
         };
-        const dom = node.addDOMWidget("mmh3_lora_editor", "LoRA list", root,
-            { serialize: false, hideOnZoom: false, getMinHeight: () => 150, getMaxHeight: () => 395 });
+        const observer = new ResizeObserver(resize);
+        for (const element of [rows, add, status]) observer.observe(element);
+        const removed = node.onRemoved;
+        node.onRemoved = function(...args) { observer.disconnect(); return removed?.apply(this, args); };
         add.addEventListener("click", () => edit(items => { items.push({ name: "None", strength: 1 }); }));
-        for (const w of [state, mode, ...originalWidgets.keys()]) {
+        for (const w of [state, mode]) {
             if (w._mmh3LoraCallback) continue;
             w._mmh3LoraCallback = true;
             const previous = w.callback;

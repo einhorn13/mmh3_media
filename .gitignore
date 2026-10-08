@@ -24,6 +24,7 @@ _audit/
 /.idea/
 /.vscode/
 /tests/
+/verification/
 /subgraphs/
 /workflow_recipes/
 /deploy.py
@@ -33,6 +34,9 @@ _audit/
 /workflow_schema.py
 /workflow_review.py
 /workflow_migrate_*.py
+/workflow_*_migrate.py
+/workflow_validation.py
+/workflow_refresh.py
 /stitch_upscale_legacy.py
 /robots.md
 /trash/

@@ -9,11 +9,11 @@
       "type": "MMH3Load",
       "pos": [
         90,
-        110
+        125
       ],
       "size": [
         380,
-        470
+        490
       ],
       "flags": {},
       "order": 0,
@@ -68,11 +68,11 @@
       "type": "MMH3Load",
       "pos": [
         90,
-        650.0
+        690
       ],
       "size": [
         380,
-        470
+        490
       ],
       "flags": {},
       "order": 1,
@@ -127,11 +127,11 @@
       "type": "MMH3Load",
       "pos": [
         90,
-        1190.0
+        1255
       ],
       "size": [
         380,
-        470
+        490
       ],
       "flags": {},
       "order": 2,
@@ -185,8 +185,8 @@
       "id": 4,
       "type": "MMH3VideoStitch",
       "pos": [
-        590,
-        110
+        660,
+        125
       ],
       "size": [
         390,
@@ -270,17 +270,17 @@
         {
           "name": "audio",
           "type": "AUDIO",
-          "links": null
+          "links": []
         },
         {
           "name": "summary",
           "type": "STRING",
-          "links": null
+          "links": []
         },
         {
           "name": "assembly_report_json",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -299,12 +299,12 @@
       "type": "MMH3Save",
       "title": "Save MMH3",
       "pos": [
-        1090,
-        110
+        1230,
+        125
       ],
       "size": [
         380,
-        470
+        490
       ],
       "flags": {},
       "order": 4,
@@ -321,7 +321,8 @@
           "link": null,
           "widget": {
             "name": "filename_prefix"
-          }
+          },
+          "label": "Filename"
         },
         {
           "name": "target",
@@ -344,12 +345,12 @@
         {
           "name": "packet",
           "type": "MMH3_MEDIA",
-          "links": null
+          "links": []
         },
         {
           "name": "path",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -366,12 +367,12 @@
       "type": "MMH3SaveVideo",
       "title": "Save Video · encode once",
       "pos": [
-        1090,
-        650.0
+        1230,
+        690
       ],
       "size": [
-        360,
-        420
+        380,
+        490
       ],
       "flags": {},
       "order": 5,
@@ -440,12 +441,12 @@
       "type": "MarkdownNote",
       "title": "Stitch controls",
       "pos": [
-        590,
-        600
+        1230,
+        1255
       ],
       "size": [
-        360,
-        270
+        380,
+        340
       ],
       "flags": {},
       "order": 6,
@@ -511,40 +512,40 @@
   "groups": [
     {
       "id": 1,
-      "title": "01 · INPUTS / ASSETS",
+      "title": "01 · SOURCE / REFERENCES",
       "bounding": [
-        55,
-        55,
+        65,
+        65,
         430,
-        1640.0
+        1755
       ],
       "color": "#355070",
       "font_size": 24,
       "flags": {}
     },
     {
-      "id": 6,
-      "title": "02 · AV STITCH / ASSEMBLY",
+      "id": 4,
+      "title": "04 · GENERATION / EDIT",
       "bounding": [
-        555,
-        55,
-        430,
-        850
+        635,
+        65,
+        440,
+        565
       ],
-      "color": "#52796f",
+      "color": "#8d6a4a",
       "font_size": 24,
       "flags": {}
     },
     {
-      "id": 7,
-      "title": "03 · PREVIEW / SAVE",
+      "id": 5,
+      "title": "05 · REVIEW / SAVE",
       "bounding": [
-        1055,
-        55,
+        1205,
+        65,
         430,
-        1050.0
+        1605
       ],
-      "color": "#2a9d8f",
+      "color": "#52796f",
       "font_size": 24,
       "flags": {}
     }

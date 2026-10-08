@@ -4,12 +4,12 @@
   "groups": [
     {
       "id": 1,
-      "title": "01 · INPUTS / ASSETS",
+      "title": "01 · SOURCE / REFERENCES",
       "bounding": [
-        55,
-        55,
+        65,
+        65,
         430,
-        560.0
+        625
       ],
       "color": "#355070",
       "font_size": 24,
@@ -17,12 +17,12 @@
     },
     {
       "id": 2,
-      "title": "02 · MODEL / ENCODERS / OPTIMIZATION",
+      "title": "02 · MODELS / SAMPLING",
       "bounding": [
-        555,
-        55,
-        430,
-        2305
+        635,
+        65,
+        450,
+        2253
       ],
       "color": "#4f5d75",
       "font_size": 24,
@@ -30,12 +30,12 @@
     },
     {
       "id": 3,
-      "title": "03 · SETTINGS / CONDITIONING / CONTROL",
+      "title": "03 · SETTINGS / PLAN",
       "bounding": [
-        1055,
-        55,
+        1205,
+        65,
         430,
-        1540
+        810
       ],
       "color": "#6d597a",
       "font_size": 24,
@@ -43,12 +43,12 @@
     },
     {
       "id": 4,
-      "title": "04 · LATENT / TIMELINE PREP",
+      "title": "04 · GENERATION / EDIT",
       "bounding": [
-        1555,
-        55,
+        1775,
+        65,
         430,
-        1144
+        3556
       ],
       "color": "#8d6a4a",
       "font_size": 24,
@@ -56,27 +56,14 @@
     },
     {
       "id": 5,
-      "title": "05 · H3 SAMPLING + AV DECODE",
+      "title": "05 · REVIEW / SAVE",
       "bounding": [
-        2055,
-        55,
+        2345,
+        65,
         430,
-        1092
+        2290
       ],
-      "color": "#9c6644",
-      "font_size": 24,
-      "flags": {}
-    },
-    {
-      "id": 7,
-      "title": "06 · PREVIEW / PACK / SAVE",
-      "bounding": [
-        3055,
-        55,
-        430,
-        1604.0
-      ],
-      "color": "#2a9d8f",
+      "color": "#52796f",
       "font_size": 24,
       "flags": {}
     }
@@ -88,11 +75,11 @@
     {
       "pos": [
         90,
-        110
+        125
       ],
       "size": [
         380,
-        470
+        490
       ],
       "flags": {},
       "order": 0,
@@ -149,12 +136,12 @@
     {
       "title": "Diffusion Model",
       "pos": [
-        590,
-        110
+        660,
+        125
       ],
       "size": [
-        360,
-        136
+        380,
+        155
       ],
       "flags": {},
       "order": 1,
@@ -199,12 +186,12 @@
     {
       "title": "Text Encoder",
       "pos": [
-        590,
-        316
+        660,
+        355
       ],
       "size": [
-        360,
-        160
+        380,
+        190
       ],
       "flags": {},
       "order": 4,
@@ -257,11 +244,11 @@
     },
     {
       "pos": [
-        590,
-        546
+        660,
+        620
       ],
       "size": [
-        360,
+        380,
         120
       ],
       "flags": {},
@@ -299,11 +286,11 @@
     },
     {
       "pos": [
-        590,
-        736
+        660,
+        815
       ],
       "size": [
-        360,
+        380,
         120
       ],
       "flags": {},
@@ -341,11 +328,11 @@
     },
     {
       "pos": [
-        1590,
-        110
+        1800,
+        125
       ],
       "size": [
-        360,
+        380,
         424
       ],
       "flags": {},
@@ -499,12 +486,12 @@
     },
     {
       "pos": [
-        590,
-        926
+        1800,
+        624
       ],
       "size": [
-        360,
-        310
+        380,
+        365
       ],
       "flags": {},
       "order": 8,
@@ -607,11 +594,11 @@
     },
     {
       "pos": [
-        590,
-        1252
+        660,
+        1010
       ],
       "size": [
-        360,
+        380,
         298
       ],
       "flags": {},
@@ -724,11 +711,11 @@
     {
       "title": "Prepare H3 Generation",
       "pos": [
-        1090,
-        110
+        1800,
+        1064
       ],
       "size": [
-        360,
+        380,
         330
       ],
       "flags": {},
@@ -845,11 +832,11 @@
     },
     {
       "pos": [
-        1590,
-        604
+        1800,
+        1469
       ],
       "size": [
-        360,
+        380,
         154
       ],
       "flags": {},
@@ -890,12 +877,12 @@
     },
     {
       "pos": [
-        1090,
-        688
+        2370,
+        125
       ],
       "size": [
-        360,
-        412
+        380,
+        610
       ],
       "flags": {},
       "order": 12,
@@ -1070,11 +1057,11 @@
     },
     {
       "pos": [
-        1590,
-        828
+        1800,
+        1698
       ],
       "size": [
-        360,
+        380,
         130
       ],
       "flags": {},
@@ -1110,11 +1097,11 @@
     },
     {
       "pos": [
-        1590,
-        1028
+        1800,
+        1903
       ],
       "size": [
-        360,
+        380,
         136
       ],
       "flags": {},
@@ -1153,11 +1140,11 @@
     {
       "title": "Build MMH3 Result",
       "pos": [
-        3090,
-        110
+        1800,
+        2114
       ],
       "size": [
-        360,
+        380,
         484
       ],
       "flags": {
@@ -1317,12 +1304,12 @@
     {
       "title": "Save Video · encode once",
       "pos": [
-        3090,
-        664
+        2370,
+        810
       ],
       "size": [
-        360,
-        420
+        380,
+        490
       ],
       "flags": {},
       "order": 22,
@@ -1391,12 +1378,12 @@
     {
       "title": "Save MMH3",
       "pos": [
-        3090,
-        1154.0
+        2370,
+        1375
       ],
       "size": [
         380,
-        470
+        490
       ],
       "flags": {},
       "order": 23,
@@ -1457,11 +1444,11 @@
     },
     {
       "pos": [
-        2090,
-        110
+        1800,
+        2673
       ],
       "size": [
-        360,
+        380,
         518
       ],
       "flags": {},
@@ -1619,11 +1606,11 @@
     {
       "title": "Optimizations",
       "pos": [
-        590,
-        1650
+        660,
+        1383
       ],
       "size": [
-        360,
+        380,
         420
       ],
       "flags": {},
@@ -1708,11 +1695,11 @@
     },
     {
       "pos": [
-        1090,
-        1250
+        1800,
+        3266
       ],
       "size": [
-        360,
+        380,
         280
       ],
       "flags": {},
@@ -1818,12 +1805,12 @@
     },
     {
       "pos": [
-        590,
-        2080
+        2370,
+        1940
       ],
       "size": [
-        360,
-        240
+        380,
+        340
       ],
       "flags": {},
       "order": 24,
@@ -1851,8 +1838,8 @@
     },
     {
       "pos": [
-        -430,
-        1250
+        1230,
+        125
       ],
       "size": [
         380,
@@ -1974,8 +1961,8 @@
     },
     {
       "pos": [
-        -430,
-        1670
+        1230,
+        540
       ],
       "size": [
         380,
@@ -2071,12 +2058,12 @@
     {
       "title": "Load LoRAs",
       "pos": [
-        590,
-        -250
+        660,
+        1878
       ],
       "size": [
         400,
-        270
+        365
       ],
       "order": 0,
       "mode": 0,
@@ -2094,59 +2081,19 @@
           }
         },
         {
-          "name": "lora_1",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "lora_1"
-          }
-        },
-        {
-          "name": "strength_1",
-          "type": "FLOAT",
-          "link": null,
-          "widget": {
-            "name": "strength_1"
-          }
-        },
-        {
-          "name": "lora_2",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "lora_2"
-          }
-        },
-        {
-          "name": "strength_2",
-          "type": "FLOAT",
-          "link": null,
-          "widget": {
-            "name": "strength_2"
-          }
-        },
-        {
-          "name": "lora_3",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "lora_3"
-          }
-        },
-        {
-          "name": "strength_3",
-          "type": "FLOAT",
-          "link": null,
-          "widget": {
-            "name": "strength_3"
-          }
-        },
-        {
           "name": "lora_entries_json",
           "type": "STRING",
           "link": null,
           "widget": {
             "name": "lora_entries_json"
+          }
+        },
+        {
+          "name": "lora_catalog",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "lora_catalog"
           }
         }
       ],
@@ -2161,13 +2108,8 @@
       ],
       "widgets_values": [
         "auto",
-        "None",
-        1.0,
-        "None",
-        1.0,
-        "None",
-        1.0,
-        ""
+        "[]",
+        "None"
       ]
     }
   ],

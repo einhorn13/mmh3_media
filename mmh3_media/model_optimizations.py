@@ -19,7 +19,6 @@ ATTENTION_NODE_IDS = {
     "comfy_kitchen": "ModelAttentionBackend",
     # KJNodes registers this historical spelling (including the extra 'h').
     "sage_attention_kj": "PathchSageAttentionKJ",
-    "sol_attn": "SolAttnPatch",
     "sol_native": "BlockSparseAttention",
     "sla_native": "BlockSparseAttention",
     "vsa_native": "BlockSparseAttention",
@@ -121,7 +120,6 @@ def build_model_optimization_plan(
     sol_start_percent: float = 0.2,
     sol_end_percent: float = 0.9,
     sol_min_tokens: int = 4096,
-    sol_int8_qk: bool = True,
     sol_sink_conditioning: str = "exact_kv_and_rows",
     sol_dense_blocks: str = "",
     sol_extra_tokens: int = 256,
@@ -161,7 +159,7 @@ def build_model_optimization_plan(
     attention: dict[str, Any] = {}
     if attention_mode == "sage_attention_kj":
         attention = {"sage_mode": str(sage_mode), "allow_compile": bool(sage_allow_compile)}
-    if attention_mode in {"sol_attn", "sol_native", "sla_native"}:
+    if attention_mode in {"sol_native", "sla_native"}:
         try:
             sol_tau = float(sol_tau)
             token_count = float(sol_min_tokens)
@@ -180,7 +178,6 @@ def build_model_optimization_plan(
             "start_percent": float(sol_start_percent),
             "end_percent": float(sol_end_percent),
             "min_tokens": int(sol_min_tokens),
-            "int8_qk": bool(sol_int8_qk),
             "sink_conditioning": sol_sink_conditioning,
             "dense_blocks": str(sol_dense_blocks),
         }
@@ -191,7 +188,6 @@ def build_model_optimization_plan(
             if any(part.strip() and not re.fullmatch(r"\s*\d+\s*(?:-\s*\d+\s*)?", part)
                    for part in str(sol_dense_blocks).split(",")):
                 raise MMH3ResourceError("Native Sol requires non-negative dense block indices")
-            attention.pop("int8_qk")
             attention["extra_tokens"] = int(sol_extra_tokens)
         if attention_mode == "sla_native":
             try:
@@ -283,11 +279,7 @@ def build_model_optimization_expansion(
                     for node_id in plan.required_nodes]
         missing = [node_id for node_id in required if node_id not in available]
         if missing:
-            hint = (
-                ". Sol (Kijai) requires ComfyUI-SolAttn_triton (Patch Sol-Attn / SolAttnPatch). "
-                "If installed, check its startup import errors and restart ComfyUI after fixing them."
-                if "SolAttnPatch" in missing else ""
-            )
+            hint = ""
             if ATTENTION_NODE_IDS["sage_attention_kj"] in missing:
                 hint += (". SageAttention (KJ) requires ComfyUI-KJNodes: PathchSageAttentionKJ "
                          "(or the compatible PatchSageAttentionKJ alias). Check KJNodes startup import errors.")
@@ -358,17 +350,6 @@ def build_model_optimization_expansion(
                 **{f"selection.{selection_field}": selection_value},
                 **native_settings,
                 verbose=verbose,
-            )
-            current_model = sol.out(0)
-        elif stage == "sol_attn":
-            sol = graph.node(
-                "SolAttnPatch",
-                model=current_model,
-                **settings,
-                morton=False,
-                morton_curve="2d_frame",
-                verbose=False,
-                use_tma=False,
             )
             current_model = sol.out(0)
         elif stage == "vdn_h3":

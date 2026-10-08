@@ -8,12 +8,12 @@
       "id": 1,
       "type": "MMH3Load",
       "pos": [
-        40,
-        40
+        90,
+        125
       ],
       "size": [
         380,
-        470
+        490
       ],
       "flags": {},
       "order": 0,
@@ -67,12 +67,12 @@
       "id": 101,
       "type": "MMH3Load",
       "pos": [
-        40,
-        640
+        90,
+        690
       ],
       "size": [
         380,
-        470
+        490
       ],
       "flags": {},
       "order": 1,
@@ -126,12 +126,12 @@
       "id": 201,
       "type": "MMH3Load",
       "pos": [
-        40,
-        1240
+        90,
+        1255
       ],
       "size": [
         380,
-        470
+        490
       ],
       "flags": {},
       "order": 2,
@@ -186,12 +186,12 @@
       "type": "UNETLoader",
       "title": "FL2VA base · source LoRAs applied automatically",
       "pos": [
-        580,
-        40
+        660,
+        125
       ],
       "size": [
         420,
-        150
+        155
       ],
       "flags": {},
       "order": 3,
@@ -236,12 +236,12 @@
       "type": "CLIPLoader",
       "title": "Text Encoder",
       "pos": [
-        580,
-        230
+        660,
+        355
       ],
       "size": [
         420,
-        150
+        190
       ],
       "flags": {},
       "order": 4,
@@ -294,8 +294,8 @@
       "id": 8,
       "type": "VAELoader",
       "pos": [
-        580,
-        420
+        660,
+        620
       ],
       "size": [
         420,
@@ -335,8 +335,8 @@
       "id": 9,
       "type": "VAELoader",
       "pos": [
-        580,
-        610
+        660,
+        845
       ],
       "size": [
         420,
@@ -376,11 +376,11 @@
       "id": 400,
       "type": "MMH3H3StitchUpscale",
       "pos": [
-        1120,
-        160
+        1230,
+        125
       ],
       "size": [
-        520,
+        480,
         768
       ],
       "flags": {},
@@ -424,7 +424,7 @@
         },
         {
           "name": "resolution",
-          "type": "COMBO",
+          "type": "COMFY_DYNAMICCOMBO_V3",
           "link": null,
           "widget": {
             "name": "resolution"
@@ -457,14 +457,12 @@
         {
           "name": "fl2va_model",
           "type": "MODEL",
-          "link": 4,
-          "shape": 7
+          "link": 4
         },
         {
           "name": "ref2va_model",
           "type": "MODEL",
-          "link": null,
-          "shape": 7
+          "link": null
         },
         {
           "name": "steps_override",
@@ -472,8 +470,7 @@
           "link": null,
           "widget": {
             "name": "steps_override"
-          },
-          "shape": 7
+          }
         },
         {
           "name": "manual_sigmas",
@@ -481,8 +478,7 @@
           "link": null,
           "widget": {
             "name": "manual_sigmas"
-          },
-          "shape": 7
+          }
         },
         {
           "name": "turbo_override",
@@ -490,8 +486,7 @@
           "link": null,
           "widget": {
             "name": "turbo_override"
-          },
-          "shape": 7
+          }
         },
         {
           "name": "attention",
@@ -517,7 +512,8 @@
           "link": null,
           "widget": {
             "name": "sage_attention"
-          }
+          },
+          "label": "SageAttention (KJ)"
         },
         {
           "name": "sage_allow_compile",
@@ -525,7 +521,8 @@
           "link": null,
           "widget": {
             "name": "sage_allow_compile"
-          }
+          },
+          "label": "Sage allow compile"
         },
         {
           "name": "decode_mode",
@@ -533,7 +530,8 @@
           "link": null,
           "widget": {
             "name": "decode_mode"
-          }
+          },
+          "label": "Video decoder"
         },
         {
           "name": "trt_decoder",
@@ -555,7 +553,6 @@
           "name": "turbo_loras_json",
           "type": "STRING",
           "link": 11,
-          "shape": 7,
           "label": "LoRAs"
         },
         {
@@ -585,12 +582,12 @@
         {
           "name": "latent",
           "type": "LATENT",
-          "links": null
+          "links": []
         },
         {
           "name": "assembly_report_json",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -619,12 +616,12 @@
       "type": "MMH3SaveVideo",
       "title": "Save Video · encode once",
       "pos": [
-        1750,
-        40
+        1800,
+        125
       ],
       "size": [
-        360,
-        420
+        380,
+        490
       ],
       "flags": {},
       "order": 8,
@@ -693,12 +690,12 @@
       "type": "MMH3Save",
       "title": "Save MMH3",
       "pos": [
-        1750,
-        520
+        1800,
+        690
       ],
       "size": [
         380,
-        470
+        490
       ],
       "flags": {},
       "order": 9,
@@ -715,7 +712,8 @@
           "link": null,
           "widget": {
             "name": "filename_prefix"
-          }
+          },
+          "label": "Filename"
         },
         {
           "name": "target",
@@ -738,12 +736,12 @@
         {
           "name": "packet",
           "type": "MMH3_MEDIA",
-          "links": null
+          "links": []
         },
         {
           "name": "path",
           "type": "STRING",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -759,11 +757,11 @@
       "id": 500,
       "type": "MarkdownNote",
       "pos": [
-        1100,
-        960
+        1800,
+        1255
       ],
       "size": [
-        650,
+        480,
         570
       ],
       "flags": {},
@@ -783,12 +781,12 @@
       "type": "MMH3H3TurboLoRAs",
       "title": "Load LoRAs",
       "pos": [
-        1120,
-        -320
+        660,
+        1070
       ],
       "size": [
         400,
-        270
+        365
       ],
       "flags": {},
       "order": 0,
@@ -803,61 +801,20 @@
           }
         },
         {
-          "name": "lora_1",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "lora_1"
-          }
-        },
-        {
-          "name": "strength_1",
-          "type": "FLOAT",
-          "link": null,
-          "widget": {
-            "name": "strength_1"
-          }
-        },
-        {
-          "name": "lora_2",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "lora_2"
-          }
-        },
-        {
-          "name": "strength_2",
-          "type": "FLOAT",
-          "link": null,
-          "widget": {
-            "name": "strength_2"
-          }
-        },
-        {
-          "name": "lora_3",
-          "type": "COMBO",
-          "link": null,
-          "widget": {
-            "name": "lora_3"
-          }
-        },
-        {
-          "name": "strength_3",
-          "type": "FLOAT",
-          "link": null,
-          "widget": {
-            "name": "strength_3"
-          }
-        },
-        {
           "name": "lora_entries_json",
           "type": "STRING",
           "link": null,
           "widget": {
             "name": "lora_entries_json"
-          },
-          "shape": 7
+          }
+        },
+        {
+          "name": "lora_catalog",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "lora_catalog"
+          }
         }
       ],
       "outputs": [
@@ -866,9 +823,7 @@
           "type": "STRING",
           "links": [
             11
-          ],
-          "slot_index": 0,
-          "label": "LoRAs"
+          ]
         }
       ],
       "properties": {
@@ -876,13 +831,8 @@
       },
       "widgets_values": [
         "auto",
-        "None",
-        1.0,
-        "None",
-        1.0,
-        "None",
-        1.0,
-        ""
+        "[]",
+        "None"
       ]
     }
   ],
@@ -976,7 +926,60 @@
       "STRING"
     ]
   ],
-  "groups": [],
+  "groups": [
+    {
+      "id": 1,
+      "title": "01 · SOURCE / REFERENCES",
+      "bounding": [
+        65,
+        65,
+        430,
+        1755
+      ],
+      "color": "#355070",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 2,
+      "title": "02 · MODELS / SAMPLING",
+      "bounding": [
+        635,
+        65,
+        470,
+        1445
+      ],
+      "color": "#4f5d75",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 4,
+      "title": "04 · GENERATION / EDIT",
+      "bounding": [
+        1205,
+        65,
+        530,
+        903
+      ],
+      "color": "#8d6a4a",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 5,
+      "title": "05 · REVIEW / SAVE",
+      "bounding": [
+        1775,
+        65,
+        530,
+        1835
+      ],
+      "color": "#52796f",
+      "font_size": 24,
+      "flags": {}
+    }
+  ],
   "config": {},
   "extra": {
     "ds": {

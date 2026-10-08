@@ -17,7 +17,7 @@ from .sampling_presets import (
 VDN_NODE_ID = "ApplyVDNH3"
 VDN_SUPPORTED_TASK_FAMILIES = ("fl2va", "ref2va")
 VDN_LORA_MODES = ("merge", "bypass")
-VDN_BRANCH_WEIGHT_MODES = ("auto", "stream", "cache_gpu")
+VDN_BRANCH_WEIGHT_MODES = ("auto", "stream", "resident")
 VDN_RETAIN_BUFFER_MODES = ("auto", "on", "off")
 VDN_ATTENTION_BACKENDS = ("grouped", "flex")
 VDN_AUTO_CHECKPOINT = "auto"
@@ -214,7 +214,7 @@ class VDNOptimizationSettings:
             "attention_backend": self.attention_backend,
             "verbose": self.verbose,
             "compatibility": {
-                "sol_attn": False,
+                "sol_native": False,
                 "h3_sla": False,
                 "task_families": list(VDN_SUPPORTED_TASK_FAMILIES),
             },
@@ -338,7 +338,7 @@ def validate_vdn_sampling_profile(
 def validate_vdn_runtime_node(node_class: Any) -> None:
     if node_class is None:
         raise MMH3ResourceError(
-            "VDN-H3 runtime is missing; install/update Saganaki22/ComfyUI-VDN-H3 "
+            "VDN-H3 runtime is missing; install/update xmarre/ComfyUI-VDN-H3-Plus "
             "and restart ComfyUI"
         )
     input_types = getattr(node_class, "INPUT_TYPES", None)
@@ -372,7 +372,7 @@ def apply_external_vdn(model: Any, node_class: Any, settings: VDNOptimizationSet
     elif requested_checkpoint == VDN_AUTO_CHECKPOINT:
         raise MMH3ResourceError(
             "VDN checkpoint='auto' requires ApplyVDNH3 to expose its checkpoint dropdown; "
-            "update Saganaki22/ComfyUI-VDN-H3 and restart ComfyUI"
+            "update xmarre/ComfyUI-VDN-H3-Plus and restart ComfyUI"
         )
     else:
         # Older/test runtimes may use an unconstrained string contract. Explicit

@@ -1,0 +1,376 @@
+{
+  "id": "a6def5ef-b49a-418c-a32b-94cdf8cc58a4",
+  "revision": 0,
+  "groups": [
+    {
+      "id": 1,
+      "title": "01 · SOURCE / REFERENCES",
+      "bounding": [
+        65,
+        65,
+        490,
+        900
+      ],
+      "color": "#355070",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 4,
+      "title": "04 · GENERATION / EDIT",
+      "bounding": [
+        635,
+        65,
+        530,
+        1285
+      ],
+      "color": "#8d6a4a",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 5,
+      "title": "05 · REVIEW / SAVE",
+      "bounding": [
+        1205,
+        65,
+        530,
+        785
+      ],
+      "color": "#52796f",
+      "font_size": 24,
+      "flags": {}
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.55,
+      "offset": [
+        0,
+        0
+      ]
+    }
+  },
+  "version": 0.4,
+  "nodes": [
+    {
+      "title": "01 · Identity image",
+      "size": [
+        440,
+        490
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "pos": [
+        90,
+        125
+      ],
+      "id": 1,
+      "type": "LoadImage",
+      "inputs": [
+        {
+          "name": "image",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "image"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            1
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": []
+        }
+      ],
+      "widgets_values": [
+        ""
+      ]
+    },
+    {
+      "title": "02 · Full master audio (any sample rate)",
+      "size": [
+        440,
+        200
+      ],
+      "properties": {
+        "Node name for S&R": "LoadAudio"
+      },
+      "pos": [
+        90,
+        690
+      ],
+      "id": 2,
+      "type": "LoadAudio",
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "audio"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "AUDIO",
+          "type": "AUDIO",
+          "links": [
+            2
+          ]
+        }
+      ],
+      "widgets_values": [
+        ""
+      ]
+    },
+    {
+      "title": "03 · Long Video Studio — generate / review / assemble",
+      "size": [
+        480,
+        1150
+      ],
+      "properties": {
+        "Node name for S&R": "MMH3LongVideoStudio"
+      },
+      "pos": [
+        660,
+        125
+      ],
+      "id": 3,
+      "type": "MMH3LongVideoStudio",
+      "inputs": [
+        {
+          "name": "project",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "project"
+          }
+        },
+        {
+          "name": "action",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "action"
+          }
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "prompt"
+          }
+        },
+        {
+          "name": "model_name",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "model_name"
+          }
+        },
+        {
+          "name": "clip_name",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "clip_name"
+          }
+        },
+        {
+          "name": "video_vae_name",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "video_vae_name"
+          }
+        },
+        {
+          "name": "audio_vae_name",
+          "type": "COMBO",
+          "link": null,
+          "widget": {
+            "name": "audio_vae_name"
+          }
+        },
+        {
+          "name": "width",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "width"
+          }
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "height"
+          }
+        },
+        {
+          "name": "steps",
+          "type": "INT",
+          "link": null,
+          "widget": {
+            "name": "steps"
+          }
+        },
+        {
+          "name": "scene_seconds",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "scene_seconds"
+          }
+        },
+        {
+          "name": "context_seconds",
+          "type": "FLOAT",
+          "link": null,
+          "widget": {
+            "name": "context_seconds"
+          }
+        },
+        {
+          "name": "review_takes",
+          "type": "BOOLEAN",
+          "link": null,
+          "widget": {
+            "name": "review_takes"
+          }
+        },
+        {
+          "name": "auto_continue",
+          "type": "BOOLEAN",
+          "link": null,
+          "widget": {
+            "name": "auto_continue"
+          }
+        },
+        {
+          "name": "candidate_id",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "candidate_id"
+          }
+        },
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 1
+        },
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 2
+        },
+        {
+          "name": "references",
+          "type": "MMH3_MEDIA",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "ledger_json",
+          "type": "STRING",
+          "links": []
+        },
+        {
+          "name": "path",
+          "type": "STRING",
+          "links": []
+        },
+        {
+          "name": "status",
+          "type": "STRING",
+          "links": []
+        }
+      ],
+      "widgets_values": [
+        "mmh3_studio/my_video",
+        "generate_next",
+        "Use <Picture 1> as the identity reference. Follow @master_audio exactly for singing timing and mouth articulation. Stable identity, natural motion.",
+        "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
+        "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+        "minimax_h3_video_vae_int8_convrot.safetensors",
+        "minimax_h3_audio_vae_fp32.safetensors",
+        768,
+        448,
+        20,
+        8.0,
+        0.5,
+        true,
+        false,
+        ""
+      ]
+    },
+    {
+      "title": "Instructions",
+      "size": [
+        480,
+        650
+      ],
+      "pos": [
+        1230,
+        125
+      ],
+      "id": 4,
+      "type": "MarkdownNote",
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "text"
+          }
+        }
+      ],
+      "outputs": [],
+      "widgets_values": [
+        "# Complete long-video workflow\n\n1. Upload one identity image and the full master audio. Audio is resampled to 32000 Hz once.\n2. Select Ref2VA model, Qwen text encoder, video VAE and audio VAE. Set project name, prompt, size and scene duration.\n3. Generate next → preview → Accept take (or Reroll then Generate next). Repeat for every scene.\n4. Assemble after all scenes are accepted. Final MP4 + MMH3 archive appear in `output/<project>`.\n\nReview is on by default. For an automatic full pass set review_takes=false and auto_continue=true before starting a new project.\n\nExisting project = resume with frozen sources/settings. Use a new project name for different input or render settings. Cancel uses the normal ComfyUI stop button; Recover reconciles the saved artifact or releases a confirmed failed attempt.\n\nSchema checker is advisory: workflow_review.py; strict CI: --strict; bypass: --skip. It does not intercept Queue."
+      ]
+    }
+  ],
+  "links": [
+    [
+      1,
+      1,
+      0,
+      3,
+      15,
+      "IMAGE"
+    ],
+    [
+      2,
+      2,
+      0,
+      3,
+      16,
+      "AUDIO"
+    ]
+  ],
+  "last_node_id": 4,
+  "last_link_id": 2,
+  "definitions": {
+    "subgraphs": []
+  }
+}
