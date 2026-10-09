@@ -3,8 +3,8 @@
   "revision": 0,
   "groups": [
     {
-      "id": 2,
-      "title": "02 · MODELS / SAMPLING",
+      "id": 1,
+      "title": "01 Â· MODELS / SAMPLING",
       "bounding": [
         65,
         65,
@@ -16,8 +16,8 @@
       "flags": {}
     },
     {
-      "id": 4,
-      "title": "04 · GENERATION / EDIT",
+      "id": 2,
+      "title": "02 Â· GENERATION / EDIT",
       "bounding": [
         635,
         65,
@@ -29,8 +29,8 @@
       "flags": {}
     },
     {
-      "id": 5,
-      "title": "05 · REVIEW / SAVE",
+      "id": 3,
+      "title": "03 Â· REVIEW / SAVE",
       "bounding": [
         1205,
         65,
@@ -1159,7 +1159,7 @@
       ],
       "outputs": [],
       "widgets_values": [
-        "**Experimental Progressive Handoff**\n\nRequires `MiniMax-H3-Flow-Aligned-Regenerate` and `Comfyui_Minimax_h3_latent_Upscaler-Plus`. The target is 1152×640; early work runs at source scale 0.70, then learned 3D transfer hands off at coordinate 0.35. Direction-only guidance is the conservative default. Compare decoded video and audio against ordinary F01 → F07 before adopting it for production."
+        "**Experimental Progressive Handoff**\n\nRequires `MiniMax-H3-Flow-Aligned-Regenerate` and `Comfyui_Minimax_h3_latent_Upscaler-Plus`. The target is 1152Ã—640; early work runs at source scale 0.70, then learned 3D transfer hands off at coordinate 0.35. Direction-only guidance is the conservative default. Compare decoded video and audio against ordinary F01 â†’ F07 before adopting it for production."
       ]
     }
   ],

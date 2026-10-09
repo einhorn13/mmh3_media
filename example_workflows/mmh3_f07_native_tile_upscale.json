@@ -4,7 +4,7 @@
   "groups": [
     {
       "id": 1,
-      "title": "01 · SOURCE / REFERENCES",
+      "title": "01 Â· SOURCE / REFERENCES",
       "bounding": [
         65,
         65,
@@ -17,7 +17,7 @@
     },
     {
       "id": 2,
-      "title": "02 · MODELS / SAMPLING",
+      "title": "02 Â· MODELS / SAMPLING",
       "bounding": [
         635,
         65,
@@ -30,7 +30,7 @@
     },
     {
       "id": 3,
-      "title": "03 · SETTINGS / PLAN",
+      "title": "03 Â· SETTINGS / PLAN",
       "bounding": [
         1205,
         65,
@@ -43,7 +43,7 @@
     },
     {
       "id": 4,
-      "title": "04 · GENERATION / EDIT",
+      "title": "04 Â· GENERATION / EDIT",
       "bounding": [
         1775,
         65,
@@ -56,7 +56,7 @@
     },
     {
       "id": 5,
-      "title": "05 · REVIEW / SAVE",
+      "title": "05 Â· REVIEW / SAVE",
       "bounding": [
         2345,
         65,
@@ -564,14 +564,6 @@
           "widget": {
             "name": "offload_after_upscale"
           }
-        },
-        {
-          "name": "legacy_temporal_chunking",
-          "type": "BOOLEAN",
-          "link": null,
-          "widget": {
-            "name": "legacy_temporal_chunking"
-          }
         }
       ],
       "outputs": [
@@ -590,8 +582,7 @@
         32,
         "cuda",
         "bf16",
-        true,
-        false
+        true
       ]
     },
     {
@@ -641,14 +632,6 @@
           "link": null,
           "widget": {
             "name": "missing_policy"
-          }
-        },
-        {
-          "name": "turbo_override",
-          "type": "STRING",
-          "link": null,
-          "widget": {
-            "name": "turbo_override"
           }
         },
         {
@@ -706,7 +689,6 @@
       "widgets_values": [
         "error",
         "error",
-        "",
         "preserve"
       ]
     },
@@ -1420,7 +1402,7 @@
       ]
     },
     {
-      "title": "Save Video · encode once",
+      "title": "Save Video Â· encode once",
       "pos": [
         2370,
         810
@@ -2312,7 +2294,7 @@
       29,
       0,
       10,
-      7,
+      6,
       "STRING"
     ],
     [

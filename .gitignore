@@ -18,31 +18,25 @@ _audit/
 *.bak
 
 # Local development tools and agent workspace (not required by the custom node).
+/tests/
+/workflow_recipes/
+/requirements-dev.txt
+/deploy.py
+/export.py
+/package_manifest.py
+/workflow_generate.py
+/workflow_migrate_ui.py
+/workflow_primary.py
+/workflow_refresh.py
+/workflow_review.py
+/workflow_schema.py
+/workflow_validation.py
 /_robots/
 /.agents/
 /.codex/
 /.idea/
 /.vscode/
-/tests/
-/verification/
-/subgraphs/
-/workflow_recipes/
-/deploy.py
-/export.py
-/package_manifest.py
-/workflow_generate.py
-/workflow_schema.py
-/workflow_review.py
-/workflow_migrate_*.py
-/workflow_*_migrate.py
-/workflow_validation.py
-/workflow_refresh.py
-/stitch_upscale_legacy.py
-/robots.md
 /trash/
-
-# Local technical references and handoffs; public usage lives in README.md.
-/docs/
 
 # Local environments, secrets and generated media/model artifacts.
 /.venv/

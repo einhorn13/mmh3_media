@@ -65,31 +65,22 @@ class MMH3H3LearnedUpscale(io.ComfyNode):
             display_name="MMH3 H3 Learned Upscale",
             category=CATEGORY,
             description=(
-                "Stable MMH3 adapter for legacy and Plus MinimaxH3LatentUpscaler3D releases. "
+                "MMH3 adapter for the maintained Plus MinimaxH3LatentUpscaler3D API. "
                 "Upscales video only to the exact prepared dimensions."
             ),
             inputs=[
                 io.Latent.Input("video_latent"),
                 io.String.Input("model_name"),
-                io.Int.Input("target_width", min=32, max=8192, step=32),
-                io.Int.Input("target_height", min=32, max=8192, step=32),
+                io.Int.Input("target_width", min=64, max=4096, step=32),
+                io.Int.Input("target_height", min=64, max=4096, step=32),
                 io.Int.Input("align", default=32, min=16, max=512, step=16, advanced=True),
-                io.Combo.Input("device", options=["cuda", "rocm", "cpu"], default="cuda"),
+                io.Combo.Input("device", options=["cuda", "cpu"], default="cuda"),
                 io.Combo.Input("precision", options=["fp16", "bf16", "fp32"], default="bf16"),
                 io.Boolean.Input(
                     "offload_after_upscale",
                     default=True,
                     advanced=True,
                     tooltip="Free learned-upscaler VRAM before H3 refinement; disable for faster repeated runs.",
-                ),
-                io.Boolean.Input(
-                    "legacy_temporal_chunking",
-                    default=False,
-                    advanced=True,
-                    tooltip=(
-                        "Legacy low-VRAM fallback only. Full-sequence inference is recommended because temporal "
-                        "chunking changes Conv3D/GroupNorm context and can create boundary differences."
-                    ),
                 ),
             ],
             outputs=[io.Latent.Output("video_latent")],
@@ -107,7 +98,6 @@ class MMH3H3LearnedUpscale(io.ComfyNode):
         device: str,
         precision: str,
         offload_after_upscale: bool,
-        legacy_temporal_chunking: bool,
     ) -> io.NodeOutput:
         import nodes
         from comfy_execution.graph_utils import GraphBuilder
@@ -129,7 +119,6 @@ class MMH3H3LearnedUpscale(io.ComfyNode):
                 device=device,
                 precision=precision,
                 offload_after_upscale=offload_after_upscale,
-                legacy_temporal_chunking=legacy_temporal_chunking,
             ),
         )
         return io.NodeOutput(upscaler.out(0), expand=graph.finalize())

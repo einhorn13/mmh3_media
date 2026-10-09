@@ -18,7 +18,7 @@ def _input_names(backend) -> set[str]:
 
 
 def resolve_upscaler_api(backend) -> str:
-    """Identify the two supported public 3D-upscaler schemas."""
+    """Require the maintained Plus 3D-upscaler schema."""
     names = _input_names(backend)
     common = {"latent", "model_name", "mode", "align", "device", "precision"}
     if not common.issubset(names):
@@ -28,11 +28,8 @@ def resolve_upscaler_api(backend) -> str:
         )
     if {"keep_proportion", "offload_after_upscale"}.issubset(names):
         return "plus_v1"
-    if {"enable_temporal_chunking", "force_unload"}.issubset(names):
-        return "legacy_v1"
     raise MMH3ResourceError(
-        "Unsupported MinimaxH3LatentUpscaler3D schema. Install the maintained Plus fork "
-        "or a legacy release exposing enable_temporal_chunking/force_unload."
+        "Unsupported MinimaxH3LatentUpscaler3D schema. Install the maintained Plus fork."
     )
 
 
@@ -47,7 +44,6 @@ def build_upscaler_inputs(
     device: str,
     precision: str,
     offload_after_upscale: bool,
-    legacy_temporal_chunking: bool,
 ) -> dict:
     common = {
         "latent": latent,
@@ -66,11 +62,5 @@ def build_upscaler_inputs(
             **common,
             "keep_proportion": True,
             "offload_after_upscale": bool(offload_after_upscale),
-        }
-    if api == "legacy_v1":
-        return {
-            **common,
-            "enable_temporal_chunking": bool(legacy_temporal_chunking),
-            "force_unload": bool(offload_after_upscale),
         }
     raise MMH3ResourceError(f"Unknown learned-upscaler API {api!r}")

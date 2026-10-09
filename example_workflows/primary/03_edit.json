@@ -3,7 +3,7 @@
   "groups": [
     {
       "id": 1,
-      "title": "01 · SOURCE / REFERENCES",
+      "title": "01 Â· SOURCE / REFERENCES",
       "bounding": [
         65,
         65,
@@ -16,7 +16,7 @@
     },
     {
       "id": 2,
-      "title": "02 · MODELS / SAMPLING",
+      "title": "02 Â· MODELS / SAMPLING",
       "bounding": [
         635,
         65,
@@ -28,8 +28,8 @@
       "flags": {}
     },
     {
-      "id": 4,
-      "title": "04 · GENERATION / EDIT",
+      "id": 3,
+      "title": "03 Â· GENERATION / EDIT",
       "bounding": [
         1205,
         65,
@@ -41,8 +41,8 @@
       "flags": {}
     },
     {
-      "id": 5,
-      "title": "05 · REVIEW / SAVE",
+      "id": 4,
+      "title": "04 Â· REVIEW / SAVE",
       "bounding": [
         1775,
         65,
@@ -1395,7 +1395,7 @@
       "properties": {
         "Node name for S&R": "MMH3SaveVideo"
       },
-      "title": "Save Video · encode once",
+      "title": "Save Video Â· encode once",
       "id": 21,
       "type": "MMH3SaveVideo",
       "inputs": [

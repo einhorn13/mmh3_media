@@ -770,14 +770,6 @@
           "widget": {
             "name": "offload_after_upscale"
           }
-        },
-        {
-          "name": "legacy_temporal_chunking",
-          "type": "BOOLEAN",
-          "link": null,
-          "widget": {
-            "name": "legacy_temporal_chunking"
-          }
         }
       ],
       "outputs": [
@@ -799,8 +791,7 @@
         32,
         "cuda",
         "bf16",
-        true,
-        false
+        true
       ]
     },
     {
@@ -847,14 +838,6 @@
           "link": null,
           "widget": {
             "name": "missing_policy"
-          }
-        },
-        {
-          "name": "turbo_override",
-          "type": "STRING",
-          "link": null,
-          "widget": {
-            "name": "turbo_override"
           }
         },
         {
@@ -916,7 +899,6 @@
       "widgets_values": [
         "error",
         "error",
-        "",
         "preserve"
       ]
     },
@@ -2413,7 +2395,7 @@
       107,
       0,
       7,
-      7,
+      6,
       "STRING"
     ],
     [

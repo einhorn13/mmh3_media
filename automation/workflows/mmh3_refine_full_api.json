@@ -78,7 +78,6 @@
         4
       ],
       "offload_after_upscale": true,
-      "legacy_temporal_chunking": false,
       "video_latent": [
         "UpscalePreflight",
         0
@@ -90,7 +89,6 @@
     "inputs": {
       "unknown_policy": "error",
       "missing_policy": "error",
-      "turbo_override": "",
       "acceleration_policy": "preserve",
       "packet": [
         "H3LatentUpscalePrepare_2",

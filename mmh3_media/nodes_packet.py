@@ -596,8 +596,6 @@ class MMH3H3RefineLoRAs(io.ComfyNode):
                 io.Clip.Input("clip"),
                 io.Combo.Input("unknown_policy", options=["error", "continue_without_source_loras"], default="error"),
                 io.Combo.Input("missing_policy", options=["error", "skip_missing"], default="error"),
-                io.String.Input("turbo_override", default="", optional=True, advanced=True,
-                                tooltip="Replace only source acceleration LoRAs with this model-only LoRA at strength 1."),
                 io.Combo.Input("acceleration_policy", options=["preserve", "drop"], default="preserve", optional=True, advanced=True,
                                tooltip="drop removes source Turbo/PDD/FastH3 acceleration adapters but preserves creative/style/content LoRAs. Required when changing to a trajectory-owning architecture such as VDN."),
                 io.String.Input("turbo_loras_json", display_name="LoRAs", default="", optional=True, force_input=True),
@@ -621,26 +619,20 @@ class MMH3H3RefineLoRAs(io.ComfyNode):
         clip,
         unknown_policy: str,
         missing_policy: str,
-        turbo_override: str = "",
         acceleration_policy: str = "preserve",
         turbo_loras_json: str = "",
     ) -> io.NodeOutput:
         packet = _packet(packet)
-        from .upscale_overrides import drop_upscale_acceleration_loras, replace_upscale_turbo
-        turbo_override = turbo_override.strip().replace('\\', '/')
+        from .upscale_overrides import drop_upscale_acceleration_loras
         if acceleration_policy not in {"preserve", "drop"}:
             raise MMH3ResourceError(f"Unknown acceleration_policy {acceleration_policy!r}")
-        if turbo_override and acceleration_policy == "drop":
-            raise MMH3ResourceError("turbo_override cannot be combined with acceleration_policy='drop'")
         if acceleration_policy == "drop":
             packet = drop_upscale_acceleration_loras(packet)
-        elif turbo_override:
-            packet = replace_upscale_turbo(packet, turbo_override)
         from .turbo_loras import parse_turbo_loras, replace_source_turbo_loras, turbo_lora_mode
         selection = parse_turbo_loras(turbo_loras_json)
         if selection is not None:
-            if turbo_override or acceleration_policy != "preserve":
-                raise MMH3ResourceError("Use either Turbo LoRAs block or the legacy acceleration override, not both")
+            if acceleration_policy != "preserve":
+                raise MMH3ResourceError("Use either Load LoRAs or acceleration_policy=drop, not both")
             packet = replace_source_turbo_loras(packet, selection, extension=turbo_lora_mode(turbo_loras_json) == "extension")
         selected_names = {e["name"] for e in selection or []}
         recorded = get_generation_loras(packet) or ()
@@ -653,7 +645,7 @@ class MMH3H3RefineLoRAs(io.ComfyNode):
         for catalog_name in folder_paths.get_filename_list("loras"):
             normalized = str(catalog_name).replace("\\", "/")
             digest = None
-            if normalized in wanted_hash_names or normalized == turbo_override or normalized in selected_names:
+            if normalized in wanted_hash_names or normalized in selected_names:
                 full = folder_paths.get_full_path("loras", catalog_name)
                 if full:
                     hasher = hashlib.sha256()
@@ -662,10 +654,6 @@ class MMH3H3RefineLoRAs(io.ComfyNode):
                             hasher.update(chunk)
                     digest = hasher.hexdigest()
             inventory[normalized] = digest
-        if turbo_override:
-            if not inventory.get(turbo_override):
-                raise MMH3ResourceError(f'Upscale Turbo LoRA is unavailable: {turbo_override}')
-            packet = replace_upscale_turbo(packet, turbo_override, inventory[turbo_override])
         if selection is not None:
             unavailable = [name for name in selected_names if not inventory.get(name)]
             if unavailable:
@@ -687,8 +675,6 @@ class MMH3H3RefineLoRAs(io.ComfyNode):
         info["operation"] = "high_sigma_refine_lora_reapply"
         if selection is not None:
             info["turbo_loras_override"] = json.loads(turbo_loras_json)
-        if turbo_override:
-            info['turbo_override'] = turbo_override
         info['acceleration_policy'] = acceleration_policy
         applied_loras = [
             {key: value for key, value in entry.items() if key != "source_index"}

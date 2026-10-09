@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import math
 from typing import Any, Mapping
 
@@ -220,7 +219,3 @@ def inspect_packet(packet: MMH3Media) -> dict[str, Any]:
         "warnings": warnings,
         "summary": "\n".join(lines),
     }
-
-
-def inspect_json(packet: MMH3Media) -> str:
-    return json.dumps(inspect_packet(packet), ensure_ascii=False, indent=2)

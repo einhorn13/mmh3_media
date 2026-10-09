@@ -4,7 +4,7 @@
   "groups": [
     {
       "id": 1,
-      "title": "01 · SOURCE / REFERENCES",
+      "title": "01 Â· SOURCE / REFERENCES",
       "bounding": [
         65,
         65,
@@ -16,8 +16,8 @@
       "flags": {}
     },
     {
-      "id": 4,
-      "title": "04 · GENERATION / EDIT",
+      "id": 2,
+      "title": "02 Â· GENERATION / EDIT",
       "bounding": [
         635,
         65,
@@ -29,8 +29,8 @@
       "flags": {}
     },
     {
-      "id": 5,
-      "title": "05 · REVIEW / SAVE",
+      "id": 3,
+      "title": "03 Â· REVIEW / SAVE",
       "bounding": [
         1205,
         65,
@@ -55,7 +55,7 @@
   "version": 0.4,
   "nodes": [
     {
-      "title": "01 · Identity image",
+      "title": "01 Â· Identity image",
       "size": [
         440,
         490
@@ -98,7 +98,7 @@
       ]
     },
     {
-      "title": "02 · Full master audio (any sample rate)",
+      "title": "02 Â· Full master audio (any sample rate)",
       "size": [
         440,
         200
@@ -136,7 +136,7 @@
       ]
     },
     {
-      "title": "03 · Long Video Studio — generate / review / assemble",
+      "title": "03 Â· Long Video Studio â€” generate / review / assemble",
       "size": [
         480,
         1150
@@ -346,7 +346,7 @@
       ],
       "outputs": [],
       "widgets_values": [
-        "# Complete long-video workflow\n\n1. Upload one identity image and the full master audio. Audio is resampled to 32000 Hz once.\n2. Select Ref2VA model, Qwen text encoder, video VAE and audio VAE. Set project name, prompt, size and scene duration.\n3. Generate next → preview → Accept take (or Reroll then Generate next). Repeat for every scene.\n4. Assemble after all scenes are accepted. Final MP4 + MMH3 archive appear in `output/<project>`.\n\nReview is on by default. For an automatic full pass set review_takes=false and auto_continue=true before starting a new project.\n\nExisting project = resume with frozen sources/settings. Use a new project name for different input or render settings. Cancel uses the normal ComfyUI stop button; Recover reconciles the saved artifact or releases a confirmed failed attempt.\n\nSchema checker is advisory: workflow_review.py; strict CI: --strict; bypass: --skip. It does not intercept Queue."
+        "# Complete long-video workflow\n\n1. Upload one identity image and the full master audio. Audio is resampled to 32000 Hz once.\n2. Select Ref2VA model, Qwen text encoder, video VAE and audio VAE. Set project name, prompt, size and scene duration.\n3. Generate next â†’ preview â†’ Accept take (or Reroll then Generate next). Repeat for every scene.\n4. Assemble after all scenes are accepted. Final MP4 + MMH3 archive appear in `output/<project>`.\n\nReview is on by default. For an automatic full pass set review_takes=false and auto_continue=true before starting a new project.\n\nExisting project = resume with frozen sources/settings. Use a new project name for different input or render settings. Cancel uses the normal ComfyUI stop button; Recover reconciles the saved artifact or releases a confirmed failed attempt.\n\nSchema checker is advisory: workflow_review.py; strict CI: --strict; bypass: --skip. It does not intercept Queue."
       ]
     }
   ],

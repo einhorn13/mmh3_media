@@ -56,32 +56,7 @@ def drop_upscale_acceleration_loras(packet):
     return set_generation_loras(packet, kept)
 
 
-def replace_upscale_turbo(packet, name, digest=None):
-    recorded = get_generation_loras(packet)
-    if recorded is None:
-        raise MMH3ResourceError('Record source LoRAs before overriding Turbo; creative LoRAs must be known')
-    name = name.replace('\\', '/')
-    replacement = dict(name=name, strength_model=1.0, strength_clip=None,
-        purpose='acceleration', loader='LoraLoaderModelOnly', reapply_for_high_sigma=True)
-    if digest:
-        replacement['sha256'] = digest
-    adapter_name = _source_sampling_adapter_name(packet)
-    result = []
-    inserted = False
-    for entry in recorded:
-        if _looks_like_acceleration(entry, adapter_name=adapter_name):
-            if not inserted:
-                result.append(replacement)
-                inserted = True
-        else:
-            result.append(entry)
-    if not inserted:
-        result.insert(0, replacement)
-    return set_generation_loras(packet, result)
-
-
 __all__ = [
     'drop_upscale_acceleration_loras',
     'parse_upscale_sigmas',
-    'replace_upscale_turbo',
 ]

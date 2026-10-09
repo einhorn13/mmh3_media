@@ -42,9 +42,6 @@ class MMH3H3StitchUpscale(io.ComfyNode):
                              tooltip='Upscale denoising steps; 0 inherits source. Manual sigmas take priority.'),
                 io.String.Input('manual_sigmas', default='', multiline=True, optional=True, advanced=True,
                                 tooltip='Optional descending sigmas ending in 0, e.g. 0.5, 0.25, 0.1, 0. Overrides steps and denoise.'),
-                io.Combo.Input('turbo_override', options=['Source'] + folder_paths.get_filename_list('loras'),
-                               default='Source', optional=True, advanced=True,
-                               tooltip='Upscale-only Turbo LoRA at strength 1. Replaces source acceleration adapters; other LoRAs retain their order and strengths. Match the model family. Sampler/AV shifts remain from source.'),
                 *h3_optimization_inputs(optional=True),
                 io.Combo.Input('decode_mode', options=['vae', 'draft', 'trt'], default='vae', optional=True, display_name='Video decoder'),
                 io.Combo.Input('trt_decoder', options=trt_decoder_options(), default='auto', optional=True, advanced=True),
@@ -60,7 +57,7 @@ class MMH3H3StitchUpscale(io.ComfyNode):
 
     @classmethod
     def execute(cls, segments, clip, video_vae, audio_vae, resolution, denoise, upscaler_model,
-                fl2va_model=None, ref2va_model=None, steps_override=0, manual_sigmas='', turbo_override='Source',
+                fl2va_model=None, ref2va_model=None, steps_override=0, manual_sigmas='',
                 attention='Default', fp16_accumulation='Default', force_unload=True, decode_mode='vae', trt_decoder='auto', sage_attention='disabled', sage_allow_compile=False, turbo_loras_json='', streaming='auto'):
         packets = [_packet(segments[key]) for key in sorted(segments, key=lambda key: int(key.rsplit('_', 1)[1]))
                    if segments[key] is not None]
@@ -75,7 +72,6 @@ class MMH3H3StitchUpscale(io.ComfyNode):
             models={'fl2va': fl2va_model, 'ref2va': ref2va_model}, clip=clip,
             video_vae=video_vae, audio_vae=audio_vae, upscaler_model=upscaler_model,
             steps_override=steps_override, manual_sigmas=manual_sigmas,
-            turbo_override='' if turbo_override == 'Source' else turbo_override,
             attention=attention, fp16_accumulation=fp16_accumulation, force_unload=force_unload,
             sage_attention=sage_attention, sage_allow_compile=sage_allow_compile, turbo_loras_json=turbo_loras_json,
             upscaler_api=upscaler_api, decode_mode=decode_mode, trt_decoder=trt_decoder, streaming=streaming)

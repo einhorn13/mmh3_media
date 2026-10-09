@@ -86,9 +86,9 @@ def validate_sources(packets, width, height, denoise):
 
 def build_stitch_upscale_expansion(packets, *, width, height, denoise, models, clip,
                                    video_vae, audio_vae, upscaler_model=DEFAULT_UPSCALER,
-                                   graph_builder_factory=None, steps_override=0, manual_sigmas='', turbo_override='',
+                                   graph_builder_factory=None, steps_override=0, manual_sigmas='',
                                    attention='Default', fp16_accumulation='Default', force_unload=True,
-                                   upscaler_api='legacy_v1', decode_mode='vae', trt_decoder='auto', sage_attention='disabled', sage_allow_compile=False, turbo_loras_json='', streaming='auto'):
+                                   upscaler_api='plus_v1', decode_mode='vae', trt_decoder='auto', sage_attention='disabled', sage_allow_compile=False, turbo_loras_json='', streaming='auto'):
     if not 0 <= steps_override <= 100:
         raise MMH3ResourceError('Upscale steps must be within 0–100 (0 inherits source)')
     explicit_sigmas = parse_upscale_sigmas(manual_sigmas)
@@ -96,10 +96,6 @@ def build_stitch_upscale_expansion(packets, *, width, height, denoise, models, c
     attention_label = str(selected_attention.get('attention') or 'Default')
     is_vdn = attention_label.startswith('VDN-H3') or attention_label == 'vdn_h3'
     if is_vdn:
-        if turbo_override:
-            raise MMH3ResourceError(
-                'VDN-H3 owns its trajectory adapter; Upscale Turbo override must be empty'
-            )
         raise MMH3ResourceError(
             'VDN-H3 is not enabled for Upscale + Stitch low-sigma refine: this path truncates the '
             'scheduler with denoise<1, so it cannot guarantee the trained 8-NFE DMD or ~50-NFE Stage-B '
@@ -115,8 +111,6 @@ def build_stitch_upscale_expansion(packets, *, width, height, denoise, models, c
         summary += f' · manual sigmas: {len(explicit_sigmas) - 1} steps'
     elif steps_override:
         summary += f' · upscale steps: {steps_override}'
-    if turbo_override:
-        summary += f'\nUpscale Turbo: {turbo_override} (strength 1)'
     for family in {r.task_family for r in recipes}:
         model = models.get(family)
         if model is None:
@@ -136,17 +130,16 @@ def build_stitch_upscale_expansion(packets, *, width, height, denoise, models, c
                                        denoise=None, max_denoise=None)
         elif steps_override:
             recipe.info['refine']['policy'] = 'override_steps_source_scheduler_tail'
-        recipe.info['overrides'] = dict(steps=steps_override, manual_sigmas=explicit_sigmas,
-                                        turbo_lora=turbo_override or None)
+        recipe.info['overrides'] = dict(steps=steps_override, manual_sigmas=explicit_sigmas)
         prepare = graph.node('MMH3H3LatentUpscalePrepare', packet=packet, geometry_mode='target_dimensions',
                              scale=1.0, target_width=width, target_height=height, target_megapixels=0.0,
                              align=32, enable_chunking=True)
         upscale = graph.node(UPSCALER_NODE, **build_upscaler_inputs(
             upscaler_api, latent=prepare.out(1), model_name=upscaler_model,
             target_width=width, target_height=height, align=32, device='cuda', precision='bf16',
-            offload_after_upscale=force_unload, legacy_temporal_chunking=False))
+            offload_after_upscale=force_unload))
         loras = graph.node('MMH3H3RefineLoRAs', packet=prepare.out(0), model=models[recipe.task_family],
-                           clip=clip, unknown_policy='error', missing_policy='error', turbo_override=turbo_override, turbo_loras_json=turbo_loras_json)
+                           clip=clip, unknown_policy='error', missing_policy='error', turbo_loras_json=turbo_loras_json)
         optimized = graph.node('MMH3H3ModelOptimizations', model=loras.out(0),
                                **optimization_inputs)
         condition = graph.node('MMH3H3AutoCondition', packet=prepare.out(0), prompt_override='', seed_override=-1,

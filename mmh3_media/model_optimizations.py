@@ -28,10 +28,6 @@ ATTENTION_NODE_IDS = {
 FP16_PATCH_NODE_ID = "MMH3H3FP16AccumulationPatch"
 
 
-def native_sol_selection(node_class: type) -> str:
-    return native_sparse_selection(node_class, "sol_native")
-
-
 def native_sparse_selection(node_class: type, mode: str) -> str:
     """Resolve the native DynamicCombo key across ComfyUI schema revisions."""
     inputs = node_class.INPUT_TYPES()

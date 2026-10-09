@@ -15,16 +15,19 @@ function searchableLoRA(names, selected, label, commit) {
     input.setAttribute("role", "combobox");
     input.setAttribute("aria-autocomplete", "list");
     input.setAttribute("aria-expanded", "false");
-    input.style.cssText = "width:100%;min-width:0;box-sizing:border-box;min-height:32px";
+    input.style.cssText = "width:100%;min-width:0;box-sizing:border-box;min-height:32px;background:#252525;color:#f2f2f2;border:1px solid #777;border-radius:4px;padding:6px 8px";
     const list = document.createElement("div");
     list.id = `mmh3-lora-options-${++comboId}`;
     list.setAttribute("role", "listbox");
     list.setAttribute("aria-label", `${label} matches`);
-    list.style.cssText = "display:none;max-height:144px;overflow:auto;min-width:0;gap:2px";
+    // The top-layer picker does not resize the DOM widget or get clipped by
+    // the canvas/node. Its width is independent of the narrow filename field.
+    list.popover = "auto";
+    list.style.cssText = "position:fixed;inset:auto;margin:0;box-sizing:border-box;overflow:auto;padding:6px;border:1px solid #777;border-radius:5px;background:#252525;color:#f2f2f2;font:13px/1.4 sans-serif;box-shadow:0 6px 20px #0008";
     input.setAttribute("aria-controls", list.id);
     let matches = [], active = -1;
     const close = () => {
-        list.style.display = "none";
+        list.hidePopover();
         input.setAttribute("aria-expanded", "false");
         input.removeAttribute("aria-activedescendant");
         input.value = selected;
@@ -32,7 +35,7 @@ function searchableLoRA(names, selected, label, commit) {
     const highlight = () => {
         [...list.querySelectorAll('[role="option"]')].forEach((option, index) => {
             option.setAttribute("aria-selected", String(index === active));
-            option.style.background = index === active ? "var(--comfy-input-bg, #444)" : "";
+            option.style.background = index === active ? "#40566f" : "transparent";
             if (index === active) {
                 input.setAttribute("aria-activedescendant", option.id);
                 option.scrollIntoView({block: "nearest"});
@@ -53,7 +56,8 @@ function searchableLoRA(names, selected, label, commit) {
             option.setAttribute("aria-selected", "false");
             option.textContent = name;
             option.title = name;
-            option.style.cssText = "text-align:left;overflow-wrap:anywhere;min-width:0;padding:6px;cursor:pointer";
+            option.style.cssText = "display:block;width:100%;text-align:left;overflow-wrap:anywhere;min-width:0;padding:8px;cursor:pointer;background:transparent;color:#f2f2f2;border:0;border-radius:3px;font:inherit";
+            option.addEventListener("pointerenter", () => { active = index; highlight(); });
             option.addEventListener("mousedown", event => event.preventDefault());
             option.addEventListener("click", () => commit(name));
             list.append(option);
@@ -64,7 +68,19 @@ function searchableLoRA(names, selected, label, commit) {
             hint.setAttribute("role", "status");
             list.append(hint);
         }
-        list.style.display = "grid";
+        const rect = input.getBoundingClientRect();
+        const width = Math.min(Math.max(480, rect.width), window.innerWidth - 24);
+        const below = window.innerHeight - rect.bottom - 12;
+        const above = rect.top - 12;
+        const upward = below < 200 && above > below;
+        Object.assign(list.style, {
+            width: `${width}px`,
+            left: `${Math.max(12, Math.min(rect.left, window.innerWidth - width - 12))}px`,
+            top: upward ? "auto" : `${rect.bottom + 4}px`,
+            bottom: upward ? `${window.innerHeight - rect.top + 4}px` : "auto",
+            maxHeight: `${Math.max(60, Math.min(340, upward ? above : below) - 4)}px`,
+        });
+        if (!list.matches(":popover-open")) list.showPopover();
         input.setAttribute("aria-expanded", "true");
     };
     input.addEventListener("focus", () => { input.select(); filter(""); });
@@ -72,7 +88,7 @@ function searchableLoRA(names, selected, label, commit) {
     input.addEventListener("keydown", event => {
         if (["ArrowDown", "ArrowUp"].includes(event.key)) {
             event.preventDefault();
-            if (list.style.display === "none") filter(input.value === selected ? "" : input.value);
+            if (!list.matches(":popover-open")) filter(input.value === selected ? "" : input.value);
             if (matches.length) active = active < 0 ? (event.key === "ArrowDown" ? 0 : matches.length - 1)
                 : (active + (event.key === "ArrowDown" ? 1 : -1) + matches.length) % matches.length;
             highlight();
@@ -87,6 +103,13 @@ function searchableLoRA(names, selected, label, commit) {
         }
     });
     host.addEventListener("focusout", event => { if (!host.contains(event.relatedTarget)) close(); });
+    list.addEventListener("toggle", event => {
+        if (event.newState === "closed") {
+            input.setAttribute("aria-expanded", "false");
+            input.removeAttribute("aria-activedescendant");
+            input.value = selected;
+        }
+    });
     host.append(input, list);
     return host;
 }
@@ -118,7 +141,8 @@ app.registerExtension({
         add.type = "button";
         add.textContent = "+ Add LoRA";
         add.setAttribute("aria-label", "Add LoRA");
-        Object.assign(add.style, { padding: "7px", cursor: "pointer", flexShrink: "0", minHeight: "32px" });
+        Object.assign(add.style, { padding: "7px", cursor: "pointer", flexShrink: "0", minHeight: "32px",
+            background: "#252525", color: "#f2f2f2", border: "1px solid #777", borderRadius: "4px" });
         root.append(rows, add, status);
         const read = () => {
             if (state.value) {
@@ -191,7 +215,8 @@ app.registerExtension({
                 remove.textContent = "×";
                 remove.title = `Remove LoRA ${index + 1}`;
                 remove.setAttribute("aria-label", remove.title);
-                remove.style.height = "32px";
+                Object.assign(remove.style, { height: "32px", background: "#252525", color: "#f2f2f2",
+                    border: "1px solid #777", borderRadius: "4px", cursor: "pointer" });
                 remove.addEventListener("click", () => edit(items => { items.splice(index, 1); }));
                 row.append(file, strength, remove);
                 rows.append(row);
@@ -214,7 +239,10 @@ app.registerExtension({
             const measured = Math.ceil(rows.offsetHeight + add.offsetHeight + status.offsetHeight + 52);
             if (!root.isConnected || measured === height) return;
             height = measured;
-            node.setSize?.([Math.max(node.size?.[0] ?? 400, 360), node.computeSize?.()[1] ?? height + 70]);
+            // Grow only to fit actual rows. Keep the user's width and spare
+            // height when filtering, changing a hint, or removing a row.
+            node.setSize?.([node.size?.[0] ?? 400,
+                Math.max(node.size?.[1] ?? 0, node.computeSize?.()[1] ?? height + 70)]);
             node.graph?.setDirtyCanvas(true, true);
         };
         const observer = new ResizeObserver(resize);

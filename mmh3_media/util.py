@@ -11,7 +11,7 @@ import tempfile
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
-from typing import Any, BinaryIO, Iterable
+from typing import Any, BinaryIO
 
 from .errors import MMH3FormatError
 
@@ -150,9 +150,3 @@ def merge_patch(target: Any, patch: Any) -> Any:
         else:
             target[key] = deep_copy_json(value)
     return target
-
-
-def iter_files(root: Path, suffix: str) -> Iterable[Path]:
-    if not root.exists():
-        return []
-    return (p for p in root.rglob(f"*{suffix}") if p.is_file())
